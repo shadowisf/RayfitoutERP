@@ -60,7 +60,7 @@ export default function SubmitForLPO({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: itemId }),
-              }
+              },
             );
             if (!response.ok) continue;
             const quotations = await response.json();
@@ -81,7 +81,10 @@ export default function SubmitForLPO({
               }),
             });
           } catch (error) {
-            console.error(`Error auto-selecting quotation for item ${itemId}:`, error);
+            console.error(
+              `Error auto-selecting quotation for item ${itemId}:`,
+              error,
+            );
           }
         }
       }
@@ -98,7 +101,7 @@ export default function SubmitForLPO({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id: itemId }),
-            }
+            },
           );
 
           if (response.ok) {
@@ -106,7 +109,7 @@ export default function SubmitForLPO({
 
             // Find the approved quotation
             const approvedQuotation = data.find(
-              (q: any) => q.approval_status === "Approved"
+              (q: any) => q.approval_status === "Approved",
             );
 
             if (approvedQuotation) {
@@ -132,7 +135,7 @@ export default function SubmitForLPO({
             action: "deleteNonApprovedQuotationFiles",
             approved_suppliers: approvedSuppliers,
           }),
-        }
+        },
       );
 
       if (!deleteResponse.ok) {
