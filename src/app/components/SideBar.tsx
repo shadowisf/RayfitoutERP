@@ -22,6 +22,16 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   const [resolutionActionCount, setResolutionActionCount] = useState<number>(0);
   const [paymentUnpaidCount, setPaymentUnpaidCount] = useState<number>(0);
 
+  // ── Mobile detection ──────────────────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   const INVENTORY_DEPARTMENT_IDS = [8, 11, 15];
   const PROJECT_DEPARTMENT_IDS = [8, 9, 10, 15, 16];
 
@@ -164,7 +174,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       // Finance dept (10) uses /finance as their home — highlight Dashboard when there
       extraPaths: userInfo?.departmentID === 10 ? ["/finance"] : undefined,
     },
-    /* TEMPORARILY HIDDEN ON MOBILE
+
     {
       label: "Procurement Tracker",
       path: "/mr",
@@ -203,14 +213,14 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       count: inventoryActionCount,
       visibleTo: [8, 16, 11],
     },
-    */
   ];
 
-  const visibleMenuItems = menuItems.filter(
-    (item) =>
-      !item.visibleTo ||
-      item.visibleTo.includes(Number(userInfo?.departmentID)),
-  );
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (isMobile) return item.path === "/dashboard";
+    return (
+      !item.visibleTo || item.visibleTo.includes(Number(userInfo?.departmentID))
+    );
+  });
 
   const isActive = (item: { path: string; extraPaths?: string[] }) => {
     if (pathname === item.path) return true;
