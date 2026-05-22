@@ -56,6 +56,7 @@ import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItem
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
 import AddBrandAndSpecs from "./department/_AddBrandAndSpecs";
 import AddMrLineAttachment from "./department/_AddMrLineAttachment";
+import MobileBrandSpecsEditor from "./department/_MobileBrandSpecsEditor";
 import DepartmentActionsButton from "./department/_DepartmentActionsButton";
 
 type GroupedMrLines = {
@@ -2790,7 +2791,9 @@ export default function MrLinesView({
                 {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
                   userInfo?.departmentID === mrHeader.department_id &&
                   showByItem && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 10 }}
+                    >
                       {/* CATEGORY + SUBCATEGORY + ITEM */}
                       <AddMrItemButton
                         mrHeaderID={mrHeader.id}
@@ -2810,9 +2813,7 @@ export default function MrLinesView({
                           )}
                           mrHeaderId={mrHeader.id}
                           stageName={currentStageName}
-                          onComplete={() =>
-                            setSelectedDraftItemIds(new Set())
-                          }
+                          onComplete={() => setSelectedDraftItemIds(new Set())}
                         />
                       )}
                     </div>
@@ -2970,30 +2971,61 @@ export default function MrLinesView({
                               style={{ marginBottom: "2rem" }}
                             >
                               {!isMobile && (
-                              <table className="items-table two-toned fixed-layout">
-                                <thead>
-                                  <tr>
-                                    {mrHeader.progress_id === 1 &&
-                                      isDeptEditable && (
+                                <table className="items-table two-toned fixed-layout">
+                                  <thead>
+                                    <tr>
+                                      {mrHeader.progress_id === 1 &&
+                                        isDeptEditable && (
+                                          <th style={{ width: "24px" }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={
+                                                items.length > 0 &&
+                                                items.every((i) =>
+                                                  selectedDraftItemIds.has(
+                                                    i.id,
+                                                  ),
+                                                )
+                                              }
+                                              onChange={(e) => {
+                                                const newSet = new Set(
+                                                  selectedDraftItemIds,
+                                                );
+                                                items.forEach((i) => {
+                                                  if (e.target.checked)
+                                                    newSet.add(i.id);
+                                                  else newSet.delete(i.id);
+                                                });
+                                                setSelectedDraftItemIds(newSet);
+                                              }}
+                                              style={{
+                                                cursor: "pointer",
+                                                accentColor:
+                                                  "rgba(0, 163, 93, 1)",
+                                              }}
+                                            />
+                                          </th>
+                                        )}
+                                      {isQSReview && (
                                         <th style={{ width: "24px" }}>
                                           <input
                                             type="checkbox"
                                             checked={
                                               items.length > 0 &&
                                               items.every((i) =>
-                                                selectedDraftItemIds.has(i.id),
+                                                selectedItemIds.has(i.id),
                                               )
                                             }
                                             onChange={(e) => {
                                               const newSet = new Set(
-                                                selectedDraftItemIds,
+                                                selectedItemIds,
                                               );
                                               items.forEach((i) => {
                                                 if (e.target.checked)
                                                   newSet.add(i.id);
                                                 else newSet.delete(i.id);
                                               });
-                                              setSelectedDraftItemIds(newSet);
+                                              setSelectedItemIds(newSet);
                                             }}
                                             style={{
                                               cursor: "pointer",
@@ -3003,301 +3035,332 @@ export default function MrLinesView({
                                           />
                                         </th>
                                       )}
-                                    {isQSReview && (
-                                      <th style={{ width: "24px" }}>
-                                        <input
-                                          type="checkbox"
-                                          checked={
-                                            items.length > 0 &&
-                                            items.every((i) =>
-                                              selectedItemIds.has(i.id),
-                                            )
-                                          }
-                                          onChange={(e) => {
-                                            const newSet = new Set(
-                                              selectedItemIds,
-                                            );
-                                            items.forEach((i) => {
-                                              if (e.target.checked)
-                                                newSet.add(i.id);
-                                              else newSet.delete(i.id);
-                                            });
-                                            setSelectedItemIds(newSet);
-                                          }}
-                                          style={{
-                                            cursor: "pointer",
-                                            accentColor: "rgba(0, 163, 93, 1)",
-                                          }}
-                                        />
-                                      </th>
-                                    )}
-                                    {isProcurementQuotations && (
-                                      <th style={{ width: "24px" }}>
-                                        <input
-                                          type="checkbox"
-                                          checked={
-                                            items.length > 0 &&
-                                            items.every((i) =>
-                                              selectedProcurementItemIds.has(
-                                                i.id,
-                                              ),
-                                            )
-                                          }
-                                          onChange={(e) => {
-                                            const newSet = new Set(
-                                              selectedProcurementItemIds,
-                                            );
-                                            items.forEach((i) => {
-                                              if (e.target.checked)
-                                                newSet.add(i.id);
-                                              else newSet.delete(i.id);
-                                            });
-                                            setSelectedProcurementItemIds(
-                                              newSet,
-                                            );
-                                          }}
-                                          style={{
-                                            cursor: "pointer",
-                                            accentColor: "rgba(0, 163, 93, 1)",
-                                          }}
-                                        />
-                                      </th>
-                                    )}
-                                    {isManagerPriceApproval && (
-                                      <th style={{ width: "24px" }}>
-                                        <input
-                                          type="checkbox"
-                                          checked={
-                                            items.length > 0 &&
-                                            items.every((i) =>
-                                              selectedManagerItemIds.has(i.id),
-                                            )
-                                          }
-                                          onChange={(e) => {
-                                            const newSet = new Set(
-                                              selectedManagerItemIds,
-                                            );
-                                            items.forEach((i) => {
-                                              if (e.target.checked)
-                                                newSet.add(i.id);
-                                              else newSet.delete(i.id);
-                                            });
-                                            setSelectedManagerItemIds(newSet);
-                                          }}
-                                          style={{
-                                            cursor: "pointer",
-                                            accentColor: "rgba(0, 163, 93, 1)",
-                                          }}
-                                        />
-                                      </th>
-                                    )}
-                                    <th style={{ width: "40px" }}>#</th>
-                                    <th style={{ width: "130px" }}>ITEM</th>
-                                    {mrHeader.progress_id === 1 && (
-                                      <th style={{ width: "150px" }}>
-                                        INVENTORY STATUS
-                                      </th>
-                                    )}
-                                    {mrHeader.progress_id >= 9 ? (
-                                      <>
-                                        <th style={{ width: "80px" }}>
-                                          QTY USE
+                                      {isProcurementQuotations && (
+                                        <th style={{ width: "24px" }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={
+                                              items.length > 0 &&
+                                              items.every((i) =>
+                                                selectedProcurementItemIds.has(
+                                                  i.id,
+                                                ),
+                                              )
+                                            }
+                                            onChange={(e) => {
+                                              const newSet = new Set(
+                                                selectedProcurementItemIds,
+                                              );
+                                              items.forEach((i) => {
+                                                if (e.target.checked)
+                                                  newSet.add(i.id);
+                                                else newSet.delete(i.id);
+                                              });
+                                              setSelectedProcurementItemIds(
+                                                newSet,
+                                              );
+                                            }}
+                                            style={{
+                                              cursor: "pointer",
+                                              accentColor:
+                                                "rgba(0, 163, 93, 1)",
+                                            }}
+                                          />
                                         </th>
-                                        {hasAnyQtyStocks && (
-                                          <th style={{ width: "90px" }}>
-                                            QTY STOCKS
-                                          </th>
-                                        )}
-                                        {hasAnyQtyStocks && (
+                                      )}
+                                      {isManagerPriceApproval && (
+                                        <th style={{ width: "24px" }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={
+                                              items.length > 0 &&
+                                              items.every((i) =>
+                                                selectedManagerItemIds.has(
+                                                  i.id,
+                                                ),
+                                              )
+                                            }
+                                            onChange={(e) => {
+                                              const newSet = new Set(
+                                                selectedManagerItemIds,
+                                              );
+                                              items.forEach((i) => {
+                                                if (e.target.checked)
+                                                  newSet.add(i.id);
+                                                else newSet.delete(i.id);
+                                              });
+                                              setSelectedManagerItemIds(newSet);
+                                            }}
+                                            style={{
+                                              cursor: "pointer",
+                                              accentColor:
+                                                "rgba(0, 163, 93, 1)",
+                                            }}
+                                          />
+                                        </th>
+                                      )}
+                                      <th style={{ width: "40px" }}>#</th>
+                                      <th style={{ width: "130px" }}>ITEM</th>
+                                      {mrHeader.progress_id === 1 && (
+                                        <th style={{ width: "150px" }}>
+                                          INVENTORY STATUS
+                                        </th>
+                                      )}
+                                      {mrHeader.progress_id >= 9 ? (
+                                        <>
                                           <th style={{ width: "80px" }}>
-                                            TOTAL QTY
+                                            QTY USE
+                                          </th>
+                                          {hasAnyQtyStocks && (
+                                            <th style={{ width: "90px" }}>
+                                              QTY STOCKS
+                                            </th>
+                                          )}
+                                          {hasAnyQtyStocks && (
+                                            <th style={{ width: "80px" }}>
+                                              TOTAL QTY
+                                            </th>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <th style={{ width: "150px" }}>
+                                          REQ. QTY
+                                        </th>
+                                      )}
+                                      <th style={{ width: "95px" }}>
+                                        BOQ REF.
+                                      </th>
+                                      {hasAnyBrandSpecs && (
+                                        <th style={{ width: "120px" }}>
+                                          BRAND & SPECS
+                                        </th>
+                                      )}
+                                      {hasAnyAttachment && (
+                                        <th style={{ width: "100px" }}>
+                                          ATTACHMENT
+                                        </th>
+                                      )}
+                                      {((mrHeader.progress_id === 5 &&
+                                        (userInfo?.departmentID ===
+                                          mrHeader.department_id ||
+                                          userInfo?.departmentID === 8 ||
+                                          userInfo?.departmentID === 16)) ||
+                                        (mrHeader.progress_id === 3 &&
+                                          userInfo?.departmentID ===
+                                            mrHeader.department_id &&
+                                          userInfo?.departmentID !== 8) ||
+                                        (mrHeader.progress_id === 2 &&
+                                          userInfo?.departmentID ===
+                                            mrHeader.department_id &&
+                                          userInfo?.departmentID !== 16)) && (
+                                        <th style={{ width: "160px" }}>
+                                          APPROVAL STATUS
+                                        </th>
+                                      )}
+                                      {(mrHeader.progress_id === 1 ||
+                                        mrHeader.progress_id === 5 ||
+                                        mrHeader.progress_id === 11) &&
+                                        userInfo?.departmentID ===
+                                          mrHeader.department_id && (
+                                          <th style={{ width: "160px" }}>
+                                            ACTIONS
                                           </th>
                                         )}
-                                      </>
-                                    ) : (
-                                      <th style={{ width: "150px" }}>
-                                        REQ. QTY
-                                      </th>
-                                    )}
-                                    <th style={{ width: "95px" }}>BOQ REF.</th>
-                                    {hasAnyBrandSpecs && (
-                                      <th style={{ width: "120px" }}>
-                                        BRAND & SPECS
-                                      </th>
-                                    )}
-                                    {hasAnyAttachment && (
-                                      <th style={{ width: "100px" }}>
-                                        ATTACHMENT
-                                      </th>
-                                    )}
-                                    {((mrHeader.progress_id === 5 &&
-                                      (userInfo?.departmentID ===
-                                        mrHeader.department_id ||
-                                        userInfo?.departmentID === 8 ||
-                                        userInfo?.departmentID === 16)) ||
-                                      (mrHeader.progress_id === 3 &&
-                                        userInfo?.departmentID ===
-                                          mrHeader.department_id &&
-                                        userInfo?.departmentID !== 8) ||
-                                      (mrHeader.progress_id === 2 &&
-                                        userInfo?.departmentID ===
-                                          mrHeader.department_id &&
-                                        userInfo?.departmentID !== 16)) && (
-                                      <th style={{ width: "160px" }}>
-                                        APPROVAL STATUS
-                                      </th>
-                                    )}
-                                    {(mrHeader.progress_id === 1 ||
-                                      mrHeader.progress_id === 5 ||
-                                      mrHeader.progress_id === 11) &&
-                                      userInfo?.departmentID ===
-                                        mrHeader.department_id && (
-                                        <th style={{ width: "160px" }}>
-                                          ACTIONS
-                                        </th>
+                                      {mrHeader.progress_id === 11 &&
+                                        userInfo?.departmentID === 9 && (
+                                          <th style={{ width: "160px" }}>
+                                            ACTIONS
+                                          </th>
+                                        )}
+                                      {mrHeader.progress_id === 3 &&
+                                        (userInfo?.departmentID === 8 ||
+                                          userInfo?.departmentID ===
+                                            mrHeader.department_id) && (
+                                          <th style={{ width: "160px" }}>
+                                            QS REVIEW
+                                          </th>
+                                        )}
+                                      {mrHeader.progress_id === 3 &&
+                                        userInfo?.departmentID === 8 && (
+                                          <th style={{ width: "160px" }}>
+                                            ACTIONS
+                                          </th>
+                                        )}
+                                      {mrHeader.progress_id === 2 &&
+                                        userInfo?.departmentID === 16 && (
+                                          <th style={{ width: "160px" }}>
+                                            ACTIONS
+                                          </th>
+                                        )}
+                                      {mrHeader.progress_id >= 10 &&
+                                        (mrHeader.progress_id !== 11 ||
+                                          userInfo?.departmentID === 8) &&
+                                        !isManagerPriceApproval && (
+                                          <th style={{ width: "160px" }}>
+                                            <span>VENDOR & QUOTATION</span>
+                                          </th>
+                                        )}
+                                      {mrHeader.progress_id === 7 && (
+                                        <>
+                                          <th style={{ width: "100px" }}>
+                                            LOWEST PRICE
+                                          </th>
+                                          <th style={{ width: "100px" }}>
+                                            AVG. PRICE
+                                          </th>
+                                          <th style={{ width: "100px" }}>
+                                            PREV. PRICE
+                                          </th>
+                                          {userInfo?.departmentID === 9 && (
+                                            <th style={{ width: "160px" }}>
+                                              VENDOR & QUOTATION
+                                            </th>
+                                          )}
+                                        </>
                                       )}
-                                    {mrHeader.progress_id === 11 &&
-                                      userInfo?.departmentID === 9 && (
-                                        <th style={{ width: "160px" }}>
-                                          ACTIONS
-                                        </th>
-                                      )}
-                                    {mrHeader.progress_id === 3 &&
-                                      (userInfo?.departmentID === 8 ||
-                                        userInfo?.departmentID ===
-                                          mrHeader.department_id) && (
-                                        <th style={{ width: "160px" }}>
-                                          QS REVIEW
-                                        </th>
-                                      )}
-                                    {mrHeader.progress_id === 3 &&
-                                      userInfo?.departmentID === 8 && (
-                                        <th style={{ width: "160px" }}>
-                                          ACTIONS
-                                        </th>
-                                      )}
-                                    {mrHeader.progress_id === 2 &&
-                                      userInfo?.departmentID === 16 && (
-                                        <th style={{ width: "160px" }}>
-                                          ACTIONS
-                                        </th>
-                                      )}
-                                    {mrHeader.progress_id >= 10 &&
-                                      (mrHeader.progress_id !== 11 ||
-                                        userInfo?.departmentID === 8) &&
-                                      !isManagerPriceApproval && (
-                                        <th style={{ width: "160px" }}>
-                                          <span>VENDOR & QUOTATION</span>
-                                        </th>
-                                      )}
-                                    {mrHeader.progress_id === 7 && (
-                                      <>
-                                        <th style={{ width: "100px" }}>
-                                          LOWEST PRICE
-                                        </th>
-                                        <th style={{ width: "100px" }}>
-                                          AVG. PRICE
-                                        </th>
-                                        <th style={{ width: "100px" }}>
-                                          PREV. PRICE
-                                        </th>
-                                        {userInfo?.departmentID === 9 && (
+                                      {mrHeader.progress_id === 9 &&
+                                        userInfo?.departmentID === 16 && (
                                           <th style={{ width: "160px" }}>
                                             VENDOR & QUOTATION
                                           </th>
                                         )}
-                                      </>
-                                    )}
-                                    {mrHeader.progress_id === 9 &&
-                                      userInfo?.departmentID === 16 && (
-                                        <th style={{ width: "160px" }}>
-                                          VENDOR & QUOTATION
-                                        </th>
+                                      {mrHeader.progress_id >= 10 &&
+                                        canSeePrice &&
+                                        !isManagerPriceApproval && (
+                                          <th style={{ width: "100px" }}>
+                                            UNIT PRICE
+                                          </th>
+                                        )}
+                                      {mrHeader.progress_id >= 10 &&
+                                        canSeePrice &&
+                                        !isManagerPriceApproval && (
+                                          <th style={{ width: "100px" }}>
+                                            TOTAL PRICE
+                                          </th>
+                                        )}
+                                      {isManagerPriceApproval && (
+                                        <>
+                                          <th style={{ width: "100px" }}>
+                                            LOWEST PRICE
+                                          </th>
+                                          <th style={{ width: "100px" }}>
+                                            AVG. PRICE
+                                          </th>
+                                          <th style={{ width: "100px" }}>
+                                            PREV. PRICE
+                                          </th>
+                                          <th style={{ width: "160px" }}>
+                                            VENDOR & QUOTATION
+                                          </th>
+                                          <th style={{ width: "130px" }}>
+                                            PRICE RANGE
+                                          </th>
+                                          <th style={{ width: "100px" }}>
+                                            TOTAL PRICE
+                                          </th>
+                                        </>
                                       )}
-                                    {mrHeader.progress_id >= 10 &&
-                                      canSeePrice &&
-                                      !isManagerPriceApproval && (
-                                        <th style={{ width: "100px" }}>
-                                          UNIT PRICE
-                                        </th>
-                                      )}
-                                    {mrHeader.progress_id >= 10 &&
-                                      canSeePrice &&
-                                      !isManagerPriceApproval && (
-                                        <th style={{ width: "100px" }}>
-                                          TOTAL PRICE
-                                        </th>
-                                      )}
-                                    {isManagerPriceApproval && (
-                                      <>
-                                        <th style={{ width: "100px" }}>
-                                          LOWEST PRICE
-                                        </th>
-                                        <th style={{ width: "100px" }}>
-                                          AVG. PRICE
-                                        </th>
-                                        <th style={{ width: "100px" }}>
-                                          PREV. PRICE
-                                        </th>
-                                        <th style={{ width: "160px" }}>
-                                          VENDOR & QUOTATION
-                                        </th>
-                                        <th style={{ width: "130px" }}>
-                                          PRICE RANGE
-                                        </th>
-                                        <th style={{ width: "100px" }}>
-                                          TOTAL PRICE
-                                        </th>
-                                      </>
-                                    )}
-                                    {userInfo?.departmentID === 11 &&
-                                      mrHeader.progress_id === 4 && (
-                                        <th style={{ width: "160px" }}>
-                                          STOCK TRANSFER
-                                        </th>
-                                      )}
-                                    {userInfo?.departmentID === 12 &&
-                                      mrHeader.progress_id === 21 && (
-                                        <th style={{ width: "160px" }}>
-                                          QUALITY CONTROL
-                                        </th>
-                                      )}
-                                    {userInfo?.departmentID === 11 &&
-                                      mrHeader.progress_id === 24 && (
-                                        <th style={{ width: "120px" }}>
-                                          STOCKS
-                                        </th>
-                                      )}
-                                    {userInfo?.departmentID === 9 &&
-                                      mrHeader.progress_id === 23 && (
-                                        <th style={{ width: "140px" }}>
-                                          RESOLUTION
-                                        </th>
-                                      )}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {Array.isArray(items) &&
-                                    items.map(function (item, itemIndex) {
-                                      return (
-                                        <tr key={item.id}>
-                                          {/* Draft dept checkbox */}
-                                          {mrHeader.progress_id === 1 &&
-                                            isDeptEditable && (
+                                      {userInfo?.departmentID === 11 &&
+                                        mrHeader.progress_id === 4 && (
+                                          <th style={{ width: "160px" }}>
+                                            STOCK TRANSFER
+                                          </th>
+                                        )}
+                                      {userInfo?.departmentID === 12 &&
+                                        mrHeader.progress_id === 21 && (
+                                          <th style={{ width: "160px" }}>
+                                            QUALITY CONTROL
+                                          </th>
+                                        )}
+                                      {userInfo?.departmentID === 11 &&
+                                        mrHeader.progress_id === 24 && (
+                                          <th style={{ width: "120px" }}>
+                                            STOCKS
+                                          </th>
+                                        )}
+                                      {userInfo?.departmentID === 9 &&
+                                        mrHeader.progress_id === 23 && (
+                                          <th style={{ width: "140px" }}>
+                                            RESOLUTION
+                                          </th>
+                                        )}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {Array.isArray(items) &&
+                                      items.map(function (item, itemIndex) {
+                                        return (
+                                          <tr key={item.id}>
+                                            {/* Draft dept checkbox */}
+                                            {mrHeader.progress_id === 1 &&
+                                              isDeptEditable && (
+                                                <td>
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={selectedDraftItemIds.has(
+                                                      item.id,
+                                                    )}
+                                                    onChange={(e) => {
+                                                      const newSet = new Set(
+                                                        selectedDraftItemIds,
+                                                      );
+                                                      if (e.target.checked)
+                                                        newSet.add(item.id);
+                                                      else
+                                                        newSet.delete(item.id);
+                                                      setSelectedDraftItemIds(
+                                                        newSet,
+                                                      );
+                                                    }}
+                                                    style={{
+                                                      cursor: "pointer",
+                                                      accentColor:
+                                                        "rgba(0, 163, 93, 1)",
+                                                    }}
+                                                  />
+                                                </td>
+                                              )}
+                                            {/* QS Review checkbox */}
+                                            {isQSReview && (
                                               <td>
                                                 <input
                                                   type="checkbox"
-                                                  checked={selectedDraftItemIds.has(
+                                                  checked={selectedItemIds.has(
                                                     item.id,
                                                   )}
                                                   onChange={(e) => {
                                                     const newSet = new Set(
-                                                      selectedDraftItemIds,
+                                                      selectedItemIds,
                                                     );
                                                     if (e.target.checked)
                                                       newSet.add(item.id);
                                                     else newSet.delete(item.id);
-                                                    setSelectedDraftItemIds(
+                                                    setSelectedItemIds(newSet);
+                                                  }}
+                                                  style={{
+                                                    cursor: "pointer",
+                                                    accentColor:
+                                                      "rgba(0, 163, 93, 1)",
+                                                  }}
+                                                />
+                                              </td>
+                                            )}
+                                            {/* Procurement Quotations checkbox */}
+                                            {isProcurementQuotations && (
+                                              <td>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={selectedProcurementItemIds.has(
+                                                    item.id,
+                                                  )}
+                                                  onChange={(e) => {
+                                                    const newSet = new Set(
+                                                      selectedProcurementItemIds,
+                                                    );
+                                                    if (e.target.checked)
+                                                      newSet.add(item.id);
+                                                    else newSet.delete(item.id);
+                                                    setSelectedProcurementItemIds(
                                                       newSet,
                                                     );
                                                   }}
@@ -3309,201 +3372,1183 @@ export default function MrLinesView({
                                                 />
                                               </td>
                                             )}
-                                          {/* QS Review checkbox */}
-                                          {isQSReview && (
-                                            <td>
-                                              <input
-                                                type="checkbox"
-                                                checked={selectedItemIds.has(
-                                                  item.id,
-                                                )}
-                                                onChange={(e) => {
-                                                  const newSet = new Set(
-                                                    selectedItemIds,
-                                                  );
-                                                  if (e.target.checked)
-                                                    newSet.add(item.id);
-                                                  else newSet.delete(item.id);
-                                                  setSelectedItemIds(newSet);
-                                                }}
-                                                style={{
-                                                  cursor: "pointer",
-                                                  accentColor:
-                                                    "rgba(0, 163, 93, 1)",
-                                                }}
-                                              />
-                                            </td>
-                                          )}
-                                          {/* Procurement Quotations checkbox */}
-                                          {isProcurementQuotations && (
-                                            <td>
-                                              <input
-                                                type="checkbox"
-                                                checked={selectedProcurementItemIds.has(
-                                                  item.id,
-                                                )}
-                                                onChange={(e) => {
-                                                  const newSet = new Set(
-                                                    selectedProcurementItemIds,
-                                                  );
-                                                  if (e.target.checked)
-                                                    newSet.add(item.id);
-                                                  else newSet.delete(item.id);
-                                                  setSelectedProcurementItemIds(
-                                                    newSet,
-                                                  );
-                                                }}
-                                                style={{
-                                                  cursor: "pointer",
-                                                  accentColor:
-                                                    "rgba(0, 163, 93, 1)",
-                                                }}
-                                              />
-                                            </td>
-                                          )}
-                                          {/* Manager Price Approval checkbox */}
-                                          {isManagerPriceApproval && (
-                                            <td>
-                                              <input
-                                                type="checkbox"
-                                                checked={selectedManagerItemIds.has(
-                                                  item.id,
-                                                )}
-                                                onChange={(e) => {
-                                                  const newSet = new Set(
-                                                    selectedManagerItemIds,
-                                                  );
-                                                  if (e.target.checked)
-                                                    newSet.add(item.id);
-                                                  else newSet.delete(item.id);
-                                                  setSelectedManagerItemIds(
-                                                    newSet,
-                                                  );
-                                                }}
-                                                style={{
-                                                  cursor: "pointer",
-                                                  accentColor:
-                                                    "rgba(0, 163, 93, 1)",
-                                                }}
-                                              />
-                                            </td>
-                                          )}
-                                          <td>{itemIndex + 1}</td>
-                                          <td>
-                                            <div
-                                              style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "8px",
-                                              }}
-                                            >
-                                              <div>
-                                                {item.material_description}
-                                                {item.qs_review_type ===
-                                                  "item_available" &&
-                                                  mrHeader.progress_id <= 4 &&
-                                                  item.linked_inventory_item_description && (
-                                                    <div
-                                                      style={{
-                                                        fontSize: "10px",
-                                                        color:
-                                                          "rgba(26, 216, 135, 1)",
-                                                        marginTop: "4px",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: "4px",
-                                                      }}
-                                                    >
-                                                      Item available:{" "}
-                                                      {
-                                                        item.linked_inventory_item_description
-                                                      }
-                                                      <img
-                                                        src={externalLinkIcon}
-                                                        alt=""
-                                                        style={{
-                                                          width: "10px",
-                                                          height: "10px",
-                                                          filter:
-                                                            "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
-                                                        }}
-                                                      />
-                                                    </div>
+                                            {/* Manager Price Approval checkbox */}
+                                            {isManagerPriceApproval && (
+                                              <td>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={selectedManagerItemIds.has(
+                                                    item.id,
                                                   )}
+                                                  onChange={(e) => {
+                                                    const newSet = new Set(
+                                                      selectedManagerItemIds,
+                                                    );
+                                                    if (e.target.checked)
+                                                      newSet.add(item.id);
+                                                    else newSet.delete(item.id);
+                                                    setSelectedManagerItemIds(
+                                                      newSet,
+                                                    );
+                                                  }}
+                                                  style={{
+                                                    cursor: "pointer",
+                                                    accentColor:
+                                                      "rgba(0, 163, 93, 1)",
+                                                  }}
+                                                />
+                                              </td>
+                                            )}
+                                            <td>{itemIndex + 1}</td>
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: "8px",
+                                                }}
+                                              >
+                                                <div>
+                                                  {item.material_description}
+                                                  {item.qs_review_type ===
+                                                    "item_available" &&
+                                                    mrHeader.progress_id <= 4 &&
+                                                    item.linked_inventory_item_description && (
+                                                      <div
+                                                        style={{
+                                                          fontSize: "10px",
+                                                          color:
+                                                            "rgba(26, 216, 135, 1)",
+                                                          marginTop: "4px",
+                                                          display: "flex",
+                                                          alignItems: "center",
+                                                          gap: "4px",
+                                                        }}
+                                                      >
+                                                        Item available:{" "}
+                                                        {
+                                                          item.linked_inventory_item_description
+                                                        }
+                                                        <img
+                                                          src={externalLinkIcon}
+                                                          alt=""
+                                                          style={{
+                                                            width: "10px",
+                                                            height: "10px",
+                                                            filter:
+                                                              "invert(68%) sepia(52%) saturate(531%) hue-rotate(103deg) brightness(92%) contrast(89%)",
+                                                          }}
+                                                        />
+                                                      </div>
+                                                    )}
+                                                </div>
+                                                {(isManagerPriceApproval ||
+                                                  isQSReview) && (
+                                                  <EditMrItemButton
+                                                    projectID={
+                                                      mrHeader.project_id
+                                                    }
+                                                    item={item}
+                                                    bgColor="rgba(239, 239, 239, 1)"
+                                                    borderColor="rgba(223, 223, 223, 1)"
+                                                    textColor="black"
+                                                    stageName={currentStageName}
+                                                    canEditItemDetails
+                                                  >
+                                                    <img
+                                                      src={pencilIcon}
+                                                      alt="edit"
+                                                    />
+                                                  </EditMrItemButton>
+                                                )}
                                               </div>
-                                              {(isManagerPriceApproval ||
-                                                isQSReview) && (
-                                                <EditMrItemButton
-                                                  projectID={
-                                                    mrHeader.project_id
-                                                  }
-                                                  item={item}
-                                                  bgColor="rgba(239, 239, 239, 1)"
-                                                  borderColor="rgba(223, 223, 223, 1)"
-                                                  textColor="black"
-                                                  stageName={currentStageName}
-                                                  canEditItemDetails
-                                                >
-                                                  <img
-                                                    src={pencilIcon}
-                                                    alt="edit"
-                                                  />
-                                                </EditMrItemButton>
-                                              )}
-                                            </div>
-                                          </td>
-                                          {mrHeader.progress_id === 1 && (
-                                            <td style={{ overflow: "visible" }}>
-                                              <InventoryStatusCell
-                                                matches={
-                                                  itemInventoryStatus === null
-                                                    ? undefined
-                                                    : (itemInventoryStatus[
-                                                        item
-                                                          .material_description
-                                                      ] ?? [])
-                                                }
-                                              />
                                             </td>
-                                          )}
-                                          {mrHeader.progress_id >= 9 ? (
-                                            <>
+                                            {mrHeader.progress_id === 1 && (
+                                              <td
+                                                style={{ overflow: "visible" }}
+                                              >
+                                                <InventoryStatusCell
+                                                  matches={
+                                                    itemInventoryStatus === null
+                                                      ? undefined
+                                                      : (itemInventoryStatus[
+                                                          item
+                                                            .material_description
+                                                        ] ?? [])
+                                                  }
+                                                />
+                                              </td>
+                                            )}
+                                            {mrHeader.progress_id >= 9 ? (
+                                              <>
+                                                <td>
+                                                  {formatNumber(item?.quantity)}{" "}
+                                                  {item.unit}
+                                                </td>
+                                                {hasAnyQtyStocks && (
+                                                  <td>
+                                                    {(() => {
+                                                      const proposedQty =
+                                                        Number(
+                                                          item.approved_proposed_quantity,
+                                                        ) || 0;
+                                                      const requestedQty =
+                                                        Number(item.quantity) ||
+                                                        0;
+                                                      const stockQty =
+                                                        proposedQty >
+                                                        requestedQty
+                                                          ? proposedQty -
+                                                            requestedQty
+                                                          : 0;
+                                                      return stockQty > 0
+                                                        ? `${formatNumber(stockQty)} ${item.unit}`
+                                                        : "-";
+                                                    })()}
+                                                  </td>
+                                                )}
+                                                {hasAnyQtyStocks && (
+                                                  <td>
+                                                    {formatNumber(
+                                                      item?.approved_proposed_quantity,
+                                                    )}{" "}
+                                                    {item.unit}
+                                                  </td>
+                                                )}
+                                              </>
+                                            ) : isDeptEditable ? (
+                                              <td>
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    border:
+                                                      "1px solid rgba(217,217,217,1)",
+                                                    borderRadius: "5px",
+                                                    backgroundColor: "white",
+                                                    overflow: "hidden",
+                                                  }}
+                                                >
+                                                  <input
+                                                    type="text"
+                                                    value={
+                                                      inlineQty[item.id] !==
+                                                      undefined
+                                                        ? inlineQty[item.id]
+                                                        : item.quantity > 0
+                                                          ? formatQtyWithCommas(
+                                                              item.quantity,
+                                                            )
+                                                          : ""
+                                                    }
+                                                    placeholder="ENTER QTY"
+                                                    onChange={(e) => {
+                                                      const raw =
+                                                        e.target.value.replace(
+                                                          /,/g,
+                                                          "",
+                                                        );
+                                                      if (
+                                                        raw === "" ||
+                                                        /^\d*\.?\d*$/.test(raw)
+                                                      )
+                                                        setInlineQty(
+                                                          (prev) => ({
+                                                            ...prev,
+                                                            [item.id]: raw
+                                                              ? formatQtyWithCommas(
+                                                                  raw,
+                                                                )
+                                                              : "",
+                                                          }),
+                                                        );
+                                                    }}
+                                                    onBlur={() =>
+                                                      saveInlineQty(item)
+                                                    }
+                                                    style={{
+                                                      flex: 1,
+                                                      border: "none",
+                                                      borderRadius: 0,
+                                                      padding: "7px",
+                                                      background: "transparent",
+                                                      width: "125px",
+                                                    }}
+                                                  />
+                                                  <select
+                                                    value={
+                                                      inlineUnit[item.id] ??
+                                                      (item.unit
+                                                        ? mapPredefinedUnit(
+                                                            item.unit,
+                                                          )
+                                                        : "N/A")
+                                                    }
+                                                    onChange={(e) =>
+                                                      setInlineUnit((prev) => ({
+                                                        ...prev,
+                                                        [item.id]:
+                                                          e.target.value,
+                                                      }))
+                                                    }
+                                                    onBlur={() =>
+                                                      saveInlineQty(item)
+                                                    }
+                                                    style={{
+                                                      border: "none",
+                                                      borderRadius: 0,
+                                                      padding: "7px 4px",
+                                                      background: "transparent",
+                                                      cursor: "pointer",
+                                                    }}
+                                                  >
+                                                    <option value="N/A">
+                                                      N/A
+                                                    </option>
+                                                    {UNIT_OPTIONS.map((u) => (
+                                                      <option key={u} value={u}>
+                                                        {u}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </div>
+                                              </td>
+                                            ) : (
                                               <td>
                                                 {formatNumber(item?.quantity)}{" "}
                                                 {item.unit}
                                               </td>
-                                              {hasAnyQtyStocks && (
+                                            )}
+                                            <td>
+                                              {isDeptEditable ? (
+                                                <MultipleSelectBoqItemButton
+                                                  projectID={
+                                                    mrHeader.project_id
+                                                  }
+                                                  onSelectBoq={(ids) =>
+                                                    saveInlineBoq(item, ids)
+                                                  }
+                                                  currentBoqLineIDs={
+                                                    item.boq_line_ids
+                                                      ? String(
+                                                          item.boq_line_ids,
+                                                        )
+                                                          .split(",")
+                                                          .map(Number)
+                                                          .filter(Boolean)
+                                                      : []
+                                                  }
+                                                  compact
+                                                />
+                                              ) : item.boq_line_ids ? (
+                                                <BoqReferencePopUp
+                                                  item={item}
+                                                  mrHeader={mrHeader}
+                                                />
+                                              ) : (
+                                                "-"
+                                              )}
+                                            </td>
+                                            {hasAnyBrandSpecs && (
+                                              <td>
+                                                {isDeptEditable ? (
+                                                  <AddBrandAndSpecs
+                                                    item={item}
+                                                    stageName="INITIAL APPROVAL"
+                                                  />
+                                                ) : (
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      gap: "10px",
+                                                      alignItems: "center",
+                                                    }}
+                                                  >
+                                                    {item.brand ||
+                                                    item.specification ? (
+                                                      <InfoPopUpButton
+                                                        text={
+                                                          <>
+                                                            <small>BRAND</small>
+                                                            <h2>
+                                                              {item.brand ||
+                                                                "-"}
+                                                            </h2>
+                                                            <br />
+                                                            <small>
+                                                              SPECIFICATION
+                                                            </small>
+                                                            <h2>
+                                                              {item.specification ||
+                                                                "-"}
+                                                            </h2>
+                                                          </>
+                                                        }
+                                                        header="BRAND & SPECIFICATION"
+                                                      />
+                                                    ) : !isQSReview ? (
+                                                      <span>-</span>
+                                                    ) : null}
+                                                    {isQSReview && (
+                                                      <QSEditBrandSpecButton
+                                                        item={item}
+                                                      />
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </td>
+                                            )}
+                                            {hasAnyAttachment && (
+                                              <td>
+                                                {isDeptEditable ? (
+                                                  <AddMrLineAttachment
+                                                    item={item}
+                                                  />
+                                                ) : item.attachment ? (
+                                                  <Button
+                                                    componentType={"link"}
+                                                    bgColor={
+                                                      "rgba(239, 239, 239, 1)"
+                                                    }
+                                                    borderColor={
+                                                      "rgba(223, 223, 223, 1)"
+                                                    }
+                                                    textColor={"black"}
+                                                    style={{
+                                                      padding: "7px 7px",
+                                                    }}
+                                                    href={item.attachment}
+                                                    target="_blank"
+                                                  >
+                                                    <img
+                                                      src={externalLinkIcon}
+                                                      alt="external link"
+                                                    />
+                                                  </Button>
+                                                ) : (
+                                                  "-"
+                                                )}
+                                              </td>
+                                            )}
+
+                                            {!(
+                                              mrHeader.progress_id === 3 &&
+                                              userInfo?.departmentID === 8
+                                            ) &&
+                                              (((mrHeader.progress_id === 5 ||
+                                                mrHeader.progress_id === 3 ||
+                                                mrHeader.progress_id === 2) &&
+                                                userInfo?.departmentID ===
+                                                  mrHeader.department_id) ||
+                                                ((mrHeader.progress_id === 5 ||
+                                                  mrHeader.progress_id === 3) &&
+                                                  userInfo?.departmentID ===
+                                                    8) ||
+                                                ((mrHeader.progress_id === 5 ||
+                                                  mrHeader.progress_id === 2) &&
+                                                  userInfo?.departmentID ===
+                                                    16)) && (
+                                                <td>
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      flexDirection: "column",
+                                                      gap: "10px",
+                                                    }}
+                                                  >
+                                                    {/* Show QS Review buttons (Item Available / Need Order) */}
+                                                    {(mrHeader.progress_id ===
+                                                      5 ||
+                                                      mrHeader.progress_id ===
+                                                        2) &&
+                                                      (userInfo?.departmentID ===
+                                                        mrHeader.department_id ||
+                                                        userInfo?.departmentID ===
+                                                          16 ||
+                                                        userInfo?.departmentID ===
+                                                          8) && (
+                                                        <QSReviewButton
+                                                          item={item}
+                                                          progressID={
+                                                            mrHeader.progress_id
+                                                          }
+                                                          inventoryMatch={
+                                                            inventoryMatches[
+                                                              item
+                                                                .material_description
+                                                            ] || null
+                                                          }
+                                                        />
+                                                      )}
+
+                                                    {/* Show Manager approval buttons (not when rejected) */}
+                                                    {mrHeader.progress_id ===
+                                                      3 &&
+                                                      (userInfo?.departmentID ===
+                                                        mrHeader.department_id ||
+                                                        userInfo?.departmentID ===
+                                                          8) && (
+                                                        <InitialApprovalButtons
+                                                          item={item}
+                                                          progressID={
+                                                            mrHeader.progress_id
+                                                          }
+                                                        />
+                                                      )}
+                                                  </div>
+                                                </td>
+                                              )}
+
+                                            {/* QS Review column at Manager Approval stage */}
+                                            {mrHeader.progress_id === 3 &&
+                                              (userInfo?.departmentID === 8 ||
+                                                userInfo?.departmentID ===
+                                                  mrHeader.department_id) && (
+                                                <td>
+                                                  {item.qs_review_type ===
+                                                  "need_order" ? (
+                                                    <div
+                                                      className="approval-pill"
+                                                      style={{
+                                                        backgroundColor:
+                                                          "rgba(34, 150, 100, 1)",
+                                                        color: "white",
+                                                      }}
+                                                    >
+                                                      <span
+                                                        style={{
+                                                          textWrap: "nowrap",
+                                                        }}
+                                                      >
+                                                        Need Order
+                                                      </span>
+                                                    </div>
+                                                  ) : item.qs_review_type ===
+                                                    "item_available" ? (
+                                                    <div
+                                                      className="approval-pill"
+                                                      style={{
+                                                        backgroundColor:
+                                                          "rgba(34, 150, 100, 1)",
+                                                        color: "white",
+                                                      }}
+                                                    >
+                                                      <span
+                                                        style={{
+                                                          textWrap: "nowrap",
+                                                        }}
+                                                      >
+                                                        {item.linked_inventory_item_description ||
+                                                          "Item Available"}
+                                                      </span>
+                                                      {item.linked_inventory_item_id && (
+                                                        <Button
+                                                          componentType="link"
+                                                          bgColor={
+                                                            "transparent"
+                                                          }
+                                                          borderColor={
+                                                            "transparent"
+                                                          }
+                                                          textColor={"black"}
+                                                          href={`/inventory/${item.linked_inventory_item_id}`}
+                                                          style={{
+                                                            padding: "0px",
+                                                          }}
+                                                        >
+                                                          <img
+                                                            src={
+                                                              externalLinkIcon
+                                                            }
+                                                            alt="view"
+                                                            style={{
+                                                              filter:
+                                                                "invert(1)",
+                                                              cursor: "pointer",
+                                                            }}
+                                                          />
+                                                        </Button>
+                                                      )}
+                                                    </div>
+                                                  ) : (
+                                                    "-"
+                                                  )}
+                                                </td>
+                                              )}
+
+                                            {/* Manager ACTIONS cell at Manager Approval stage */}
+                                            {mrHeader.progress_id === 3 &&
+                                              userInfo?.departmentID === 8 && (
+                                                <td>
+                                                  <InitialApprovalButtons
+                                                    item={item}
+                                                    progressID={
+                                                      mrHeader.progress_id
+                                                    }
+                                                  />
+                                                </td>
+                                              )}
+
+                                            {(mrHeader.progress_id === 1 ||
+                                              mrHeader.progress_id === 5 ||
+                                              mrHeader.progress_id === 11) &&
+                                              userInfo?.departmentID ===
+                                                mrHeader.department_id && (
+                                                <td>
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      gap: "10px",
+                                                    }}
+                                                  >
+                                                    <EditMrItemButton
+                                                      projectID={
+                                                        mrHeader.project_id
+                                                      }
+                                                      item={item}
+                                                      bgColor="rgba(239, 239, 239, 1)"
+                                                      borderColor="rgba(223, 223, 223, 1)"
+                                                      textColor="black"
+                                                      stageName={
+                                                        currentStageName
+                                                      }
+                                                    >
+                                                      <img
+                                                        src={pencilIcon}
+                                                        alt="pencil icon"
+                                                      />
+                                                    </EditMrItemButton>
+
+                                                    <DeleteMrItemButton
+                                                      item={item}
+                                                      bgColor="rgba(239, 239, 239, 1)"
+                                                      borderColor="rgba(223, 223, 223, 1)"
+                                                      textColor="black"
+                                                      stageName={
+                                                        currentStageName
+                                                      }
+                                                    >
+                                                      <img
+                                                        src={trashIcon}
+                                                        alt="trash icon"
+                                                      />
+                                                    </DeleteMrItemButton>
+                                                  </div>
+                                                </td>
+                                              )}
+
+                                            {mrHeader.progress_id === 7 &&
+                                              (() => {
+                                                const stats =
+                                                  materialPriceStats[
+                                                    item.material_description
+                                                  ];
+                                                const fmt = (
+                                                  v: number | null | undefined,
+                                                ) =>
+                                                  v != null
+                                                    ? formatPriceAED(v)
+                                                    : "N/A";
+                                                return (
+                                                  <>
+                                                    <td
+                                                      style={{
+                                                        color:
+                                                          "rgba(37,150,190,1)",
+                                                        fontWeight: 600,
+                                                        cursor:
+                                                          stats?.lowest_price !=
+                                                          null
+                                                            ? "default"
+                                                            : undefined,
+                                                      }}
+                                                      onMouseEnter={(e) =>
+                                                        handleLowestPriceEnter(
+                                                          e,
+                                                          item.material_description,
+                                                        )
+                                                      }
+                                                      onMouseLeave={
+                                                        startLowestHideTimer
+                                                      }
+                                                    >
+                                                      {fmt(stats?.lowest_price)}
+                                                    </td>
+                                                    <td
+                                                      style={{
+                                                        color:
+                                                          "rgba(37,150,190,1)",
+                                                        fontWeight: 600,
+                                                      }}
+                                                    >
+                                                      {fmt(stats?.avg_price)}
+                                                    </td>
+                                                    <td
+                                                      style={{
+                                                        color:
+                                                          "rgba(37,150,190,1)",
+                                                        fontWeight: 600,
+                                                        cursor:
+                                                          stats?.prev_price !=
+                                                          null
+                                                            ? "default"
+                                                            : undefined,
+                                                      }}
+                                                      onMouseEnter={(e) =>
+                                                        handlePrevPriceEnter(
+                                                          e,
+                                                          item.material_description,
+                                                        )
+                                                      }
+                                                      onMouseLeave={
+                                                        startPrevHideTimer
+                                                      }
+                                                    >
+                                                      {fmt(stats?.prev_price)}
+                                                    </td>
+                                                  </>
+                                                );
+                                              })()}
+
+                                            {(mrHeader.progress_id === 7 ||
+                                              mrHeader.progress_id === 11 ||
+                                              mrHeader.progress_id === 10) &&
+                                              userInfo?.departmentID === 9 && (
+                                                <td>
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      alignItems: "center",
+                                                      gap: "10px",
+                                                    }}
+                                                  >
+                                                    <SupplierAndQuotationButton
+                                                      mrHeader={mrHeader}
+                                                      mrLine={item}
+                                                    />
+                                                  </div>
+                                                </td>
+                                              )}
+
+                                            {mrHeader.progress_id === 9 &&
+                                              userInfo?.departmentID === 16 && (
+                                                <td>
+                                                  <CheckPricesButton
+                                                    progressID={
+                                                      mrHeader.progress_id
+                                                    }
+                                                    mrLine={item}
+                                                  />
+                                                </td>
+                                              )}
+
+                                            {mrHeader.progress_id === 11 &&
+                                              userInfo?.departmentID === 8 && (
+                                                <td>
+                                                  <PriceApprovalButton
+                                                    progressID={
+                                                      mrHeader.progress_id
+                                                    }
+                                                    mrLine={item}
+                                                    bgColor="white"
+                                                    borderColor="rgba(207, 207, 207, 1)"
+                                                    textColor="black"
+                                                    style={{
+                                                      borderRadius: "25px",
+                                                      padding: "7px 20px",
+                                                    }}
+                                                    onTotalPriceChange={
+                                                      handleTotalPriceChange
+                                                    }
+                                                  />
+                                                </td>
+                                              )}
+
+                                            {mrHeader.progress_id >= 12 && (
+                                              <td>
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    gap: "10px",
+                                                    alignItems: "center",
+                                                  }}
+                                                >
+                                                  {item.approved_supplier_name}{" "}
+                                                  <SupplierDetailsPopUp
+                                                    item={item}
+                                                    style={{
+                                                      padding: "7px 7px",
+                                                      backgroundColor:
+                                                        "rgba(239, 239, 239, 1)",
+                                                      borderColor:
+                                                        "rgba(223, 223, 223, 1)",
+                                                    }}
+                                                  >
+                                                    <img
+                                                      src={externalLinkIcon}
+                                                      alt="external link icon"
+                                                    />
+                                                  </SupplierDetailsPopUp>
+                                                </div>
+                                              </td>
+                                            )}
+
+                                            {mrHeader.progress_id >= 10 &&
+                                              canSeePrice &&
+                                              !isManagerPriceApproval && (
                                                 <td>
                                                   {(() => {
-                                                    const proposedQty =
-                                                      Number(
-                                                        item.approved_proposed_quantity,
-                                                      ) || 0;
-                                                    const requestedQty =
-                                                      Number(item.quantity) ||
-                                                      0;
-                                                    const stockQty =
-                                                      proposedQty > requestedQty
-                                                        ? proposedQty -
-                                                          requestedQty
-                                                        : 0;
-                                                    return stockQty > 0
-                                                      ? `${formatNumber(stockQty)} ${item.unit}`
-                                                      : "-";
+                                                    let unitPrice: number;
+
+                                                    if (
+                                                      mrHeader.progress_id >=
+                                                        12 &&
+                                                      lpoLinePrices[item.id]
+                                                    ) {
+                                                      unitPrice =
+                                                        lpoLinePrices[item.id]
+                                                          .unitPrice;
+                                                    } else {
+                                                      unitPrice =
+                                                        Number(
+                                                          item.approved_unit_price,
+                                                        ) || 0;
+                                                    }
+                                                    return formatPriceAED(
+                                                      unitPrice,
+                                                    );
                                                   })()}
                                                 </td>
                                               )}
-                                              {hasAnyQtyStocks && (
+
+                                            {mrHeader.progress_id >= 10 &&
+                                              canSeePrice &&
+                                              !isManagerPriceApproval && (
                                                 <td>
-                                                  {formatNumber(
-                                                    item?.approved_proposed_quantity,
-                                                  )}{" "}
-                                                  {item.unit}
+                                                  {(() => {
+                                                    let totalPrice: number;
+
+                                                    if (
+                                                      mrHeader.progress_id >=
+                                                        12 &&
+                                                      lpoLinePrices[item.id]
+                                                    ) {
+                                                      totalPrice =
+                                                        lpoLinePrices[item.id]
+                                                          .totalPrice;
+                                                    } else {
+                                                      totalPrice =
+                                                        Number(
+                                                          item.approved_total_price,
+                                                        ) || 0;
+                                                    }
+                                                    return formatPriceAED(
+                                                      totalPrice,
+                                                    );
+                                                  })()}
                                                 </td>
                                               )}
-                                            </>
-                                          ) : isDeptEditable ? (
-                                            <td>
+
+                                            {/* Manager Price Approval — LOWEST, AVG, PREV, VENDOR & QUOTATION, PRICE RANGE */}
+                                            {isManagerPriceApproval &&
+                                              (() => {
+                                                const stats =
+                                                  materialPriceStats[
+                                                    item.material_description
+                                                  ];
+                                                const fmt = (
+                                                  v: number | null | undefined,
+                                                ) =>
+                                                  v != null
+                                                    ? formatPriceAED(v)
+                                                    : "N/A";
+                                                return (
+                                                  <>
+                                                    <td
+                                                      style={{
+                                                        color:
+                                                          "rgba(37,150,190,1)",
+                                                        fontWeight: 600,
+                                                        cursor:
+                                                          stats?.lowest_price !=
+                                                          null
+                                                            ? "default"
+                                                            : undefined,
+                                                      }}
+                                                      onMouseEnter={(e) =>
+                                                        handleLowestPriceEnter(
+                                                          e,
+                                                          item.material_description,
+                                                        )
+                                                      }
+                                                      onMouseLeave={
+                                                        startLowestHideTimer
+                                                      }
+                                                    >
+                                                      {fmt(stats?.lowest_price)}
+                                                    </td>
+                                                    <td
+                                                      style={{
+                                                        color:
+                                                          "rgba(37,150,190,1)",
+                                                        fontWeight: 600,
+                                                      }}
+                                                    >
+                                                      {fmt(stats?.avg_price)}
+                                                    </td>
+                                                    <td
+                                                      style={{
+                                                        color:
+                                                          "rgba(37,150,190,1)",
+                                                        fontWeight: 600,
+                                                        cursor:
+                                                          stats?.prev_price !=
+                                                          null
+                                                            ? "default"
+                                                            : undefined,
+                                                      }}
+                                                      onMouseEnter={(e) =>
+                                                        handlePrevPriceEnter(
+                                                          e,
+                                                          item.material_description,
+                                                        )
+                                                      }
+                                                      onMouseLeave={
+                                                        startPrevHideTimer
+                                                      }
+                                                    >
+                                                      {fmt(stats?.prev_price)}
+                                                    </td>
+                                                    <td>
+                                                      <div
+                                                        style={{
+                                                          display: "flex",
+                                                          alignItems: "center",
+                                                          gap: "6px",
+                                                        }}
+                                                      >
+                                                        <PriceApprovalButton
+                                                          progressID={
+                                                            mrHeader.progress_id
+                                                          }
+                                                          mrLine={item}
+                                                          bgColor="white"
+                                                          borderColor="rgba(207, 207, 207, 1)"
+                                                          textColor="black"
+                                                          style={{
+                                                            borderRadius:
+                                                              "25px",
+                                                            padding: "7px 20px",
+                                                          }}
+                                                          onTotalPriceChange={
+                                                            handleTotalPriceChange
+                                                          }
+                                                        />
+                                                        {itemsExceedingAvgPrice.has(
+                                                          item.id,
+                                                        ) && (
+                                                          <img
+                                                            src={warningIcon}
+                                                            alt="warning"
+                                                          />
+                                                        )}
+                                                      </div>
+                                                    </td>
+                                                    <td>
+                                                      {(() => {
+                                                        const range =
+                                                          quotationPriceRanges[
+                                                            item.id
+                                                          ];
+                                                        if (!range)
+                                                          return "N/A";
+                                                        if (
+                                                          range.min ===
+                                                          range.max
+                                                        )
+                                                          return formatPriceAED(
+                                                            range.min,
+                                                          );
+                                                        return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
+                                                      })()}
+                                                    </td>
+                                                    <td>
+                                                      {formatPriceAED(
+                                                        Number(
+                                                          item.approved_total_price,
+                                                        ) || 0,
+                                                      )}
+                                                    </td>
+                                                  </>
+                                                );
+                                              })()}
+
+                                            {/* Stock Transfer actions at progress_id 4 (ALL view - storekeeper only) */}
+                                            {userInfo?.departmentID === 11 &&
+                                              mrHeader.progress_id === 4 && (
+                                                <td>
+                                                  {item.qs_review_type ===
+                                                  "item_available" ? (
+                                                    <div
+                                                      style={{
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        gap: "6px",
+                                                      }}
+                                                    >
+                                                      {!item.stock_transfer_id ? (
+                                                        <MrTransferIssueButton
+                                                          item={item}
+                                                        />
+                                                      ) : (
+                                                        <>
+                                                          <MrDownloadDnButton
+                                                            transactionID={
+                                                              item.stock_transfer_id
+                                                            }
+                                                          />
+                                                          <MrUploadSignedDnButton
+                                                            transactionID={
+                                                              item.stock_transfer_id
+                                                            }
+                                                            mrLineId={item.id}
+                                                          />
+                                                        </>
+                                                      )}
+                                                    </div>
+                                                  ) : (
+                                                    "-"
+                                                  )}
+                                                </td>
+                                              )}
+
+                                            {userInfo?.departmentID === 12 &&
+                                              mrHeader.progress_id === 21 && (
+                                                <td>
+                                                  <QCCheckListButton
+                                                    item={item}
+                                                    mrHeader={mrHeader}
+                                                  />
+                                                </td>
+                                              )}
+
+                                            {userInfo?.departmentID === 11 &&
+                                              mrHeader.progress_id === 24 && (
+                                                <td>
+                                                  <AddToInventoryButton
+                                                    mrLine={item}
+                                                  />
+                                                </td>
+                                              )}
+
+                                            {userInfo?.departmentID === 9 &&
+                                              mrHeader.progress_id === 23 && (
+                                                <td>
+                                                  <ResolutionButton
+                                                    mrHeader={mrHeader}
+                                                    item={item}
+                                                  />
+                                                </td>
+                                              )}
+                                          </tr>
+                                        );
+                                      })}
+                                  </tbody>
+
+                                  {mrHeader.progress_id >= 10 &&
+                                    canSeePrice &&
+                                    !isManagerPriceApproval && (
+                                      <tfoot
+                                        style={{
+                                          borderTop:
+                                            "1px solid rgba(239, 239, 239, 1)",
+                                        }}
+                                      >
+                                        <tr>
+                                          <td colSpan={subtotalLabelColSpan} />
+                                          <td
+                                            style={{
+                                              fontWeight: "600",
+                                            }}
+                                          >
+                                            SUBTOTAL
+                                          </td>
+                                          <td
+                                            style={{
+                                              fontWeight: "600",
+                                            }}
+                                          >
+                                            {!!(
+                                              items[0]?.approved_supplier_id &&
+                                              lpoInvoiceStatus[
+                                                items[0].approved_supplier_id
+                                              ]?.hasLpo
+                                            )
+                                              ? formatPriceAED(
+                                                  calculateItemsTotal(
+                                                    getAllItemsInSubCategory(
+                                                      suppliers,
+                                                    ),
+                                                  ),
+                                                )
+                                              : "N/A"}
+                                          </td>
+                                          {subtotalTrailingColSpan > 0 && (
+                                            <td
+                                              colSpan={subtotalTrailingColSpan}
+                                            />
+                                          )}
+                                        </tr>
+                                        {mrHeader.progress_id === 12 && (
+                                          <tr>
+                                            <td
+                                              colSpan={subtotalLabelColSpan}
+                                            />
+                                            <td style={{ fontWeight: "600" }}>
+                                              SUBTOTAL W/ VAT
+                                            </td>
+                                            <td style={{ fontWeight: "600" }}>
+                                              {!!(
+                                                items[0]
+                                                  ?.approved_supplier_id &&
+                                                lpoInvoiceStatus[
+                                                  items[0].approved_supplier_id
+                                                ]?.hasLpo
+                                              )
+                                                ? formatPriceAED(
+                                                    calculateItemsTotalWithVat(
+                                                      getAllItemsInSubCategory(
+                                                        suppliers,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : "N/A"}
+                                            </td>
+                                            {subtotalTrailingColSpan > 0 && (
+                                              <td
+                                                colSpan={
+                                                  subtotalTrailingColSpan
+                                                }
+                                              />
+                                            )}
+                                          </tr>
+                                        )}
+                                      </tfoot>
+                                    )}
+
+                                  {isManagerPriceApproval && (
+                                    <tfoot
+                                      style={{
+                                        borderTop:
+                                          "1px solid rgba(239, 239, 239, 1)",
+                                      }}
+                                    >
+                                      <tr>
+                                        <td
+                                          colSpan={subtotalLabelColSpan + 4}
+                                        />
+                                        <td style={{ fontWeight: "600" }}>
+                                          SUBTOTAL
+                                        </td>
+                                        <td style={{ fontWeight: "600" }}>
+                                          {formatPriceAED(
+                                            calculateItemsTotal(
+                                              getAllItemsInSubCategory(
+                                                suppliers,
+                                              ),
+                                            ),
+                                          )}
+                                        </td>
+                                      </tr>
+                                    </tfoot>
+                                  )}
+                                </table>
+                              )}
+
+                              {/* ── Mobile card accordion view ── */}
+                              {isMobile && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  {Array.isArray(items) &&
+                                    items.map((item, itemIndex) => {
+                                      const isExpanded =
+                                        expandedMobileItems.has(item.id);
+                                      return (
+                                        <div
+                                          key={item.id}
+                                          style={{
+                                            border:
+                                              "1px solid rgba(217,217,217,1)",
+                                            borderRadius: "8px",
+                                            overflow: "hidden",
+                                            backgroundColor:
+                                              "rgba(249,249,249,1)",
+                                          }}
+                                        >
+                                          {/* Card header */}
+                                          <div
+                                            onClick={() =>
+                                              toggleMobileExpand(item.id)
+                                            }
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: "10px",
+                                              padding: "12px",
+                                              cursor: "pointer",
+                                              backgroundColor:
+                                                "rgba(239,239,239,1)",
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: "8px",
+                                                backgroundColor: "white",
+                                                flexShrink: 0,
+                                                transform: isExpanded
+                                                  ? "rotate(90deg)"
+                                                  : "rotate(0deg)",
+                                                transition: "transform 0.2s",
+                                              }}
+                                            >
+                                              <img
+                                                src="/icons/arrow-right.svg"
+                                                alt=""
+                                                style={{
+                                                  width: 14,
+                                                  height: 14,
+                                                  filter: "brightness(0)",
+                                                }}
+                                              />
+                                            </div>
+                                            <span
+                                              style={{
+                                                flex: 1,
+                                                fontWeight: 600,
+                                                fontSize: "13px",
+                                              }}
+                                            >
+                                              {itemIndex + 1}.{" "}
+                                              {item.material_description}
+                                            </span>
+                                            {/* Qty + Unit pill */}
+                                            {isDeptEditable ? (
+                                              <div
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px", flexShrink: 0 }}
+                                              >
+                                                <span style={{ fontSize: "10px", fontWeight: 600, color: "rgba(120,120,120,1)", textTransform: "uppercase" }}>
+                                                  QTY <span style={{ color: "red" }}>*</span>
+                                                </span>
                                               <div
                                                 style={{
                                                   display: "flex",
@@ -3512,6 +4557,7 @@ export default function MrLinesView({
                                                   borderRadius: "5px",
                                                   backgroundColor: "white",
                                                   overflow: "hidden",
+                                                  flexShrink: 0,
                                                 }}
                                               >
                                                 <input
@@ -3526,7 +4572,7 @@ export default function MrLinesView({
                                                           )
                                                         : ""
                                                   }
-                                                  placeholder="ENTER QTY"
+                                                  placeholder="QTY"
                                                   onChange={(e) => {
                                                     const raw =
                                                       e.target.value.replace(
@@ -3550,12 +4596,11 @@ export default function MrLinesView({
                                                     saveInlineQty(item)
                                                   }
                                                   style={{
-                                                    flex: 1,
+                                                    width: "55px",
                                                     border: "none",
-                                                    borderRadius: 0,
-                                                    padding: "7px",
+                                                    padding: "5px 6px",
                                                     background: "transparent",
-                                                    width: "125px",
+                                                    fontSize: "12px",
                                                   }}
                                                 />
                                                 <select
@@ -3578,10 +4623,10 @@ export default function MrLinesView({
                                                   }
                                                   style={{
                                                     border: "none",
-                                                    borderRadius: 0,
-                                                    padding: "7px 4px",
+                                                    padding: "5px 4px",
                                                     background: "transparent",
                                                     cursor: "pointer",
+                                                    fontSize: "12px",
                                                   }}
                                                 >
                                                   <option value="N/A">
@@ -3594,1085 +4639,267 @@ export default function MrLinesView({
                                                   ))}
                                                 </select>
                                               </div>
-                                            </td>
-                                          ) : (
-                                            <td>
-                                              {formatNumber(item?.quantity)}{" "}
-                                              {item.unit}
-                                            </td>
-                                          )}
-                                          <td>
-                                            {isDeptEditable ? (
-                                              <MultipleSelectBoqItemButton
-                                                projectID={mrHeader.project_id}
-                                                onSelectBoq={(ids) =>
-                                                  saveInlineBoq(item, ids)
-                                                }
-                                                currentBoqLineIDs={
-                                                  item.boq_line_ids
-                                                    ? String(item.boq_line_ids)
-                                                        .split(",")
-                                                        .map(Number)
-                                                        .filter(Boolean)
-                                                    : []
-                                                }
-                                                compact
-                                              />
-                                            ) : item.boq_line_ids ? (
-                                              <BoqReferencePopUp
-                                                item={item}
-                                                mrHeader={mrHeader}
-                                              />
+                                              </div>
                                             ) : (
-                                              "-"
-                                            )}
-                                          </td>
-                                          {hasAnyBrandSpecs && (
-                                            <td>
-                                              {isDeptEditable ? (
-                                                <AddBrandAndSpecs
-                                                  item={item}
-                                                  stageName="INITIAL APPROVAL"
-                                                />
-                                              ) : (
-                                                <div
-                                                  style={{
-                                                    display: "flex",
-                                                    gap: "10px",
-                                                    alignItems: "center",
-                                                  }}
-                                                >
-                                                  {item.brand ||
-                                                  item.specification ? (
-                                                    <InfoPopUpButton
-                                                      text={
-                                                        <>
-                                                          <small>BRAND</small>
-                                                          <h2>
-                                                            {item.brand || "-"}
-                                                          </h2>
-                                                          <br />
-                                                          <small>
-                                                            SPECIFICATION
-                                                          </small>
-                                                          <h2>
-                                                            {item.specification ||
-                                                              "-"}
-                                                          </h2>
-                                                        </>
-                                                      }
-                                                      header="BRAND & SPECIFICATION"
-                                                    />
-                                                  ) : !isQSReview ? (
-                                                    <span>-</span>
-                                                  ) : null}
-                                                  {isQSReview && (
-                                                    <QSEditBrandSpecButton
-                                                      item={item}
-                                                    />
-                                                  )}
-                                                </div>
-                                              )}
-                                            </td>
-                                          )}
-                                          {hasAnyAttachment && (
-                                            <td>
-                                              {isDeptEditable ? (
-                                                <AddMrLineAttachment
-                                                  item={item}
-                                                />
-                                              ) : item.attachment ? (
-                                                <Button
-                                                  componentType={"link"}
-                                                  bgColor={
-                                                    "rgba(239, 239, 239, 1)"
-                                                  }
-                                                  borderColor={
-                                                    "rgba(223, 223, 223, 1)"
-                                                  }
-                                                  textColor={"black"}
-                                                  style={{ padding: "7px 7px" }}
-                                                  href={item.attachment}
-                                                  target="_blank"
-                                                >
-                                                  <img
-                                                    src={externalLinkIcon}
-                                                    alt="external link"
-                                                  />
-                                                </Button>
-                                              ) : (
-                                                "-"
-                                              )}
-                                            </td>
-                                          )}
-
-                                          {!(
-                                            mrHeader.progress_id === 3 &&
-                                            userInfo?.departmentID === 8
-                                          ) &&
-                                            (((mrHeader.progress_id === 5 ||
-                                              mrHeader.progress_id === 3 ||
-                                              mrHeader.progress_id === 2) &&
-                                              userInfo?.departmentID ===
-                                                mrHeader.department_id) ||
-                                              ((mrHeader.progress_id === 5 ||
-                                                mrHeader.progress_id === 3) &&
-                                                userInfo?.departmentID === 8) ||
-                                              ((mrHeader.progress_id === 5 ||
-                                                mrHeader.progress_id === 2) &&
-                                                userInfo?.departmentID ===
-                                                  16)) && (
-                                              <td>
-                                                <div
-                                                  style={{
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    gap: "10px",
-                                                  }}
-                                                >
-                                                  {/* Show QS Review buttons (Item Available / Need Order) */}
-                                                  {(mrHeader.progress_id ===
-                                                    5 ||
-                                                    mrHeader.progress_id ===
-                                                      2) &&
-                                                    (userInfo?.departmentID ===
-                                                      mrHeader.department_id ||
-                                                      userInfo?.departmentID ===
-                                                        16 ||
-                                                      userInfo?.departmentID ===
-                                                        8) && (
-                                                      <QSReviewButton
-                                                        item={item}
-                                                        progressID={
-                                                          mrHeader.progress_id
-                                                        }
-                                                        inventoryMatch={
-                                                          inventoryMatches[
-                                                            item
-                                                              .material_description
-                                                          ] || null
-                                                        }
-                                                      />
-                                                    )}
-
-                                                  {/* Show Manager approval buttons (not when rejected) */}
-                                                  {mrHeader.progress_id === 3 &&
-                                                    (userInfo?.departmentID ===
-                                                      mrHeader.department_id ||
-                                                      userInfo?.departmentID ===
-                                                        8) && (
-                                                      <InitialApprovalButtons
-                                                        item={item}
-                                                        progressID={
-                                                          mrHeader.progress_id
-                                                        }
-                                                      />
-                                                    )}
-                                                </div>
-                                              </td>
-                                            )}
-
-                                          {/* QS Review column at Manager Approval stage */}
-                                          {mrHeader.progress_id === 3 &&
-                                            (userInfo?.departmentID === 8 ||
-                                              userInfo?.departmentID ===
-                                                mrHeader.department_id) && (
-                                              <td>
-                                                {item.qs_review_type ===
-                                                "need_order" ? (
-                                                  <div
-                                                    className="approval-pill"
-                                                    style={{
-                                                      backgroundColor:
-                                                        "rgba(34, 150, 100, 1)",
-                                                      color: "white",
-                                                    }}
-                                                  >
-                                                    <span
-                                                      style={{
-                                                        textWrap: "nowrap",
-                                                      }}
-                                                    >
-                                                      Need Order
-                                                    </span>
-                                                  </div>
-                                                ) : item.qs_review_type ===
-                                                  "item_available" ? (
-                                                  <div
-                                                    className="approval-pill"
-                                                    style={{
-                                                      backgroundColor:
-                                                        "rgba(34, 150, 100, 1)",
-                                                      color: "white",
-                                                    }}
-                                                  >
-                                                    <span
-                                                      style={{
-                                                        textWrap: "nowrap",
-                                                      }}
-                                                    >
-                                                      {item.linked_inventory_item_description ||
-                                                        "Item Available"}
-                                                    </span>
-                                                    {item.linked_inventory_item_id && (
-                                                      <Button
-                                                        componentType="link"
-                                                        bgColor={"transparent"}
-                                                        borderColor={
-                                                          "transparent"
-                                                        }
-                                                        textColor={"black"}
-                                                        href={`/inventory/${item.linked_inventory_item_id}`}
-                                                        style={{
-                                                          padding: "0px",
-                                                        }}
-                                                      >
-                                                        <img
-                                                          src={externalLinkIcon}
-                                                          alt="view"
-                                                          style={{
-                                                            filter: "invert(1)",
-                                                            cursor: "pointer",
-                                                          }}
-                                                        />
-                                                      </Button>
-                                                    )}
-                                                  </div>
-                                                ) : (
-                                                  "-"
-                                                )}
-                                              </td>
-                                            )}
-
-                                          {/* Manager ACTIONS cell at Manager Approval stage */}
-                                          {mrHeader.progress_id === 3 &&
-                                            userInfo?.departmentID === 8 && (
-                                              <td>
-                                                <InitialApprovalButtons
-                                                  item={item}
-                                                  progressID={
-                                                    mrHeader.progress_id
-                                                  }
-                                                />
-                                              </td>
-                                            )}
-
-                                          {(mrHeader.progress_id === 1 ||
-                                            mrHeader.progress_id === 5 ||
-                                            mrHeader.progress_id === 11) &&
-                                            userInfo?.departmentID ===
-                                              mrHeader.department_id && (
-                                              <td>
-                                                <div
-                                                  style={{
-                                                    display: "flex",
-                                                    gap: "10px",
-                                                  }}
-                                                >
-                                                  <EditMrItemButton
-                                                    projectID={
-                                                      mrHeader.project_id
-                                                    }
-                                                    item={item}
-                                                    bgColor="rgba(239, 239, 239, 1)"
-                                                    borderColor="rgba(223, 223, 223, 1)"
-                                                    textColor="black"
-                                                    stageName={currentStageName}
-                                                  >
-                                                    <img
-                                                      src={pencilIcon}
-                                                      alt="pencil icon"
-                                                    />
-                                                  </EditMrItemButton>
-
-                                                  <DeleteMrItemButton
-                                                    item={item}
-                                                    bgColor="rgba(239, 239, 239, 1)"
-                                                    borderColor="rgba(223, 223, 223, 1)"
-                                                    textColor="black"
-                                                    stageName={currentStageName}
-                                                  >
-                                                    <img
-                                                      src={trashIcon}
-                                                      alt="trash icon"
-                                                    />
-                                                  </DeleteMrItemButton>
-                                                </div>
-                                              </td>
-                                            )}
-
-                                          {mrHeader.progress_id === 7 &&
-                                            (() => {
-                                              const stats =
-                                                materialPriceStats[
-                                                  item.material_description
-                                                ];
-                                              const fmt = (
-                                                v: number | null | undefined,
-                                              ) =>
-                                                v != null
-                                                  ? formatPriceAED(v)
-                                                  : "N/A";
-                                              return (
-                                                <>
-                                                  <td
-                                                    style={{
-                                                      color:
-                                                        "rgba(37,150,190,1)",
-                                                      fontWeight: 600,
-                                                      cursor:
-                                                        stats?.lowest_price !=
-                                                        null
-                                                          ? "default"
-                                                          : undefined,
-                                                    }}
-                                                    onMouseEnter={(e) =>
-                                                      handleLowestPriceEnter(
-                                                        e,
-                                                        item.material_description,
-                                                      )
-                                                    }
-                                                    onMouseLeave={
-                                                      startLowestHideTimer
-                                                    }
-                                                  >
-                                                    {fmt(stats?.lowest_price)}
-                                                  </td>
-                                                  <td
-                                                    style={{
-                                                      color:
-                                                        "rgba(37,150,190,1)",
-                                                      fontWeight: 600,
-                                                    }}
-                                                  >
-                                                    {fmt(stats?.avg_price)}
-                                                  </td>
-                                                  <td
-                                                    style={{
-                                                      color:
-                                                        "rgba(37,150,190,1)",
-                                                      fontWeight: 600,
-                                                      cursor:
-                                                        stats?.prev_price !=
-                                                        null
-                                                          ? "default"
-                                                          : undefined,
-                                                    }}
-                                                    onMouseEnter={(e) =>
-                                                      handlePrevPriceEnter(
-                                                        e,
-                                                        item.material_description,
-                                                      )
-                                                    }
-                                                    onMouseLeave={
-                                                      startPrevHideTimer
-                                                    }
-                                                  >
-                                                    {fmt(stats?.prev_price)}
-                                                  </td>
-                                                </>
-                                              );
-                                            })()}
-
-                                          {(mrHeader.progress_id === 7 ||
-                                            mrHeader.progress_id === 11 ||
-                                            mrHeader.progress_id === 10) &&
-                                            userInfo?.departmentID === 9 && (
-                                              <td>
-                                                <div
-                                                  style={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "10px",
-                                                  }}
-                                                >
-                                                  <SupplierAndQuotationButton
-                                                    mrHeader={mrHeader}
-                                                    mrLine={item}
-                                                  />
-                                                </div>
-                                              </td>
-                                            )}
-
-                                          {mrHeader.progress_id === 9 &&
-                                            userInfo?.departmentID === 16 && (
-                                              <td>
-                                                <CheckPricesButton
-                                                  progressID={
-                                                    mrHeader.progress_id
-                                                  }
-                                                  mrLine={item}
-                                                />
-                                              </td>
-                                            )}
-
-                                          {mrHeader.progress_id === 11 &&
-                                            userInfo?.departmentID === 8 && (
-                                              <td>
-                                                <PriceApprovalButton
-                                                  progressID={
-                                                    mrHeader.progress_id
-                                                  }
-                                                  mrLine={item}
-                                                  bgColor="white"
-                                                  borderColor="rgba(207, 207, 207, 1)"
-                                                  textColor="black"
-                                                  style={{
-                                                    borderRadius: "25px",
-                                                    padding: "7px 20px",
-                                                  }}
-                                                  onTotalPriceChange={
-                                                    handleTotalPriceChange
-                                                  }
-                                                />
-                                              </td>
-                                            )}
-
-                                          {mrHeader.progress_id >= 12 && (
-                                            <td>
-                                              <div
+                                              <span
                                                 style={{
-                                                  display: "flex",
-                                                  gap: "10px",
-                                                  alignItems: "center",
+                                                  fontSize: "12px",
+                                                  color: "rgba(100,100,100,1)",
+                                                  flexShrink: 0,
                                                 }}
                                               >
-                                                {item.approved_supplier_name}{" "}
-                                                <SupplierDetailsPopUp
-                                                  item={item}
-                                                  style={{
-                                                    padding: "7px 7px",
-                                                    backgroundColor:
-                                                      "rgba(239, 239, 239, 1)",
-                                                    borderColor:
-                                                      "rgba(223, 223, 223, 1)",
-                                                  }}
-                                                >
-                                                  <img
-                                                    src={externalLinkIcon}
-                                                    alt="external link icon"
-                                                  />
-                                                </SupplierDetailsPopUp>
-                                              </div>
-                                            </td>
-                                          )}
-
-                                          {mrHeader.progress_id >= 10 &&
-                                            canSeePrice &&
-                                            !isManagerPriceApproval && (
-                                              <td>
-                                                {(() => {
-                                                  let unitPrice: number;
-
-                                                  if (
-                                                    mrHeader.progress_id >=
-                                                      12 &&
-                                                    lpoLinePrices[item.id]
-                                                  ) {
-                                                    unitPrice =
-                                                      lpoLinePrices[item.id]
-                                                        .unitPrice;
-                                                  } else {
-                                                    unitPrice =
-                                                      Number(
-                                                        item.approved_unit_price,
-                                                      ) || 0;
-                                                  }
-                                                  return formatPriceAED(
-                                                    unitPrice,
-                                                  );
-                                                })()}
-                                              </td>
+                                                {formatNumber(item?.quantity)}{" "}
+                                                {item.unit}
+                                              </span>
                                             )}
-
-                                          {mrHeader.progress_id >= 10 &&
-                                            canSeePrice &&
-                                            !isManagerPriceApproval && (
-                                              <td>
-                                                {(() => {
-                                                  let totalPrice: number;
-
-                                                  if (
-                                                    mrHeader.progress_id >=
-                                                      12 &&
-                                                    lpoLinePrices[item.id]
-                                                  ) {
-                                                    totalPrice =
-                                                      lpoLinePrices[item.id]
-                                                        .totalPrice;
-                                                  } else {
-                                                    totalPrice =
-                                                      Number(
-                                                        item.approved_total_price,
-                                                      ) || 0;
-                                                  }
-                                                  return formatPriceAED(
-                                                    totalPrice,
-                                                  );
-                                                })()}
-                                              </td>
-                                            )}
-
-                                          {/* Manager Price Approval — LOWEST, AVG, PREV, VENDOR & QUOTATION, PRICE RANGE */}
-                                          {isManagerPriceApproval &&
-                                            (() => {
-                                              const stats =
-                                                materialPriceStats[
-                                                  item.material_description
-                                                ];
-                                              const fmt = (
-                                                v: number | null | undefined,
-                                              ) =>
-                                                v != null
-                                                  ? formatPriceAED(v)
-                                                  : "N/A";
-                                              return (
-                                                <>
-                                                  <td
-                                                    style={{
-                                                      color:
-                                                        "rgba(37,150,190,1)",
-                                                      fontWeight: 600,
-                                                      cursor:
-                                                        stats?.lowest_price !=
-                                                        null
-                                                          ? "default"
-                                                          : undefined,
-                                                    }}
-                                                    onMouseEnter={(e) =>
-                                                      handleLowestPriceEnter(
-                                                        e,
-                                                        item.material_description,
-                                                      )
-                                                    }
-                                                    onMouseLeave={
-                                                      startLowestHideTimer
-                                                    }
-                                                  >
-                                                    {fmt(stats?.lowest_price)}
-                                                  </td>
-                                                  <td
-                                                    style={{
-                                                      color:
-                                                        "rgba(37,150,190,1)",
-                                                      fontWeight: 600,
-                                                    }}
-                                                  >
-                                                    {fmt(stats?.avg_price)}
-                                                  </td>
-                                                  <td
-                                                    style={{
-                                                      color:
-                                                        "rgba(37,150,190,1)",
-                                                      fontWeight: 600,
-                                                      cursor:
-                                                        stats?.prev_price !=
-                                                        null
-                                                          ? "default"
-                                                          : undefined,
-                                                    }}
-                                                    onMouseEnter={(e) =>
-                                                      handlePrevPriceEnter(
-                                                        e,
-                                                        item.material_description,
-                                                      )
-                                                    }
-                                                    onMouseLeave={
-                                                      startPrevHideTimer
-                                                    }
-                                                  >
-                                                    {fmt(stats?.prev_price)}
-                                                  </td>
-                                                  <td>
-                                                    <div
-                                                      style={{
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: "6px",
-                                                      }}
-                                                    >
-                                                      <PriceApprovalButton
-                                                        progressID={
-                                                          mrHeader.progress_id
-                                                        }
-                                                        mrLine={item}
-                                                        bgColor="white"
-                                                        borderColor="rgba(207, 207, 207, 1)"
-                                                        textColor="black"
-                                                        style={{
-                                                          borderRadius: "25px",
-                                                          padding: "7px 20px",
-                                                        }}
-                                                        onTotalPriceChange={
-                                                          handleTotalPriceChange
-                                                        }
-                                                      />
-                                                      {itemsExceedingAvgPrice.has(
-                                                        item.id,
-                                                      ) && (
-                                                        <img
-                                                          src={warningIcon}
-                                                          alt="warning"
-                                                        />
-                                                      )}
-                                                    </div>
-                                                  </td>
-                                                  <td>
-                                                    {(() => {
-                                                      const range =
-                                                        quotationPriceRanges[
-                                                          item.id
-                                                        ];
-                                                      if (!range) return "N/A";
-                                                      if (
-                                                        range.min === range.max
-                                                      )
-                                                        return formatPriceAED(
-                                                          range.min,
-                                                        );
-                                                      return `${formatPriceAED(range.min)} – ${formatPriceAED(range.max)}`;
-                                                    })()}
-                                                  </td>
-                                                  <td>
-                                                    {formatPriceAED(
-                                                      Number(
-                                                        item.approved_total_price,
-                                                      ) || 0,
-                                                    )}
-                                                  </td>
-                                                </>
-                                              );
-                                            })()}
-
-                                          {/* Stock Transfer actions at progress_id 4 (ALL view - storekeeper only) */}
-                                          {userInfo?.departmentID === 11 &&
-                                            mrHeader.progress_id === 4 && (
-                                              <td>
-                                                {item.qs_review_type ===
-                                                "item_available" ? (
-                                                  <div
-                                                    style={{
-                                                      display: "flex",
-                                                      flexDirection: "column",
-                                                      gap: "6px",
-                                                    }}
-                                                  >
-                                                    {!item.stock_transfer_id ? (
-                                                      <MrTransferIssueButton
-                                                        item={item}
-                                                      />
-                                                    ) : (
-                                                      <>
-                                                        <MrDownloadDnButton
-                                                          transactionID={
-                                                            item.stock_transfer_id
-                                                          }
-                                                        />
-                                                        <MrUploadSignedDnButton
-                                                          transactionID={
-                                                            item.stock_transfer_id
-                                                          }
-                                                          mrLineId={item.id}
-                                                        />
-                                                      </>
-                                                    )}
-                                                  </div>
-                                                ) : (
-                                                  "-"
-                                                )}
-                                              </td>
-                                            )}
-
-                                          {userInfo?.departmentID === 12 &&
-                                            mrHeader.progress_id === 21 && (
-                                              <td>
-                                                <QCCheckListButton
-                                                  item={item}
-                                                  mrHeader={mrHeader}
-                                                />
-                                              </td>
-                                            )}
-
-                                          {userInfo?.departmentID === 11 &&
-                                            mrHeader.progress_id === 24 && (
-                                              <td>
-                                                <AddToInventoryButton
-                                                  mrLine={item}
-                                                />
-                                              </td>
-                                            )}
-
-                                          {userInfo?.departmentID === 9 &&
-                                            mrHeader.progress_id === 23 && (
-                                              <td>
-                                                <ResolutionButton
-                                                  mrHeader={mrHeader}
-                                                  item={item}
-                                                />
-                                              </td>
-                                            )}
-                                        </tr>
-                                      );
-                                    })}
-                                </tbody>
-
-                                {mrHeader.progress_id >= 10 &&
-                                  canSeePrice &&
-                                  !isManagerPriceApproval && (
-                                    <tfoot
-                                      style={{
-                                        borderTop:
-                                          "1px solid rgba(239, 239, 239, 1)",
-                                      }}
-                                    >
-                                      <tr>
-                                        <td colSpan={subtotalLabelColSpan} />
-                                        <td
-                                          style={{
-                                            fontWeight: "600",
-                                          }}
-                                        >
-                                          SUBTOTAL
-                                        </td>
-                                        <td
-                                          style={{
-                                            fontWeight: "600",
-                                          }}
-                                        >
-                                          {!!(
-                                            items[0]?.approved_supplier_id &&
-                                            lpoInvoiceStatus[
-                                              items[0].approved_supplier_id
-                                            ]?.hasLpo
-                                          )
-                                            ? formatPriceAED(
-                                                calculateItemsTotal(
-                                                  getAllItemsInSubCategory(
-                                                    suppliers,
-                                                  ),
-                                                ),
-                                              )
-                                            : "N/A"}
-                                        </td>
-                                        {subtotalTrailingColSpan > 0 && (
-                                          <td
-                                            colSpan={subtotalTrailingColSpan}
-                                          />
-                                        )}
-                                      </tr>
-                                      {mrHeader.progress_id === 12 && (
-                                        <tr>
-                                          <td colSpan={subtotalLabelColSpan} />
-                                          <td style={{ fontWeight: "600" }}>
-                                            SUBTOTAL W/ VAT
-                                          </td>
-                                          <td style={{ fontWeight: "600" }}>
-                                            {!!(
-                                              items[0]?.approved_supplier_id &&
-                                              lpoInvoiceStatus[
-                                                items[0].approved_supplier_id
-                                              ]?.hasLpo
-                                            )
-                                              ? formatPriceAED(
-                                                  calculateItemsTotalWithVat(
-                                                    getAllItemsInSubCategory(
-                                                      suppliers,
-                                                    ),
-                                                  ),
-                                                )
-                                              : "N/A"}
-                                          </td>
-                                          {subtotalTrailingColSpan > 0 && (
-                                            <td
-                                              colSpan={subtotalTrailingColSpan}
-                                            />
-                                          )}
-                                        </tr>
-                                      )}
-                                    </tfoot>
-                                  )}
-
-                                {isManagerPriceApproval && (
-                                  <tfoot
-                                    style={{
-                                      borderTop:
-                                        "1px solid rgba(239, 239, 239, 1)",
-                                    }}
-                                  >
-                                    <tr>
-                                      <td colSpan={subtotalLabelColSpan + 4} />
-                                      <td style={{ fontWeight: "600" }}>
-                                        SUBTOTAL
-                                      </td>
-                                      <td style={{ fontWeight: "600" }}>
-                                        {formatPriceAED(
-                                          calculateItemsTotal(
-                                            getAllItemsInSubCategory(suppliers),
-                                          ),
-                                        )}
-                                      </td>
-                                    </tr>
-                                  </tfoot>
-                                )}
-                              </table>
-                              )}
-
-                              {/* ── Mobile card accordion view ── */}
-                              {isMobile && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                  {Array.isArray(items) && items.map((item, itemIndex) => {
-                                    const isExpanded = expandedMobileItems.has(item.id);
-                                    return (
-                                      <div
-                                        key={item.id}
-                                        style={{
-                                          border: "1px solid rgba(217,217,217,1)",
-                                          borderRadius: "8px",
-                                          overflow: "hidden",
-                                          backgroundColor: "rgba(245,245,245,1)",
-                                        }}
-                                      >
-                                        {/* Card header */}
-                                        <div
-                                          onClick={() => toggleMobileExpand(item.id)}
-                                          style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "10px",
-                                            padding: "12px",
-                                            cursor: "pointer",
-                                          }}
-                                        >
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              width: 32,
-                                              height: 32,
-                                              borderRadius: "8px",
-                                              backgroundColor: "white",
-                                              flexShrink: 0,
-                                              transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                                              transition: "transform 0.2s",
-                                            }}
-                                          >
-                                            <img
-                                              src="/icons/arrow-right.svg"
-                                              alt=""
-                                              style={{
-                                                width: 14,
-                                                height: 14,
-                                                filter: "brightness(0)",
-                                              }}
-                                            />
                                           </div>
-                                          <span style={{ flex: 1, fontWeight: 600, fontSize: "13px" }}>
-                                            {itemIndex + 1}. {item.material_description}
-                                          </span>
-                                          {/* Qty + Unit pill */}
-                                          {isDeptEditable ? (
+
+                                          {/* Expanded body */}
+                                          {isExpanded && (
                                             <div
-                                              onClick={(e) => e.stopPropagation()}
                                               style={{
+                                                padding: "12px",
+                                                borderTop:
+                                                  "1px solid rgba(239,239,239,1)",
                                                 display: "flex",
-                                                border: "1px solid rgba(217,217,217,1)",
-                                                borderRadius: "5px",
-                                                backgroundColor: "white",
-                                                overflow: "hidden",
-                                                flexShrink: 0,
+                                                flexDirection: "column",
+                                                gap: "12px",
                                               }}
                                             >
-                                              <input
-                                                type="text"
-                                                value={
-                                                  inlineQty[item.id] !== undefined
-                                                    ? inlineQty[item.id]
-                                                    : item.quantity > 0
-                                                    ? formatQtyWithCommas(item.quantity)
-                                                    : ""
-                                                }
-                                                placeholder="QTY"
-                                                onChange={(e) => {
-                                                  const raw = e.target.value.replace(/,/g, "");
-                                                  if (raw === "" || /^\d*\.?\d*$/.test(raw))
-                                                    setInlineQty((prev) => ({
-                                                      ...prev,
-                                                      [item.id]: raw ? formatQtyWithCommas(raw) : "",
-                                                    }));
-                                                }}
-                                                onBlur={() => saveInlineQty(item)}
+                                              {/* Row 1: Inventory Status + BOQ Ref */}
+                                              <div
                                                 style={{
-                                                  width: "55px",
-                                                  border: "none",
-                                                  padding: "5px 6px",
-                                                  background: "transparent",
-                                                  fontSize: "12px",
-                                                }}
-                                              />
-                                              <select
-                                                value={inlineUnit[item.id] ?? (item.unit ? mapPredefinedUnit(item.unit) : "N/A")}
-                                                onChange={(e) =>
-                                                  setInlineUnit((prev) => ({ ...prev, [item.id]: e.target.value }))
-                                                }
-                                                onBlur={() => saveInlineQty(item)}
-                                                style={{
-                                                  border: "none",
-                                                  padding: "5px 4px",
-                                                  background: "transparent",
-                                                  cursor: "pointer",
-                                                  fontSize: "12px",
+                                                  display: "grid",
+                                                  gridTemplateColumns:
+                                                    "1fr 0.5fr",
+                                                  gap: "25px",
                                                 }}
                                               >
-                                                <option value="N/A">N/A</option>
-                                                {UNIT_OPTIONS.map((u) => (
-                                                  <option key={u} value={u}>{u}</option>
-                                                ))}
-                                              </select>
-                                            </div>
-                                          ) : (
-                                            <span style={{ fontSize: "12px", color: "rgba(100,100,100,1)", flexShrink: 0 }}>
-                                              {formatNumber(item?.quantity)} {item.unit}
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        {/* Expanded body */}
-                                        {isExpanded && (
-                                          <div
-                                            style={{
-                                              padding: "12px",
-                                              borderTop: "1px solid rgba(239,239,239,1)",
-                                              display: "flex",
-                                              flexDirection: "column",
-                                              gap: "12px",
-                                            }}
-                                          >
-                                            {/* Row 1: Inventory Status + BOQ Ref */}
-                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 0.5fr", gap: "12px" }}>
-                                              {/* Inventory Status */}
-                                              {mrHeader.progress_id === 1 && (
-                                                <div>
-                                                  <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
-                                                    Inventory Status
+                                                {/* Inventory Status */}
+                                                {mrHeader.progress_id === 1 && (
+                                                  <div>
+                                                    <div
+                                                      style={{
+                                                        fontSize: "10px",
+                                                        color:
+                                                          "rgba(120,120,120,1)",
+                                                        fontWeight: 600,
+                                                        marginBottom: "6px",
+                                                        textTransform:
+                                                          "uppercase",
+                                                      }}
+                                                    >
+                                                      Inventory Status
+                                                    </div>
+                                                    <InventoryStatusCell
+                                                      matches={
+                                                        itemInventoryStatus ===
+                                                        null
+                                                          ? undefined
+                                                          : (itemInventoryStatus[
+                                                              item
+                                                                .material_description
+                                                            ] ?? [])
+                                                      }
+                                                    />
                                                   </div>
-                                                  <InventoryStatusCell
-                                                    matches={
-                                                      itemInventoryStatus === null
-                                                        ? undefined
-                                                        : (itemInventoryStatus[item.material_description] ?? [])
-                                                    }
-                                                  />
-                                                </div>
-                                              )}
-
-                                              {/* BOQ Ref */}
-                                              <div>
-                                                <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
-                                                  BOQ Ref
-                                                </div>
-                                                {isDeptEditable ? (
-                                                  <MultipleSelectBoqItemButton
-                                                    projectID={mrHeader.project_id}
-                                                    onSelectBoq={(ids) => saveInlineBoq(item, ids)}
-                                                    currentBoqLineIDs={
-                                                      item.boq_line_ids
-                                                        ? String(item.boq_line_ids).split(",").map(Number).filter(Boolean)
-                                                        : []
-                                                    }
-                                                    compact
-                                                  />
-                                                ) : item.boq_line_ids ? (
-                                                  <BoqReferencePopUp item={item} mrHeader={mrHeader} />
-                                                ) : (
-                                                  <span style={{ fontSize: "12px" }}>-</span>
                                                 )}
-                                              </div>
-                                            </div>
 
-                                            {/* Row 2: Brand & Specs + Attachment */}
-                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 0.5fr", gap: "12px" }}>
-                                              {/* Brand & Specs */}
+                                                {/* BOQ Ref */}
+                                                <div>
+                                                  <div
+                                                    style={{
+                                                      fontSize: "10px",
+                                                      color:
+                                                        "rgba(120,120,120,1)",
+                                                      fontWeight: 600,
+                                                      marginBottom: "6px",
+                                                      textTransform:
+                                                        "uppercase",
+                                                    }}
+                                                  >
+                                                    BOQ Ref <span style={{ color: "red" }}>*</span>
+                                                  </div>
+                                                  {isDeptEditable ? (
+                                                    <MultipleSelectBoqItemButton
+                                                      projectID={
+                                                        mrHeader.project_id
+                                                      }
+                                                      onSelectBoq={(ids) =>
+                                                        saveInlineBoq(item, ids)
+                                                      }
+                                                      currentBoqLineIDs={
+                                                        item.boq_line_ids
+                                                          ? String(
+                                                              item.boq_line_ids,
+                                                            )
+                                                              .split(",")
+                                                              .map(Number)
+                                                              .filter(Boolean)
+                                                          : []
+                                                      }
+                                                      itemName={item.material_description}
+                                                      compact
+                                                    />
+                                                  ) : item.boq_line_ids ? (
+                                                    <BoqReferencePopUp
+                                                      item={item}
+                                                      mrHeader={mrHeader}
+                                                    />
+                                                  ) : (
+                                                    <span
+                                                      style={{
+                                                        fontSize: "12px",
+                                                      }}
+                                                    >
+                                                      -
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+
+                                              {/* Row 2: Specs / Notes (full width) */}
                                               <div>
-                                                <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
-                                                  Brand & Specs
+                                                <div
+                                                  style={{
+                                                    fontSize: "10px",
+                                                    color:
+                                                      "rgba(120,120,120,1)",
+                                                    fontWeight: 600,
+                                                    marginBottom: "6px",
+                                                    textTransform: "uppercase",
+                                                  }}
+                                                >
+                                                  Specs / Notes
                                                 </div>
                                                 {isDeptEditable ? (
-                                                  <AddBrandAndSpecs item={item} stageName="INITIAL APPROVAL" />
-                                                ) : item.brand || item.specification ? (
+                                                  <MobileBrandSpecsEditor
+                                                    item={item}
+                                                    stageName="INITIAL APPROVAL"
+                                                  />
+                                                ) : item.brand ||
+                                                  item.specification ? (
                                                   <InfoPopUpButton
                                                     text={
                                                       <>
                                                         <small>BRAND</small>
-                                                        <h2>{item.brand || "-"}</h2>
+                                                        <h2>
+                                                          {item.brand || "-"}
+                                                        </h2>
                                                         <br />
-                                                        <small>SPECIFICATION</small>
-                                                        <h2>{item.specification || "-"}</h2>
+                                                        <small>
+                                                          SPECIFICATION
+                                                        </small>
+                                                        <h2>
+                                                          {item.specification ||
+                                                            "-"}
+                                                        </h2>
                                                       </>
                                                     }
                                                     header="BRAND & SPECIFICATION"
                                                   />
                                                 ) : (
-                                                  <span style={{ fontSize: "12px" }}>-</span>
+                                                  <span
+                                                    style={{ fontSize: "12px" }}
+                                                  >
+                                                    -
+                                                  </span>
                                                 )}
                                               </div>
 
-                                              {/* Attachment */}
+                                              {/* Row 3: Attachment */}
                                               <div>
-                                                <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
+                                                <div
+                                                  style={{
+                                                    fontSize: "10px",
+                                                    color:
+                                                      "rgba(120,120,120,1)",
+                                                    fontWeight: 600,
+                                                    marginBottom: "6px",
+                                                    textTransform: "uppercase",
+                                                  }}
+                                                >
                                                   Attachment
                                                 </div>
                                                 {isDeptEditable ? (
-                                                  <AddMrLineAttachment item={item} />
+                                                  <AddMrLineAttachment
+                                                    item={item}
+                                                  />
                                                 ) : item.attachment ? (
                                                   <Button
                                                     componentType="link"
                                                     bgColor="rgba(239,239,239,1)"
                                                     borderColor="rgba(223,223,223,1)"
                                                     textColor="black"
-                                                    style={{ padding: "7px 7px" }}
+                                                    style={{
+                                                      padding: "7px 7px",
+                                                    }}
                                                     href={item.attachment}
                                                     target="_blank"
                                                   >
-                                                    <img src={externalLinkIcon} alt="external link" />
+                                                    <img
+                                                      src={externalLinkIcon}
+                                                      alt="external link"
+                                                    />
                                                   </Button>
                                                 ) : (
-                                                  <span style={{ fontSize: "12px" }}>-</span>
+                                                  <span
+                                                    style={{ fontSize: "12px" }}
+                                                  >
+                                                    -
+                                                  </span>
                                                 )}
                                               </div>
-                                            </div>
 
-                                            {/* Edit / Delete actions (draft only) */}
-                                            {isDeptEditable && (
-                                              <>
-                                                <br /><br />
-                                                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                                                <EditMrItemButton
-                                                  item={item}
-                                                  bgColor="rgba(239,239,239,1)"
-                                                  borderColor="rgba(223,223,223,1)"
-                                                  textColor="black"
-                                                  stageName={currentStageName}
-                                                >
-                                                  <img src={pencilIcon} alt="edit" />
-                                                </EditMrItemButton>
-                                                <DeleteMrItemButton
-                                                  item={item}
-                                                  bgColor="rgba(239,239,239,1)"
-                                                  borderColor="rgba(223,223,223,1)"
-                                                  textColor="black"
-                                                  stageName={currentStageName}
-                                                >
-                                                  <img src={trashIcon} alt="delete" />
-                                                </DeleteMrItemButton>
-                                              </div>
-                                              </>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                                              {/* Edit / Delete actions (draft only) */}
+                                              {isDeptEditable && (
+                                                <>
+                                                  <br />
+                                                  <br />
+                                                  <div
+                                                    style={{
+                                                      display: "flex",
+                                                      gap: "8px",
+                                                      justifyContent:
+                                                        "flex-end",
+                                                    }}
+                                                  >
+                                                    <EditMrItemButton
+                                                      item={item}
+                                                      bgColor="rgba(239,239,239,1)"
+                                                      borderColor="rgba(223,223,223,1)"
+                                                      textColor="black"
+                                                      stageName={
+                                                        currentStageName
+                                                      }
+                                                    >
+                                                      <img
+                                                        src={pencilIcon}
+                                                        alt="edit"
+                                                      />
+                                                    </EditMrItemButton>
+                                                    <DeleteMrItemButton
+                                                      item={item}
+                                                      bgColor="rgba(239,239,239,1)"
+                                                      borderColor="rgba(223,223,223,1)"
+                                                      textColor="black"
+                                                      stageName={
+                                                        currentStageName
+                                                      }
+                                                    >
+                                                      <img
+                                                        src={trashIcon}
+                                                        alt="delete"
+                                                      />
+                                                    </DeleteMrItemButton>
+                                                  </div>
+                                                </>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
                                 </div>
                               )}
 

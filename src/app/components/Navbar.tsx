@@ -84,7 +84,7 @@ export default function Navbar({ onHamburgerClick }: NavbarProps) {
         </div>
 
         <div className="mobile-nav-right">
-          <NotificationDropdown />
+          {/* <NotificationDropdown /> */}
           <div className="nav-avatar">{initials}</div>
         </div>
       </div>

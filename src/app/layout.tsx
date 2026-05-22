@@ -1,10 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.scss";
 import { AuthProvider } from "./context/AuthContext";
 
 export const metadata: Metadata = {
   title: "Ray Maestro - Rayfitout",
   description: "",
+};
+
+export const viewport: Viewport = {
+  maximumScale: 1,
 };
 
 export default function RootLayout({

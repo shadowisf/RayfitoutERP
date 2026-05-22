@@ -8,6 +8,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import Button from "./Button";
 import { BoqLine } from "../(protected)/project/[id]/boq/[boqId]/types/boqLine";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
+import MobileBoqSelect from "./_MobileBoqSelect";
 
 type props = {
   projectID: number;
@@ -21,6 +22,7 @@ type props = {
   style?: React.CSSProperties;
   singleSelect?: boolean;
   compact?: boolean;
+  itemName?: string;
 };
 
 type GroupedBoqLines = {
@@ -63,6 +65,7 @@ export default function MultipleSelectBoqItemButton({
   style,
   singleSelect = false,
   compact = false,
+  itemName,
 }: props) {
   const locationIcon = "/icons/location-boq.svg";
   const arrowRight = "/icons/arrow-right.svg";
@@ -77,6 +80,16 @@ export default function MultipleSelectBoqItemButton({
   const catScrollContainerRef = useRef<HTMLDivElement>(null); // category tabs
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const [boqLineValues, setBoqLineValues] = useState<BoqLine[]>([]);
   const [groupedBoqLines, setGroupedBoqLines] = useState<GroupedBoqLines>({});
@@ -1510,7 +1523,8 @@ export default function MultipleSelectBoqItemButton({
           textColor={"black"}
           onClick={(e) => {
             (e as React.MouseEvent).preventDefault();
-            setIsOpen(true);
+            if (isMobile) setIsMobileOpen(true);
+            else setIsOpen(true);
           }}
           disabled={disabled}
           style={{ padding: "7px 7px", ...style }}
@@ -1529,7 +1543,8 @@ export default function MultipleSelectBoqItemButton({
           textColor={"white"}
           onClick={(e) => {
             e.preventDefault();
-            setIsOpen(true);
+            if (isMobile) setIsMobileOpen(true);
+            else setIsOpen(true);
           }}
           full
           disabled={disabled}
@@ -1556,6 +1571,20 @@ export default function MultipleSelectBoqItemButton({
             </>
           )}
         </Button>
+      )}
+
+      {isMobileOpen && (
+        <MobileBoqSelect
+          projectID={projectID}
+          onSelectBoq={(ids, info, lines) => {
+            onSelectBoq(ids, info, lines);
+            setIsMobileOpen(false);
+          }}
+          currentBoqLineIDs={currentBoqLineIDs}
+          onClose={() => setIsMobileOpen(false)}
+          singleSelect={singleSelect}
+          itemName={itemName}
+        />
       )}
 
       {typeof window !== "undefined" &&

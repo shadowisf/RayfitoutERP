@@ -131,9 +131,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <br />
-      <br />
-      <br />
+      <div className="mobile-hide"><br /><br /><br /></div>
 
       {/* MANAGER */}
       {userInfo?.departmentID === 8 && (
@@ -153,7 +151,7 @@ export default function Dashboard() {
               popupAlign="right"
             />
           </div>
-          <br />
+          <div className="mobile-hide"><br /></div>
           <div className="widget-grid overview five-col dashboard-first-grid">
             <ActiveMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
             <PendingApprovalMrsWidget dateFrom={dateFrom} dateTo={dateTo} />
@@ -165,58 +163,58 @@ export default function Dashboard() {
           <br />
           <br />
 
-          {/* ── Mobile: one slider for Quick Approvals | Active Projects | Expected Deliveries ── */}
-          <div className="mobile-group-slider">
-
-            {/* Slide 1 — Quick Approvals */}
-            <div className="mobile-slide">
-              <h2>QUICK APPROVALS</h2>
-              <br />
-              <div className="widget-grid overview two-col">
-                {/* <QuickInitialApprovalWidget /> */}
-                <QuickPriceApprovalWidget />
-              </div>
-            </div>
-
-            {/* Slide 2 — Active Projects */}
-            <div className="mobile-slide">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <h2>ACTIVE PROJECTS</h2>
-                <Button
-                  componentType={"link"}
-                  bgColor={"white"}
-                  borderColor={"white"}
-                  textColor={"black"}
-                  style={{ borderRadius: "50px" }}
-                  href="/project"
-                >
-                  View All Projects &gt;
-                </Button>
-              </div>
-              <br />
-              <div className="widget-grid active-projects">
-                {projects.slice(0, 3).map((proj: any, index) => (
-                  <ProjectCard project={proj} key={index} />
-                ))}
-              </div>
-            </div>
-
-            {/* Slide 3 — Expected Deliveries */}
-            <div className="mobile-slide">
-              <ExpectedDeliveriesWidget />
-            </div>
-
+          {/* Quick Approvals — shown on all screen sizes */}
+          <h2 className="dashboard-section-subheader">QUICK APPROVALS</h2>
+          <br />
+          <div className="widget-grid overview two-col manager-quick-approvals">
+            {/* <QuickInitialApprovalWidget /> */}
+            <QuickPriceApprovalWidget />
           </div>
 
           <br />
           <br />
           <br />
+
+          {/* Active Projects — hidden on mobile */}
+          <div className="mobile-hide">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <h2>ACTIVE PROJECTS</h2>
+              <Button
+                componentType={"link"}
+                bgColor={"white"}
+                borderColor={"white"}
+                textColor={"black"}
+                style={{ borderRadius: "50px" }}
+                href="/project"
+              >
+                View All Projects &gt;
+              </Button>
+            </div>
+            <br />
+            <div className="widget-grid active-projects">
+              {projects.slice(0, 3).map((proj: any, index) => (
+                <ProjectCard project={proj} key={index} />
+              ))}
+            </div>
+            <br />
+            <br />
+            <br />
+          </div>
+
+          {/* Expected Deliveries — hidden on mobile */}
+          <div className="mobile-hide">
+            <ExpectedDeliveriesWidget />
+            <br />
+            <br />
+            <br />
+          </div>
+
 
           {/* ── Analytics: each is a separate scrollable slide on mobile ── */}
           <div className="widget-grid overview three-col">

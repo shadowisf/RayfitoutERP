@@ -21,14 +21,12 @@ export default function AddBrandAndSpecs({ item, stageName }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [brand, setBrand] = useState("");
   const [specification, setSpecification] = useState("");
-  const [notes, setNotes] = useState("");
 
-  const hasData = !!(item.brand || item.specification || item.notes);
+  const hasData = !!(item.brand || item.specification);
 
   function openPopup() {
     setBrand(item.brand || "");
     setSpecification(item.specification || "");
-    setNotes(item.notes || "");
     setIsOpen(true);
   }
 
@@ -42,7 +40,7 @@ export default function AddBrandAndSpecs({ item, stageName }: Props) {
         id: item.id,
         brand: brand.trim() || null,
         specification: specification.trim() || null,
-        notes: notes.trim() || null,
+        notes: item.notes || null,
         changed_by: userInfo?.name || null,
         stage_name: stageName || "INITIAL APPROVAL",
       }),
@@ -95,15 +93,6 @@ export default function AddBrandAndSpecs({ item, stageName }: Props) {
             />
           </div>
 
-          <div className="input-row full">
-            <InputItem
-              label="NOTES"
-              value={notes}
-              type="textarea"
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Enter notes"
-            />
-          </div>
         </FormPopUp>
       )}
     </>

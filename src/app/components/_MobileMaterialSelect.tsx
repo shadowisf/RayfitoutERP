@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import { PredefinedItem } from "@/app/components/_MultipleSelectMaterialItemButton";
 import { UNIT_OPTIONS } from "@/constants/units";
 import { useAuth } from "@/app/context/AuthContext";
@@ -35,10 +35,15 @@ export default function MobileMaterialSelect({
   const [tab, setTab] = useState<"library" | "quickadd">("library");
   const [allItems, setAllItems] = useState<PredefinedItem[]>([]);
   const [recentItemIDs, setRecentItemIDs] = useState<number[]>([]);
+  const recentItemIDsSet = useMemo(
+    () => new Set(recentItemIDs),
+    [recentItemIDs],
+  );
   const [selectedItems, setSelectedItems] = useState<PredefinedItem[]>([]);
 
   // ── Search / filter ─────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<
     number | null
@@ -58,7 +63,6 @@ export default function MobileMaterialSelect({
     string | number
   >("");
   const [newMatUnit, setNewMatUnit] = useState("");
-  const [newMatBrand, setNewMatBrand] = useState("");
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
   const [inventorySuggestion, setInventorySuggestion] = useState<{
     id: number;
@@ -174,18 +178,24 @@ export default function MobileMaterialSelect({
     return () => clearTimeout(timer);
   }, [newMatDescription]);
 
+  // ── Debounce search input (150ms) ────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 150);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // ── Derived: filtered items ──────────────────────────────────────────────────
   const matchesSearch = useCallback(
     (item: PredefinedItem) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
+      if (!debouncedSearch.trim()) return true;
+      const q = debouncedSearch.toLowerCase();
       return (
         item.material_description.toLowerCase().includes(q) ||
         item.category_name.toLowerCase().includes(q) ||
         item.subcategory_name.toLowerCase().includes(q)
       );
     },
-    [search],
+    [debouncedSearch],
   );
 
   const matchesFilter = useCallback(
@@ -196,15 +206,20 @@ export default function MobileMaterialSelect({
     [selectedSubcategoryIDs],
   );
 
-  const recentItems = allItems.filter(
-    (item) =>
-      recentItemIDs.includes(item.id) &&
-      matchesSearch(item) &&
-      matchesFilter(item),
+  const recentItems = useMemo(
+    () =>
+      allItems.filter(
+        (item) =>
+          recentItemIDsSet.has(item.id) &&
+          matchesSearch(item) &&
+          matchesFilter(item),
+      ),
+    [allItems, recentItemIDsSet, matchesSearch, matchesFilter],
   );
 
-  const libraryItems = allItems.filter(
-    (item) => matchesSearch(item) && matchesFilter(item),
+  const libraryItems = useMemo(
+    () => allItems.filter((item) => matchesSearch(item) && matchesFilter(item)),
+    [allItems, matchesSearch, matchesFilter],
   );
 
   // ── Toggle item selection ────────────────────────────────────────────────────
@@ -245,7 +260,6 @@ export default function MobileMaterialSelect({
             category_id: newMatCategoryID,
             subcategory_id: newMatSubCategoryID,
             unit: newMatUnit || null,
-            brand: newMatBrand || null,
           }),
         },
       );
@@ -260,7 +274,6 @@ export default function MobileMaterialSelect({
       setNewMatCategoryID("");
       setNewMatSubCategoryID("");
       setNewMatUnit("");
-      setNewMatBrand("");
       setInventorySuggestion(null);
 
       setTab("library");
@@ -273,11 +286,14 @@ export default function MobileMaterialSelect({
   };
 
   // ── Filter: count helpers ────────────────────────────────────────────────────
-  const filteredCount =
-    selectedSubcategoryIDs.size === 0
-      ? allItems.length
-      : allItems.filter((i) => selectedSubcategoryIDs.has(i.subcategory_id))
-          .length;
+  const filteredCount = useMemo(
+    () =>
+      selectedSubcategoryIDs.size === 0
+        ? allItems.length
+        : allItems.filter((i) => selectedSubcategoryIDs.has(i.subcategory_id))
+            .length,
+    [allItems, selectedSubcategoryIDs],
+  );
 
   const subcatsForActiveCategory = allSubcategories.filter(
     (s) => s.category_id === activeCategoryFilter,
@@ -291,81 +307,19 @@ export default function MobileMaterialSelect({
   // ── Sticky footer: search + filter + selected pills (library tab only) ───────
   const searchAndFilterFooter = (
     <div>
-      {/* Selected items panel */}
       {selectedItems.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          {/* Label row */}
-          <div
-            style={{
-              fontSize: 11,
-              color: "#000",
-              marginBottom: 8,
-            }}
-          >
-            <p>ITEM SELECTED ({selectedItems.length}):</p>
-          </div>
-
-          {/* Horizontally scrollable pills — max-width hard-bounds it to viewport so it scrolls internally */}
-          <div
-            style={
-              {
-                overflowX: "auto",
-                whiteSpace: "nowrap",
-                scrollbarWidth: "none",
-                msOverflowStyle: "none",
-                maxWidth: "calc(100vw - 40px)",
-              } as React.CSSProperties
-            }
-          >
-            {selectedItems.map((item) => (
-              <span
-                key={item.id}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  background: "rgba(237,237,237,1)",
-                  color: "#000",
-                  borderRadius: 50,
-                  padding: "4px 12px",
-                  fontSize: 10,
-                  marginRight: 8,
-                }}
-              >
-                <span
-                  style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: 200,
-                  }}
-                >
-                  {item.material_description}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => toggleItem(item)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#000",
-                    cursor: "pointer",
-                    padding: 0,
-                    fontSize: 16,
-                    lineHeight: 1,
-                    flexShrink: 0,
-                    opacity: 0.5,
-                  }}
-                  aria-label={`Remove ${item.material_description}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#000",
+            textAlign: "center",
+            marginBottom: 8,
+          }}
+        >
+          {selectedItems.length} ITEM{selectedItems.length !== 1 ? "S" : ""} SELECTED
         </div>
       )}
-
       {/* Search + filter row */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div
@@ -562,6 +516,7 @@ export default function MobileMaterialSelect({
             onToggle={toggleItem}
             search={search}
             hasActiveFilter={selectedSubcategoryIDs.size > 0}
+            onQuickAdd={() => setTab("quickadd")}
           />
         ) : (
           <QuickAddTab
@@ -575,8 +530,6 @@ export default function MobileMaterialSelect({
             setNewMatSubCategoryID={setNewMatSubCategoryID}
             newMatUnit={newMatUnit}
             setNewMatUnit={setNewMatUnit}
-            newMatBrand={newMatBrand}
-            setNewMatBrand={setNewMatBrand}
             inventorySuggestion={inventorySuggestion}
             onUseSuggestion={(desc) => {
               setNewMatDescription(desc);
@@ -600,7 +553,6 @@ export default function MobileMaterialSelect({
           setActiveCategoryFilter={setActiveCategoryFilter}
           selectedSubcategoryIDs={selectedSubcategoryIDs}
           setSelectedSubcategoryIDs={setSelectedSubcategoryIDs}
-          filteredCount={filteredCount}
           onClose={() => setShowFilter(false)}
           BORDER_COLOR={BORDER_COLOR}
           GREY_TEXT={GREY_TEXT}
@@ -620,17 +572,66 @@ type LibraryTabProps = {
   onToggle: (item: PredefinedItem) => void;
   search: string;
   hasActiveFilter: boolean;
+  onQuickAdd: () => void;
 };
+
+const CHUNK_SIZE = 40;
 
 function LibraryTab({
   allItems,
+  onQuickAdd,
   recentItems,
   selectedItems,
   onToggle,
   search,
   hasActiveFilter,
 }: LibraryTabProps) {
-  const selectedIDs = new Set(selectedItems.map((i) => i.id));
+  const BORDER_COLOR = "rgba(217,217,217,1)";
+
+  const selectedIDs = useMemo(
+    () => new Set(selectedItems.map((i) => i.id)),
+    [selectedItems],
+  );
+
+  // Sort by category then subcategory — memoised so it only recomputes when allItems changes
+  const sortedItems = useMemo(
+    () =>
+      [...allItems].sort((a, b) => {
+        const catA = a.category_name || "";
+        const catB = b.category_name || "";
+        if (catA !== catB) return catA.localeCompare(catB);
+        const subA = a.subcategory_name || "";
+        const subB = b.subcategory_name || "";
+        return subA.localeCompare(subB);
+      }),
+    [allItems],
+  );
+
+  // Chunked rendering — start with CHUNK_SIZE, expand as user scrolls
+  const [visibleCount, setVisibleCount] = useState(CHUNK_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count whenever the list changes (new search / filter)
+  useEffect(() => {
+    setVisibleCount(CHUNK_SIZE);
+  }, [sortedItems]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + CHUNK_SIZE);
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
+
+  const visibleItems = sortedItems.slice(0, visibleCount);
 
   if (allItems.length === 0 && !search && !hasActiveFilter) {
     return (
@@ -651,13 +652,44 @@ function LibraryTab({
     return (
       <div
         style={{
-          padding: 32,
+          padding: "48px 24px",
           textAlign: "center",
-          color: "rgba(150,150,150,1)",
-          fontSize: 13,
         }}
       >
-        No materials match your search.
+        <div
+          style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: "#000",
+            marginBottom: 10,
+          }}
+        >
+          NO MATERIALS FOUND
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: "rgba(150,150,150,1)",
+          }}
+        >
+          No materials were found to fulfill your request. Please{" "}
+          <button
+            type="button"
+            onClick={onQuickAdd}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "rgba(36,160,237,1)",
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "underline",
+            }}
+          >
+            add a new material
+          </button>
+        </div>
       </div>
     );
   }
@@ -672,46 +704,51 @@ function LibraryTab({
               padding: "14px 0px 8px",
               fontSize: 14,
               fontWeight: 600,
-              color: "rgba(89, 89, 89, 1)",
-              borderBottom: "1px solid rgba(217,217,217,1)",
+              color: "rgba(89,89,89,1)",
+              borderBottom: `1px solid ${BORDER_COLOR}`,
             }}
           >
             Recently Requested
           </div>
-          {recentItems.map((item, idx) => (
+          {recentItems.map((item) => (
             <ItemRow
               key={`recent-${item.id}`}
               item={item}
               isSelected={selectedIDs.has(item.id)}
               onToggle={onToggle}
-              showDivider={true}
+              showDivider
             />
           ))}
           <br />
         </>
       )}
 
-      {/* Library section */}
+      {/* Library — flat list sorted by category → subcategory */}
       <div
         style={{
           padding: "14px 0px 8px",
           fontSize: 14,
           fontWeight: 600,
           color: "rgba(89, 89, 89, 1)",
-          borderBottom: "1px solid rgba(217,217,217,1)",
+          borderBottom: `1px solid ${BORDER_COLOR}`,
         }}
       >
         Library
       </div>
-      {allItems.map((item, idx) => (
+      {visibleItems.map((item) => (
         <ItemRow
           key={`lib-${item.id}`}
           item={item}
           isSelected={selectedIDs.has(item.id)}
           onToggle={onToggle}
-          showDivider={true}
+          showDivider
         />
       ))}
+
+      {/* Sentinel for infinite scroll */}
+      {visibleCount < sortedItems.length && (
+        <div ref={sentinelRef} style={{ height: 1 }} />
+      )}
     </div>
   );
 }
@@ -725,7 +762,12 @@ type ItemRowProps = {
   showDivider: boolean;
 };
 
-function ItemRow({ item, isSelected, onToggle, showDivider }: ItemRowProps) {
+const ItemRow = memo(function ItemRow({
+  item,
+  isSelected,
+  onToggle,
+  showDivider,
+}: ItemRowProps) {
   const GREY_TEXT = "rgba(150,150,150,1)";
   const BORDER_COLOR = "rgba(217,217,217,1)";
 
@@ -827,7 +869,7 @@ function ItemRow({ item, isSelected, onToggle, showDivider }: ItemRowProps) {
       </button>
     </div>
   );
-}
+});
 
 // ─── Quick Add Tab ────────────────────────────────────────────────────────────
 
@@ -842,8 +884,6 @@ type QuickAddTabProps = {
   setNewMatSubCategoryID: (v: string | number) => void;
   newMatUnit: string;
   setNewMatUnit: (v: string) => void;
-  newMatBrand: string;
-  setNewMatBrand: (v: string) => void;
   inventorySuggestion: { id: number; description: string } | null;
   onUseSuggestion: (description: string) => void;
   isSubmitting: boolean;
@@ -863,8 +903,6 @@ function QuickAddTab({
   setNewMatSubCategoryID,
   newMatUnit,
   setNewMatUnit,
-  newMatBrand,
-  setNewMatBrand,
   inventorySuggestion,
   onUseSuggestion,
   isSubmitting,
@@ -905,7 +943,7 @@ function QuickAddTab({
         />
       </div>
 
-      <div className="input-row half">
+      <div className="input-row full">
         <InputItem
           label="NAME"
           value={newMatDescription}
@@ -924,14 +962,6 @@ function QuickAddTab({
               Avoid using brand or supplier names unless required.
             </p>
           }
-        />
-        <InputItem
-          label="UNIT"
-          value={newMatUnit}
-          type="select"
-          onChange={(e) => setNewMatUnit(e.target.value)}
-          placeholder="SELECT UNIT"
-          selectOptions={[...UNIT_OPTIONS]}
         />
       </div>
 
@@ -989,12 +1019,15 @@ function QuickAddTab({
 
       <div className="input-row full">
         <InputItem
-          label="BRAND"
-          value={newMatBrand}
-          type="text"
-          onChange={(e) => setNewMatBrand(e.target.value)}
+          label="UNIT"
+          value={newMatUnit}
+          type="select"
+          onChange={(e) => setNewMatUnit(e.target.value)}
+          placeholder="SELECT UNIT"
+          selectOptions={[...UNIT_OPTIONS]}
         />
       </div>
+
     </div>
   );
 }
@@ -1011,7 +1044,6 @@ type FilterSheetProps = {
   setSelectedSubcategoryIDs: (
     s: Set<number> | ((prev: Set<number>) => Set<number>),
   ) => void;
-  filteredCount: number;
   onClose: () => void;
   BORDER_COLOR: string;
   GREY_TEXT: string;
@@ -1026,14 +1058,18 @@ function FilterSheet({
   setActiveCategoryFilter,
   selectedSubcategoryIDs,
   setSelectedSubcategoryIDs,
-  filteredCount,
   onClose,
   BORDER_COLOR,
   GREY_TEXT,
   LIGHT_BG,
 }: FilterSheetProps) {
+  // Local temp state — only committed to parent on CONFIRM
+  const [tempIDs, setTempIDs] = useState<Set<number>>(
+    () => new Set(selectedSubcategoryIDs),
+  );
+
   const toggleSubcategory = (id: number) => {
-    setSelectedSubcategoryIDs((prev: Set<number>) => {
+    setTempIDs((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -1041,7 +1077,7 @@ function FilterSheet({
     });
   };
 
-  const resetAll = () => setSelectedSubcategoryIDs(new Set());
+  const resetAll = () => setTempIDs(new Set());
 
   const activeSubcats = allSubcategories.filter(
     (s) => s.category_id === activeCategoryFilter,
@@ -1053,100 +1089,48 @@ function FilterSheet({
   const countBySubcategory = (subcatID: number) =>
     allItems.filter((i) => i.subcategory_id === subcatID).length;
 
-  const filterHeader = (
-    <div
+  const tempFilteredCount =
+    tempIDs.size === 0
+      ? allItems.length
+      : allItems.filter((i) => tempIDs.has(i.subcategory_id)).length;
+
+  const resetButton = (
+    <button
+      type="button"
+      onClick={resetAll}
       style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        width: "100%",
+        background: "none",
+        border: "1px solid rgba(217,217,217,1)",
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: 600,
+        color: tempIDs.size > 0 ? "#000" : GREY_TEXT,
+        cursor: tempIDs.size > 0 ? "pointer" : "default",
+        padding: "8px 16px",
+        opacity: tempIDs.size > 0 ? 1 : 0.4,
       }}
     >
-      <span>FILTER MATERIALS</span>
-      <button
-        type="button"
-        onClick={resetAll}
-        style={{
-          background: "none",
-          border: "none",
-          fontSize: 12,
-          fontWeight: 600,
-          color: selectedSubcategoryIDs.size > 0 ? "#000" : GREY_TEXT,
-          cursor: selectedSubcategoryIDs.size > 0 ? "pointer" : "default",
-          padding: 0,
-        }}
-      >
-        Reset all
-      </button>
-    </div>
+      Reset
+    </button>
   );
+
+  const handleConfirm = () => {
+    setSelectedSubcategoryIDs(tempIDs);
+    onClose();
+  };
 
   return (
     <FormPopUp
-      header={filterHeader}
+      header="FILTER MATERIALS"
       setIsOpen={(open) => {
         if (!open) onClose();
       }}
-      handleSubmit={() => onClose()}
+      handleSubmit={handleConfirm}
       addButtonLabel={
-        selectedSubcategoryIDs.size > 0
-          ? `SHOW ${filteredCount} ITEMS`
-          : "SHOW ALL RESULTS"
+        tempIDs.size > 0 ? `SHOW ${tempFilteredCount} ITEMS` : "SHOW ALL RESULTS"
       }
+      secondButton={resetButton}
     >
-      {/* Active filter chips */}
-      {selectedSubcategoryIDs.size > 0 && (
-        <div
-          style={
-            {
-              overflowX: "auto",
-              whiteSpace: "nowrap",
-              scrollbarWidth: "none",
-              marginBottom: 12,
-              paddingBottom: 12,
-              borderBottom: `1px solid ${BORDER_COLOR}`,
-            } as React.CSSProperties
-          }
-        >
-          {allSubcategories
-            .filter((s) => selectedSubcategoryIDs.has(s.id))
-            .map((s) => (
-              <span
-                key={s.id}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  background: "#000",
-                  color: "#fff",
-                  borderRadius: 50,
-                  padding: "4px 10px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  marginRight: 6,
-                }}
-              >
-                {s.value}
-                <button
-                  type="button"
-                  onClick={() => toggleSubcategory(s.id)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#fff",
-                    cursor: "pointer",
-                    padding: 0,
-                    fontSize: 13,
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-        </div>
-      )}
-
       {/* Two-column layout — columns scroll independently */}
       <div
         style={{
@@ -1174,7 +1158,7 @@ function FilterSheet({
                 key={cat.id}
                 onClick={() => setActiveCategoryFilter(cat.id)}
                 style={{
-                  padding: "12px 10px",
+                  padding: "10px 8px",
                   background: isActive ? "#000" : "transparent",
                   color: isActive ? "#fff" : "#000",
                   borderBottom: `1px solid ${BORDER_COLOR}`,
@@ -1183,7 +1167,7 @@ function FilterSheet({
               >
                 <div
                   style={{
-                    fontSize: 13,
+                    fontSize: 11,
                     fontWeight: 600,
                     marginBottom: 2,
                     wordBreak: "break-word",
@@ -1193,7 +1177,7 @@ function FilterSheet({
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: 10,
                     color: isActive ? "rgba(200,200,200,1)" : GREY_TEXT,
                   }}
                 >
@@ -1225,7 +1209,7 @@ function FilterSheet({
             </div>
           ) : (
             activeSubcats.map((sub) => {
-              const isChecked = selectedSubcategoryIDs.has(sub.id);
+              const isChecked = tempIDs.has(sub.id);
               const count = countBySubcategory(sub.id);
               return (
                 <div
@@ -1235,7 +1219,7 @@ function FilterSheet({
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    padding: "12px 14px",
+                    padding: "9px 10px",
                     borderBottom: `1px solid ${BORDER_COLOR}`,
                     cursor: "pointer",
                   }}
@@ -1243,8 +1227,8 @@ function FilterSheet({
                   {/* Custom checkbox */}
                   <div
                     style={{
-                      width: 18,
-                      height: 18,
+                      width: 16,
+                      height: 16,
                       borderRadius: 4,
                       border: `2px solid ${isChecked ? "#000" : "rgba(150,150,150,1)"}`,
                       background: isChecked ? "#000" : "transparent",
@@ -1255,7 +1239,7 @@ function FilterSheet({
                     }}
                   >
                     {isChecked && (
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
                         <path
                           d="M1 4L3.5 6.5L9 1"
                           stroke="white"
@@ -1267,17 +1251,17 @@ function FilterSheet({
                     )}
                   </div>
 
-                  <span style={{ flex: 1, fontSize: 13, color: "#000" }}>
+                  <span style={{ flex: 1, fontSize: 11, color: "#000" }}>
                     {sub.value}
                   </span>
 
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       color: GREY_TEXT,
                       background: LIGHT_BG,
                       borderRadius: 50,
-                      padding: "2px 8px",
+                      padding: "2px 6px",
                       flexShrink: 0,
                     }}
                   >
