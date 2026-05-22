@@ -28,6 +28,7 @@ export default function DashboardNewRequestButton() {
   const [projectID, setProjectID] = useState<string | number>("");
   const [requestedBy, setRequestedBy] = useState<string | number>("");
   const [requestedFor, setRequestedFor] = useState("");
+  const [deliveryLocation, setDeliveryLocation] = useState("");
   const [neededBy, setNeededBy] = useState("");
   const [skipApprovals, setSkipApprovals] = useState(false);
 
@@ -53,13 +54,16 @@ export default function DashboardNewRequestButton() {
     selectedDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return Math.ceil((selectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.ceil(
+      (selectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
   };
 
   const getDateWarning = () => {
     if (!neededBy || isDateValid()) return null;
     const daysDiff = getDaysDifference();
-    if (daysDiff !== null && daysDiff < 3) return "Minimum 3 days required for required date";
+    if (daysDiff !== null && daysDiff < 3)
+      return "Minimum 3 days required for required date";
   };
 
   const dateWarning = getDateWarning();
@@ -106,6 +110,7 @@ export default function DashboardNewRequestButton() {
         required_date: neededBy,
         purpose_id: purposeReasonID,
         skip_approvals: skipApprovals,
+        delivery_location: deliveryLocation || null,
       }),
     });
 
@@ -117,6 +122,7 @@ export default function DashboardNewRequestButton() {
       setPurposeReasonID("");
       setProjectID("");
       setNeededBy("");
+      setDeliveryLocation("");
       setMode("");
       setSkipApprovals(false);
       router.refresh();
@@ -142,7 +148,11 @@ export default function DashboardNewRequestButton() {
         borderRadius: "10px",
         padding: "16px 20px",
         cursor: disabled ? "not-allowed" : "pointer",
-        background: active ? "rgba(227,255,243,1)" : disabled ? "rgba(248,248,248,1)" : "white",
+        background: active
+          ? "rgba(227,255,243,1)"
+          : disabled
+            ? "rgba(248,248,248,1)"
+            : "white",
         display: "flex",
         alignItems: "center",
         gap: "16px",
@@ -188,11 +198,24 @@ export default function DashboardNewRequestButton() {
         />
       </div>
       <div style={{ flex: 1 }}>
-        <span style={{ fontSize: "15px", fontWeight: 600, color: "black", display: "block" }}>
+        <span
+          style={{
+            fontSize: "15px",
+            fontWeight: 600,
+            color: "black",
+            display: "block",
+          }}
+        >
           {label}
         </span>
         {disabled && (
-          <span style={{ fontSize: "11px", color: "rgba(150,150,150,1)", fontWeight: 500 }}>
+          <span
+            style={{
+              fontSize: "11px",
+              color: "rgba(150,150,150,1)",
+              fontWeight: 500,
+            }}
+          >
             COMING SOON
           </span>
         )}
@@ -202,9 +225,9 @@ export default function DashboardNewRequestButton() {
 
   return (
     <>
-      {/* Banner trigger button */}
+      {/* Banner trigger button — hidden on mobile */}
       <button
-        className="banner-new-request"
+        className="banner-new-request mobile-hide"
         onClick={() => {
           router.refresh();
           setIsOpen(true);
@@ -213,10 +236,41 @@ export default function DashboardNewRequestButton() {
         + NEW REQUEST
       </button>
 
+      {/* Mobile floating action button */}
+      <button
+        className="mobile-show"
+        onClick={() => {
+          router.refresh();
+          setIsOpen(true);
+        }}
+        style={{
+          position: "fixed",
+          bottom: "24px",
+          right: "20px",
+          width: "60px",
+          height: "60px",
+          borderRadius: "50%",
+          backgroundColor: "black",
+          color: "white",
+          border: "3px solid white",
+          fontSize: "42px",
+          fontWeight: "300",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          zIndex: 200,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+        }}
+        aria-label="New request"
+      >
+        +
+      </button>
+
       {/* Step 1 — Select request type */}
       {isOpen && (
         <FormPopUp
-          header={"SELECT REQUEST TYPE"}
+          header={"CREATE NEW REQUEST"}
           setIsOpen={setIsOpen}
           handleSubmit={(e) => {
             e.preventDefault();
@@ -229,7 +283,9 @@ export default function DashboardNewRequestButton() {
           }}
           addButtonLabel={"CONFIRM"}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
             {optionCard(false, true, jobIcon, "JOB ORDER", "job", () => {})}
             {optionCard(
               mode === "material",
@@ -239,7 +295,14 @@ export default function DashboardNewRequestButton() {
               "material",
               () => setMode("material"),
             )}
-            {optionCard(false, true, paymentIcon, "PAYMENT REQUEST", "payment", () => {})}
+            {optionCard(
+              false,
+              true,
+              paymentIcon,
+              "PAYMENT REQUEST",
+              "payment",
+              () => {},
+            )}
           </div>
         </FormPopUp>
       )}
@@ -286,7 +349,14 @@ export default function DashboardNewRequestButton() {
               required
               disabled
             />
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: 1 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "5px",
+                flex: 1,
+              }}
+            >
               <InputItem
                 label={"REQUIRED DATE"}
                 value={neededBy}
@@ -312,18 +382,50 @@ export default function DashboardNewRequestButton() {
             </div>
           )}
 
+          <div className="input-row full">
+            <InputItem
+              label="DELIVERY LOCATION"
+              value={deliveryLocation}
+              type="select"
+              placeholder="SELECT DELIVERY LOCATION"
+              onChange={(e) => setDeliveryLocation(e.target.value)}
+              selectOptions={[
+                "Headquarters",
+                "Umm Al Quwain Warehouse",
+                ...projects.map((p: any) => p.name),
+              ]}
+            />
+          </div>
+
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                marginTop: "8px",
+              }}
+            >
               <input
                 type="checkbox"
                 id="dashboard-skip-approvals"
                 checked={skipApprovals}
                 onChange={(e) => setSkipApprovals(e.target.checked)}
-                style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "rgba(0,163,93,1)", flexShrink: 0 }}
+                style={{
+                  width: "16px",
+                  height: "16px",
+                  cursor: "pointer",
+                  accentColor: "rgba(0,163,93,1)",
+                  flexShrink: 0,
+                }}
               />
               <label
                 htmlFor="dashboard-skip-approvals"
-                style={{ fontSize: "13px", cursor: "pointer", userSelect: "none" }}
+                style={{
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
               >
                 SKIP APPROVALS
               </label>

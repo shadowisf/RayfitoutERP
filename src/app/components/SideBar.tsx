@@ -10,7 +10,16 @@ interface SideBarProps {
 }
 
 export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
-  const { userInfo } = useAuth();
+  const { userInfo, logout } = useAuth();
+
+  const getInitials = (name?: string) => {
+    if (!name) return "?";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (
+      parts[0].charAt(0) + parts[parts.length - 1].charAt(0)
+    ).toUpperCase();
+  };
 
   const collapseMenuIcon = "/icons/collapse-menu.svg";
 
@@ -260,12 +269,16 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
           style={{
             opacity: isOpen ? 1 : 0,
             transition: "opacity 0.2s ease",
-            padding: "60px 20px 0px 20px",
             pointerEvents: isOpen ? "auto" : "none",
             position: "absolute",
             top: 0,
             left: 0,
             width: expandedWidth,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            padding: "60px 20px 0px 20px",
+            boxSizing: "border-box",
           }}
         >
           <h4 style={{ color: "rgba(92, 92, 92, 1)" }}>MENU</h4>
@@ -305,6 +318,103 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
               </button>
             ))}
           </div>
+
+          {/* Mobile-only: user profile + logout pinned to bottom */}
+          {isMobile && (
+            <div
+              style={{
+                marginTop: "auto",
+                paddingBottom: "24px",
+              }}
+            >
+              <hr
+                style={{
+                  border: "none",
+                  borderTop: "1px solid #e0e0e0",
+                  marginBottom: "16px",
+                }}
+              />
+
+              {/* User info */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    backgroundColor: "black",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    flexShrink: 0,
+                  }}
+                >
+                  {getInitials(userInfo?.name)}
+                </div>
+                <div style={{ overflow: "hidden" }}>
+                  <div
+                    style={{
+                      fontWeight: "600",
+                      fontSize: "14px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {userInfo?.name || "User"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "rgba(92, 92, 92, 1)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {userInfo?.role || ""}
+                  </div>
+                </div>
+              </div>
+
+              {/* Logout button */}
+              <button
+                onClick={logout}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "12px",
+                  border: "1px solid rgba(200, 200, 200, 1)",
+                  borderRadius: "100px",
+                  backgroundColor: "white",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "black",
+                }}
+              >
+                LOGOUT
+                <img
+                  src="/icons/logout.svg"
+                  alt="logout"
+                  style={{ width: "16px", height: "16px", filter: "invert(1)" }}
+                />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Collapsed Icon Strip */}

@@ -133,7 +133,7 @@ export default function LpoLinesView({
   // Conditionally hide columns when all rows have no value
   const hasAnyAttachment = allItems.some((item) => !!item.attachment);
   const hasAnyBrandSpecs = allItems.some(
-    (item) => !!(item.brand || item.specification),
+    (item) => !!item.specification,
   );
   const hasAnyQtyStocks = allItems.some((item) => {
     const proposedQty = Number(item.approved_proposed_quantity) || 0;
@@ -810,7 +810,7 @@ export default function LpoLinesView({
                 {hasAnyQtyStocks && <th>QTY STOCKS</th>}
                 <th>TOTAL QTY</th>
                 <th>BOQ REF.</th>
-                {hasAnyBrandSpecs && <th>BRAND & SPECS</th>}
+                {hasAnyBrandSpecs && <th>SPECS / NOTES</th>}
                 {hasAnyAttachment && <th>ATTACHMENT</th>}
                 {canSeePrice && <th>UNIT PRICE</th>}
                 {canSeePrice && <th>TOTAL PRICE</th>}
@@ -902,20 +902,15 @@ export default function LpoLinesView({
                     </td>
                     {hasAnyBrandSpecs && (
                       <td>
-                        {item.brand || item.specification ? (
+                        {item.specification ? (
                           <InfoPopUpButton
                             text={
                               <>
-                                <small>BRAND</small>
-                                <h2>{item.brand || "-"}</h2>
-
-                                <br />
-
-                                <small>SPECIFICATION</small>
+                                <small>SPECS / NOTES</small>
                                 <h2>{item.specification || "-"}</h2>
                               </>
                             }
-                            header="BRAND & SPECIFICATION"
+                            header="SPECS / NOTES"
                           />
                         ) : (
                           "-"

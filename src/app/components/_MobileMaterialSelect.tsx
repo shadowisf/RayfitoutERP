@@ -17,6 +17,7 @@ type MobileMaterialSelectProps = {
   onSelectItems: (items: PredefinedItem[]) => void;
   onClose: () => void;
   currentItemIDs?: number[];
+  singleSelect?: boolean;
 };
 
 type Category = { id: number; value: string };
@@ -28,6 +29,7 @@ export default function MobileMaterialSelect({
   onSelectItems,
   onClose,
   currentItemIDs = [],
+  singleSelect = false,
 }: MobileMaterialSelectProps) {
   const { userInfo } = useAuth();
 
@@ -224,6 +226,10 @@ export default function MobileMaterialSelect({
 
   // ── Toggle item selection ────────────────────────────────────────────────────
   const toggleItem = (item: PredefinedItem) => {
+    if (singleSelect) {
+      setSelectedItems([item]);
+      return;
+    }
     setSelectedItems((prev) => {
       const isSelected = prev.some((i) => i.id === item.id);
       if (isSelected) return prev.filter((i) => i.id !== item.id);
@@ -517,6 +523,7 @@ export default function MobileMaterialSelect({
             search={search}
             hasActiveFilter={selectedSubcategoryIDs.size > 0}
             onQuickAdd={() => setTab("quickadd")}
+            singleSelect={singleSelect}
           />
         ) : (
           <QuickAddTab
@@ -573,6 +580,7 @@ type LibraryTabProps = {
   search: string;
   hasActiveFilter: boolean;
   onQuickAdd: () => void;
+  singleSelect?: boolean;
 };
 
 const CHUNK_SIZE = 40;
@@ -585,6 +593,7 @@ function LibraryTab({
   onToggle,
   search,
   hasActiveFilter,
+  singleSelect,
 }: LibraryTabProps) {
   const BORDER_COLOR = "rgba(217,217,217,1)";
 
@@ -717,6 +726,7 @@ function LibraryTab({
               isSelected={selectedIDs.has(item.id)}
               onToggle={onToggle}
               showDivider
+              singleSelect={singleSelect}
             />
           ))}
           <br />
@@ -742,6 +752,7 @@ function LibraryTab({
           isSelected={selectedIDs.has(item.id)}
           onToggle={onToggle}
           showDivider
+          singleSelect={singleSelect}
         />
       ))}
 
@@ -760,6 +771,7 @@ type ItemRowProps = {
   isSelected: boolean;
   onToggle: (item: PredefinedItem) => void;
   showDivider: boolean;
+  singleSelect?: boolean;
 };
 
 const ItemRow = memo(function ItemRow({
@@ -767,6 +779,7 @@ const ItemRow = memo(function ItemRow({
   isSelected,
   onToggle,
   showDivider,
+  singleSelect,
 }: ItemRowProps) {
   const GREY_TEXT = "rgba(150,150,150,1)";
   const BORDER_COLOR = "rgba(217,217,217,1)";
@@ -835,38 +848,72 @@ const ItemRow = memo(function ItemRow({
       </div>
 
       {/* Toggle button */}
-      <button
-        type="button"
-        onClick={() => onToggle(item)}
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          border: "none",
-          background: isSelected ? "#000" : "rgba(237,237,237,1)",
-          color: isSelected ? "#fff" : "#000",
-          fontSize: 22,
-          fontWeight: 400,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          lineHeight: 1,
-          padding: 0,
-        }}
-        aria-label={isSelected ? "Remove item" : "Add item"}
-      >
-        {isSelected ? (
-          <img
-            src="/icons/cross-small.svg"
-            alt="remove"
-            style={{ width: 12, height: 12, filter: "invert(1)" }}
-          />
-        ) : (
-          "+"
-        )}
-      </button>
+      {singleSelect ? (
+        <button
+          type="button"
+          onClick={() => onToggle(item)}
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            border: `2px solid ${isSelected ? "#000" : "rgba(180,180,180,1)"}`,
+            background: "transparent",
+            cursor: "pointer",
+            flexShrink: 0,
+            padding: 0,
+            position: "relative",
+          }}
+          aria-label={isSelected ? "Selected" : "Select item"}
+        >
+          {isSelected && (
+            <div
+              style={{
+                width: 11,
+                height: 11,
+                borderRadius: "50%",
+                background: "#000",
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          )}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onToggle(item)}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            border: "none",
+            background: isSelected ? "#000" : "rgba(237,237,237,1)",
+            color: isSelected ? "#fff" : "#000",
+            fontSize: 22,
+            fontWeight: 400,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            lineHeight: 1,
+            padding: 0,
+          }}
+          aria-label={isSelected ? "Remove item" : "Add item"}
+        >
+          {isSelected ? (
+            <img
+              src="/icons/cross-small.svg"
+              alt="remove"
+              style={{ width: 12, height: 12, filter: "invert(1)" }}
+            />
+          ) : (
+            "+"
+          )}
+        </button>
+      )}
     </div>
   );
 });

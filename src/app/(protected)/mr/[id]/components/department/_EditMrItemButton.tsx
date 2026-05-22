@@ -152,6 +152,7 @@ export default function EditMrItemButton({
           currentItemIDs={
             item.predefined_item_id ? [item.predefined_item_id] : []
           }
+          singleSelect
         />
       )}
     </>

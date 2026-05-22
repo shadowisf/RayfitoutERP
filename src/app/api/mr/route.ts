@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { db } from "@/lib/db";
 
+function toTitleCase(str: string): string {
+  return str
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function normalizeStageNameForLog(stageName: string | null | undefined): string {
   if (!stageName) return "DRAFT";
   if (stageName.toUpperCase() === "INITIAL APPROVAL") return "DRAFT";
@@ -265,8 +273,8 @@ export async function POST(req: Request) {
 
       const headerQuery = `
       INSERT INTO mr_headers
-      (type, project_id, department_id, requested_by, requested_for, required_date, purpose_id, skip_approvals)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (type, project_id, department_id, requested_by, requested_for, required_date, purpose_id, skip_approvals, delivery_location)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
       const headerValues = [
@@ -278,6 +286,7 @@ export async function POST(req: Request) {
         body.required_date,
         Number(body.purpose_id),
         body.skip_approvals ? 1 : 0,
+        body.delivery_location || null,
       ];
 
       const [headerResult] = await db.query<ResultSetHeader>(
@@ -294,6 +303,14 @@ export async function POST(req: Request) {
 
     if (body.action === "createMrLine") {
       try {
+        // Pull delivery_location from mr_headers so new lines inherit it
+        const [headerRows]: any = await db.query(
+          `SELECT delivery_location FROM mr_headers WHERE id = ?`,
+          [Number(body.mr_header_id)],
+        );
+        const headerDeliveryLocation =
+          headerRows?.[0]?.delivery_location || body.delivery_location || null;
+
         // ✅ Insert the main mr_line WITHOUT boq_line_id
         const lineQuery = `
       INSERT INTO mr_lines
@@ -312,7 +329,7 @@ export async function POST(req: Request) {
           body.notes || null,
           body.specification || null,
           body.brand || null,
-          body.delivery_location || null,
+          headerDeliveryLocation,
           body.attachment || null,
           body.predefined_item_id ? Number(body.predefined_item_id) : null,
         ];
@@ -398,16 +415,19 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "createCategory") {
-      const query = "INSERT INTO lut_material_categories (value) VALUES (?)";
-      await db.query(query, [body.value]);
-      return NextResponse.json({ success: true });
+      const [result] = await db.query<ResultSetHeader>(
+        "INSERT INTO lut_material_categories (level_1, level_2, value) VALUES ('', '', ?)",
+        [toTitleCase(body.value)],
+      );
+      return NextResponse.json({ success: true, id: result.insertId });
     }
 
     if (body.action === "createSubCategory") {
-      const query =
-        "INSERT INTO lut_material_subcategories (category_id, value) VALUES (?, ?)";
-      await db.query(query, [body.category_id, body.value]);
-      return NextResponse.json({ success: true });
+      const [result] = await db.query<ResultSetHeader>(
+        "INSERT INTO lut_material_subcategories (category_id, value) VALUES (?, ?)",
+        [body.category_id, toTitleCase(body.value)],
+      );
+      return NextResponse.json({ success: true, id: result.insertId });
     }
 
     if (body.action === "getRecentlyUsedItems") {
@@ -907,6 +927,21 @@ export async function PUT(req: Request) {
             `${prefix} Submitted`,
             `Your ${formattedId} is awaiting QS review`,
           ],
+        );
+      }
+
+      // MR only: back-fill predefined item unit if it's currently null
+      if (!isPaymentType && body.type !== "job") {
+        await db.query(
+          `UPDATE lut_predefined_items pi
+           JOIN mr_lines ml ON ml.predefined_item_id = pi.id
+           SET pi.unit = ml.unit
+           WHERE ml.mr_header_id = ?
+             AND ml.predefined_item_id IS NOT NULL
+             AND (pi.unit IS NULL OR pi.unit = '')
+             AND ml.unit IS NOT NULL
+             AND ml.unit != ''`,
+          [body.id],
         );
       }
 
@@ -2212,24 +2247,20 @@ export async function PUT(req: Request) {
     if (body.action === "updateMrLineBrandSpec") {
       // Fetch old values before updating
       const [oldBsRows]: any = await db.query(
-        `SELECT mr_header_id, brand, specification FROM mr_lines WHERE id = ?`,
+        `SELECT mr_header_id, specification FROM mr_lines WHERE id = ?`,
         [Number(body.id)],
       );
       const oldBsLine = oldBsRows?.[0];
 
       await db.query(
-        `UPDATE mr_lines SET brand = ?, specification = ?, notes = ? WHERE id = ?`,
-        [body.brand || null, body.specification || null, body.notes || null, Number(body.id)],
+        `UPDATE mr_lines SET specification = ?, notes = ? WHERE id = ?`,
+        [body.specification || null, body.notes || null, Number(body.id)],
       );
 
       // ── Activity log: BRAND_SPEC_EDITED ───────────────────────────────────
       if (oldBsLine) {
-        const oldBs =
-          [oldBsLine.brand, oldBsLine.specification]
-            .filter(Boolean)
-            .join(" / ") || null;
-        const newBs =
-          [body.brand, body.specification].filter(Boolean).join(" / ") || null;
+        const oldBs = oldBsLine.specification || null;
+        const newBs = body.specification || null;
         await db.query(
           `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
            VALUES (?, ?, 'BRAND_SPEC_EDITED', ?, ?, ?, ?)`,

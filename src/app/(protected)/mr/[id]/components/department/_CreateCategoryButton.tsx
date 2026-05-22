@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type props = {
-  onSuccess?: () => void;
+  onSuccess?: (newId: number) => void;
 };
 
 export default function CreateCategoryButton({ onSuccess }: props) {
@@ -30,11 +30,13 @@ export default function CreateCategoryButton({ onSuccess }: props) {
       });
 
       if (res.ok) {
+        const data = await res.json();
         toast("Category created", "success");
         setIsOpen(false);
+        setValue("");
         router.refresh();
 
-        onSuccess && onSuccess();
+        onSuccess && onSuccess(data.id);
       } else {
         toast("Failed to create category", "error");
       }

@@ -76,7 +76,10 @@ export default function AddMrItemButton({
 
         if (!res.ok) {
           const err = await res.json();
-          toast(err.error || `Failed to add ${item.material_description}`, "error");
+          toast(
+            err.error || `Failed to add ${item.material_description}`,
+            "error",
+          );
           return;
         }
       }

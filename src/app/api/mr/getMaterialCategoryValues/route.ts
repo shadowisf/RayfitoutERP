@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
-    const [rows] = await db.query("SELECT * FROM lut_material_categories");
+    const [rows] = await db.query("SELECT * FROM lut_material_categories WHERE id >= 191");
 
     return NextResponse.json(rows, { status: 200 });
   } catch (err: any) {

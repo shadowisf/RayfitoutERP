@@ -13,6 +13,7 @@ type Props = {
   mrHeaderId: number;
   stageName?: string;
   onComplete?: () => void;
+  onReset?: () => void;
 };
 
 export default function DepartmentActionsButton({
@@ -20,6 +21,7 @@ export default function DepartmentActionsButton({
   mrHeaderId,
   stageName,
   onComplete,
+  onReset,
 }: Props) {
   const router = useRouter();
   const { userInfo } = useAuth();
@@ -185,7 +187,21 @@ export default function DepartmentActionsButton({
 
   return (
     <>
-      <div ref={actionsRef} style={{ position: "relative" }}>
+      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        {/* ── Reset button ─────────────────────────────────────────────────── */}
+        <Button
+          componentType="button"
+          bgColor={count === 0 ? "white" : "black"}
+          borderColor={count === 0 ? "rgba(211,211,211,1)" : "black"}
+          textColor={count === 0 ? "black" : "white"}
+          disabled={count === 0 || isLoading}
+          onClick={() => onReset?.()}
+        >
+          RESET
+        </Button>
+
+        {/* ── Actions dropdown ─────────────────────────────────────────────── */}
+        <div ref={actionsRef} style={{ position: "relative" }}>
         <Button
           componentType="button"
           bgColor={count === 0 ? "white" : "black"}
@@ -231,6 +247,7 @@ export default function DepartmentActionsButton({
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {deleteOpen && (

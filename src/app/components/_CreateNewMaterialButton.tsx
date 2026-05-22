@@ -209,7 +209,20 @@ export default function CreateNewMaterialButton({
           placeholder="SELECT CATEGORY"
           required
           style={{ width: "350px" }}
-          bottomButtonComponent={<CreateCategoryButton />}
+          bottomButtonComponent={
+            <CreateCategoryButton
+              onSuccess={(newId) => {
+                // Re-fetch categories and auto-select the new one
+                fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`)
+                  .then((res) => res.json())
+                  .then((data) => {
+                    setMaterialCategoryValues(data);
+                    setNewMatCategoryID(newId);
+                  })
+                  .catch(console.error);
+              }}
+            />
+          }
         />
         <SingleSelectDropdown
           label={"SUBCATEGORY"}
@@ -222,6 +235,26 @@ export default function CreateNewMaterialButton({
           bottomButtonComponent={
             <CreateSubCategoryButton
               materialCategoryID={Number(newMatCategoryID)}
+              onSuccess={(newId) => {
+                // Re-fetch subcategories for the current category and auto-select the new one
+                const url = newMatCategoryID
+                  ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`
+                  : `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`;
+                const opts = newMatCategoryID
+                  ? {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ category_id: newMatCategoryID }),
+                    }
+                  : { method: "GET", headers: { "Content-Type": "application/json" } };
+                fetch(url, opts)
+                  .then((res) => res.json())
+                  .then((data) => {
+                    setMaterialSubCategoryValues(data);
+                    setNewMatSubCategoryID(newId);
+                  })
+                  .catch(console.error);
+              }}
             />
           }
         />

@@ -19,13 +19,11 @@ export default function AddBrandAndSpecs({ item, stageName }: Props) {
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
-  const [brand, setBrand] = useState("");
   const [specification, setSpecification] = useState("");
 
-  const hasData = !!(item.brand || item.specification);
+  const hasData = !!item.specification;
 
   function openPopup() {
-    setBrand(item.brand || "");
     setSpecification(item.specification || "");
     setIsOpen(true);
   }
@@ -38,7 +36,6 @@ export default function AddBrandAndSpecs({ item, stageName }: Props) {
       body: JSON.stringify({
         action: "updateMrLineBrandSpec",
         id: item.id,
-        brand: brand.trim() || null,
         specification: specification.trim() || null,
         notes: item.notes || null,
         changed_by: userInfo?.name || null,
@@ -68,31 +65,20 @@ export default function AddBrandAndSpecs({ item, stageName }: Props) {
 
       {isOpen && (
         <FormPopUp
-          header="ADD BRAND, SEPCS, NOTES FOR MATERIAL REQUEST ITEM"
+          header="ADD SPECS / NOTES"
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel="CONFIRM"
         >
           <div className="input-row full">
             <InputItem
-              label="BRAND"
-              value={brand}
-              type="text"
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="Enter brand"
-            />
-          </div>
-
-          <div className="input-row full">
-            <InputItem
-              label="SPECIFICATION"
+              label="SPECS / NOTES"
               value={specification}
               type="textarea"
               onChange={(e) => setSpecification(e.target.value)}
               placeholder="Enter specification"
             />
           </div>
-
         </FormPopUp>
       )}
     </>
