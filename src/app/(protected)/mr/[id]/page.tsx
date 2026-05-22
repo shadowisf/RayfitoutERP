@@ -329,6 +329,10 @@ export default async function MrWithID({
           {String(mrHeader.id).padStart(5, "0")}
         </h1>
 
+        <div className="mobile-only">
+          <DeleteMrHeaderButton mrHeader={mrHeader} />
+        </div>
+
         <div className="mr-page-actions" style={{ display: "flex", gap: "10px" }}>
           {mrHeader?.progress_id !== 1 && mrHeader.progress_id !== 25 && (
             <CancelMaterialRequestButton

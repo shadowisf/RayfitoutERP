@@ -164,6 +164,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       // Finance dept (10) uses /finance as their home — highlight Dashboard when there
       extraPaths: userInfo?.departmentID === 10 ? ["/finance"] : undefined,
     },
+    /* TEMPORARILY HIDDEN ON MOBILE
     {
       label: "Procurement Tracker",
       path: "/mr",
@@ -183,16 +184,6 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       count: paymentUnpaidCount,
       visibleTo: [8, 16, 9, 10],
     },
-    /* {
-      label: "Local Purchase Orders",
-      path: "/lpo",
-      icon: "/icons/lpo.svg",
-    }, */
-    /* {
-      label: "Bill of Quantities",
-      path: "/boq",
-      icon: "/icons/boq.svg",
-    }, */
     {
       label: "Finances",
       path: "/finance",
@@ -205,16 +196,6 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       icon: "/icons/vendors.svg",
       visibleTo: [8, 16, 11, 9],
     },
-
-    /* TEMPORARILY DISABLED - Resolution Center
-    {
-      label: "Resolution Center",
-      path: "/resolution",
-      icon: "/icons/resolution-center.svg",
-      count: resolutionActionCount,
-    },
-    */
-
     {
       label: "Inventory",
       path: "/inventory",
@@ -222,6 +203,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
       count: inventoryActionCount,
       visibleTo: [8, 16, 11],
     },
+    */
   ];
 
   const visibleMenuItems = menuItems.filter(

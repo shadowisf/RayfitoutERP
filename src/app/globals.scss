@@ -470,6 +470,11 @@ button {
   display: none !important;
 }
 
+/* Hidden on desktop, visible on mobile */
+.mobile-only {
+  display: none !important;
+}
+
 /* MR detail page mobile-only elements — hidden on desktop */
 .timeline-subtitle {
   display: none;
@@ -1706,6 +1711,10 @@ label {
    MOBILE RESPONSIVE  (max-width: 768px)
    ═══════════════════════════════════════════ */
 @media (max-width: 768px) {
+  .mobile-only {
+    display: block !important;
+  }
+
   /* ── Navbar ── */
   .header {
     background-color: white;
@@ -1796,7 +1805,7 @@ label {
     top: 56px !important;
     height: calc(100dvh - 56px) !important;
     z-index: 300 !important;
-    width: 280px !important;
+    width: 300px !important;
     transform: translateX(-100%);
     transition: transform 0.3s ease !important;
     box-shadow: none;
@@ -1804,6 +1813,11 @@ label {
     &[data-open="true"] {
       transform: translateX(0);
       box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Override the 60px top padding reserved for the desktop toggle button */
+    > div:first-child {
+      padding-top: 24px !important;
     }
   }
 
@@ -1867,6 +1881,7 @@ label {
         width: 100% !important;
         justify-content: center !important;
       }
+
     }
 
     /* Hide cross icon — drag-to-dismiss replaces it */
@@ -1919,6 +1934,7 @@ label {
     padding-top: 12px !important;
     padding-bottom: 36px !important;
     z-index: 1 !important;
+    border-top: none !important;
 
     /* Remove the <br><br> spacer between stickyFooter and the button */
     br {
@@ -1977,7 +1993,8 @@ label {
     }
 
     /* Hide OVERVIEW heading on mobile (card titles are self-explanatory) */
-    .dashboard-section-header {
+    .dashboard-section-header,
+    .dashboard-section-subheader {
       display: none !important;
     }
 
@@ -2018,7 +2035,7 @@ label {
     /* First overview grid: overlaps the banner */
     .widget-grid.overview.dashboard-first-grid {
       @extend %widget-slider;
-      margin-top: -60px !important;
+      margin-top: -70px !important;
       position: relative;
       z-index: 2;
       padding-top: 4px !important;
@@ -2039,6 +2056,13 @@ label {
       }
     }
 
+    /* Quick Approvals — single widget, stretch to full available width */
+    .widget-grid.overview.manager-quick-approvals {
+      > * {
+        flex: 0 0 calc(100vw - 40px) !important;
+      }
+    }
+
     /* All other overview grids */
     .widget-grid.overview {
       @extend %widget-slider;
@@ -2055,6 +2079,11 @@ label {
     .widget-grid.active-projects {
       @extend %widget-slider;
       grid-template-columns: unset !important;
+    }
+
+    /* ── Hide specific dashboard slides on mobile ── */
+    .mobile-hide {
+      display: none !important;
     }
 
     /* ── Mobile group slider (Quick Approvals | Active Projects | Expected Deliveries) ── */
