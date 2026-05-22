@@ -54,6 +54,11 @@ type props = {
   currentItemIDs?: number[];
   disabled?: boolean;
   style?: React.CSSProperties;
+  /** Optional controlled open state — when provided the internal button is hidden */
+  isOpen?: boolean;
+  setIsOpen?: React.Dispatch<React.SetStateAction<boolean>>;
+  /** When true, items use radio buttons (single-select only) */
+  singleSelect?: boolean;
 };
 
 const ITEMS_PER_PAGE = 50;
@@ -63,6 +68,9 @@ export default function MultipleSelectMaterialItemButton({
   currentItemIDs = [],
   disabled,
   style,
+  isOpen: isOpenProp,
+  setIsOpen: setIsOpenProp,
+  singleSelect = false,
 }: props) {
   const { userInfo } = useAuth();
 
@@ -75,7 +83,10 @@ export default function MultipleSelectMaterialItemButton({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const catScrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpenInternal, setIsOpenInternal] = useState(false);
+  const isOpen = isOpenProp !== undefined ? isOpenProp : isOpenInternal;
+  const setIsOpen =
+    setIsOpenProp !== undefined ? setIsOpenProp : setIsOpenInternal;
 
   const [allItems, setAllItems] = useState<PredefinedItem[]>([]);
   const [groupedItems, setGroupedItems] = useState<GroupedItems>({});
@@ -506,11 +517,15 @@ export default function MultipleSelectMaterialItemButton({
 
   // Toggle individual item
   const handleCheckboxToggle = (itemId: number) => {
-    setTempSelectedIDs((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId],
-    );
+    if (singleSelect) {
+      setTempSelectedIDs([itemId]);
+    } else {
+      setTempSelectedIDs((prev) =>
+        prev.includes(itemId)
+          ? prev.filter((id) => id !== itemId)
+          : [...prev, itemId],
+      );
+    }
   };
 
   // Toggle entire subcategory
@@ -1340,7 +1355,7 @@ export default function MultipleSelectMaterialItemButton({
                 >
                   <td onClick={(e) => e.stopPropagation()}>
                     <input
-                      type="checkbox"
+                      type={singleSelect ? "radio" : "checkbox"}
                       checked={tempSelectedIDs.includes(item.id)}
                       onChange={() => handleCheckboxToggle(item.id)}
                       style={{
@@ -1364,39 +1379,41 @@ export default function MultipleSelectMaterialItemButton({
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={"black"}
-        borderColor={"black"}
-        textColor={"white"}
-        onClick={(e) => {
-          e.preventDefault();
-          setIsOpen(true);
-        }}
-        full={currentItemIDs.length === 0}
-        disabled={disabled}
-        style={style}
-      >
-        {currentItemIDs.length > 0 ? (
-          <>
-            EDIT
-            <img
-              src={pencilIcon}
-              alt="edit"
-              style={{ filter: "invert(1)", marginBottom: "2px" }}
-            />
-          </>
-        ) : (
-          <>
-            SELECT MATERIAL ITEMS
-            <img
-              src={externalLinkIcon}
-              alt="external link"
-              style={{ filter: "invert(1)", marginBottom: "2px" }}
-            />
-          </>
-        )}
-      </Button>
+      {isOpenProp === undefined && (
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
+          onClick={(e) => {
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+          full={currentItemIDs.length === 0}
+          disabled={disabled}
+          style={style}
+        >
+          {currentItemIDs.length > 0 ? (
+            <>
+              EDIT
+              <img
+                src={pencilIcon}
+                alt="edit"
+                style={{ filter: "invert(1)", marginBottom: "2px" }}
+              />
+            </>
+          ) : (
+            <>
+              SELECT MATERIAL ITEMS
+              <img
+                src={externalLinkIcon}
+                alt="external link"
+                style={{ filter: "invert(1)", marginBottom: "2px" }}
+              />
+            </>
+          )}
+        </Button>
+      )}
 
       {typeof window !== "undefined" &&
         modalContent &&

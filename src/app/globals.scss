@@ -918,7 +918,7 @@ label {
 .subcategory-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* justify-content: space-between; */
   gap: 25px;
 
   .right {
@@ -976,15 +976,23 @@ label {
       padding: 4px 12px;
       border-bottom: 1px solid rgba(239, 239, 239, 1);
 
-      &:first-child { padding-left: 0; }
-      &:last-child  { padding-right: 0; }
+      &:first-child {
+        padding-left: 0;
+      }
+      &:last-child {
+        padding-right: 0;
+      }
     }
 
     td {
       padding: 6px 12px;
 
-      &:first-child { padding-left: 0; }
-      &:last-child  { padding-right: 0; }
+      &:first-child {
+        padding-left: 0;
+      }
+      &:last-child {
+        padding-right: 0;
+      }
     }
   }
 
@@ -1171,7 +1179,6 @@ label {
       .brand-text {
         font-size: 28px;
         font-weight: 400;
-        letter-spacing: -0.5px;
 
         strong {
           font-weight: 700;
@@ -1408,7 +1415,6 @@ label {
   font-weight: 600;
   color: rgba(107, 114, 128, 1);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .search-category-badge {
@@ -1420,7 +1426,6 @@ label {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
 }
 
 .search-result-count {
@@ -1662,7 +1667,6 @@ label {
   small {
     font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
   }
 
   &.search-card-document {
@@ -1746,7 +1750,6 @@ label {
       text-align: center;
       font-size: 16px;
       font-weight: 400;
-      letter-spacing: -0.3px;
       color: black;
 
       strong {
@@ -1784,7 +1787,6 @@ label {
       justify-content: center;
       font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.5px;
       flex-shrink: 0;
     }
   }
@@ -1848,7 +1850,6 @@ label {
     /* entry animation — JS handles exit via transform transition */
     animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 
-
     /* Stack all half-width form rows vertically, remove grid gap */
     .input-row {
       gap: 0 !important;
@@ -1875,8 +1876,12 @@ label {
   }
 
   @keyframes sheet-up {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
   }
 
   /* Drag handle pill — larger touch target */
@@ -1979,7 +1984,6 @@ label {
     /* Section headings */
     h2 {
       font-size: 15px !important;
-      letter-spacing: 0.04em;
       margin-bottom: 4px;
     }
 
@@ -2058,8 +2062,8 @@ label {
       @extend %widget-slider;
 
       > .mobile-slide {
-        display: block !important;                         /* override display:contents */
-        flex: 0 0 calc(100vw - 64px) !important;          /* matches overview card width; 32px peek on right */
+        display: block !important; /* override display:contents */
+        flex: 0 0 calc(100vw - 64px) !important; /* matches overview card width; 32px peek on right */
         scroll-snap-align: start !important;
         min-width: 0;
         overflow: hidden;
@@ -2129,12 +2133,14 @@ label {
 
   /* ── MR Detail page (mr/[id]) ── */
   .dashboard {
-
     /* Compact breadcrumb h1 */
     h1 {
       font-size: 13px !important;
       font-weight: 400 !important;
-      a { color: rgba(150, 150, 150, 1); text-decoration: none; }
+      a {
+        color: rgba(150, 150, 150, 1);
+        text-decoration: none;
+      }
     }
 
     /* Hide desktop-only action buttons (Roll Back, Download) */
