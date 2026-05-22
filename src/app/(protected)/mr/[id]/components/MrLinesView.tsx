@@ -52,6 +52,11 @@ import ManagerPriceActionsButton from "./manager/_ManagerPriceActionsButton";
 import InventoryStatusCell, {
   InventoryMatch,
 } from "./department/_InventoryStatusCell";
+import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
+import AddBrandAndSpecs from "./department/_AddBrandAndSpecs";
+import AddMrLineAttachment from "./department/_AddMrLineAttachment";
+import DepartmentActionsButton from "./department/_DepartmentActionsButton";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -114,6 +119,74 @@ export default function MrLinesView({
   }, [rawMrLines, mrHeader.progress_id]);
 
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
+
+  // Inline editing state for REQ. QTY (keyed by mr_line id)
+  const [inlineQty, setInlineQty] = useState<Record<number, string>>({});
+  const [inlineUnit, setInlineUnit] = useState<Record<number, string>>({});
+
+  const isDeptEditable =
+    (mrHeader.progress_id === 1 ||
+      mrHeader.progress_id === 5 ||
+      mrHeader.progress_id === 11) &&
+    userInfo?.departmentID === mrHeader.department_id;
+
+  // Format a number string with thousand-separator commas
+  // Format a number string with thousand-separator commas.
+  // Trailing zeros are stripped (1000.000 → "1,000"), but a trailing dot
+  // is preserved so typing "1000." doesn't lose the decimal point mid-input.
+  const formatQtyWithCommas = (val: string | number): string => {
+    const s = String(val).replace(/,/g, "");
+    if (s === "") return "";
+    const hasTrailingDot = s.endsWith(".");
+    const num = parseFloat(s);
+    if (isNaN(num)) return s;
+    const numStr = String(num); // JS drops trailing zeros naturally
+    const [int, dec] = numStr.split(".");
+    const formattedInt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    let result = dec !== undefined ? `${formattedInt}.${dec}` : formattedInt;
+    if (hasTrailingDot && !result.includes(".")) result += ".";
+    return result;
+  };
+
+  // Whether this MR requires strict line validation before submit
+  const requireStrictValidation =
+    !!mrHeader.skip_approvals ||
+    mrHeader.department_id === 8 ||
+    mrHeader.department_id === 16;
+
+  const saveInlineQty = async (item: MrLine) => {
+    const qtyStr = inlineQty[item.id];
+    if (qtyStr === undefined) return; // unchanged
+    const qty = parseFloat(qtyStr.replace(/,/g, ""));
+    if (isNaN(qty) || qty < 0) return;
+    const unit = inlineUnit[item.id] ?? item.unit ?? "";
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "updateMrLineQuantity",
+        id: item.id,
+        quantity: qty,
+        unit,
+        changed_by: userInfo?.name || null,
+        stage_name: "INITIAL APPROVAL",
+      }),
+    });
+    router.refresh();
+  };
+
+  const saveInlineBoq = async (item: MrLine, boqLineIDs: number[]) => {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "updateMrLineBoqRef",
+        id: item.id,
+        boq_line_ids: boqLineIDs,
+      }),
+    });
+    router.refresh();
+  };
 
   const [showBySupplier, setShowBySupplier] = useState<boolean>(
     mrHeader.progress_id >= 12,
@@ -419,6 +492,7 @@ export default function MrLinesView({
 
   // Check if any item across all mrLines has an attachment
   const hasAnyAttachment = useMemo(() => {
+    if (isDeptEditable) return true;
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
         for (const supplier in mrLines[category][subCategory]) {
@@ -429,10 +503,11 @@ export default function MrLinesView({
       }
     }
     return false;
-  }, [mrLines]);
+  }, [mrLines, isDeptEditable]);
 
   // Check if any item has a brand or specification set
   const hasAnyBrandSpecs = useMemo(() => {
+    if (isDeptEditable) return true;
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
         for (const supplier in mrLines[category][subCategory]) {
@@ -443,7 +518,7 @@ export default function MrLinesView({
       }
     }
     return false;
-  }, [mrLines]);
+  }, [mrLines, isDeptEditable]);
 
   // Check if any item has QTY STOCKS (approved_proposed_quantity > quantity)
   const hasAnyQtyStocks = useMemo(() => {
@@ -466,6 +541,34 @@ export default function MrLinesView({
   const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(
     new Set(),
   );
+
+  // Draft — selected item IDs for dept bulk actions (progress_id 1)
+  const [selectedDraftItemIds, setSelectedDraftItemIds] = useState<Set<number>>(
+    new Set(),
+  );
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Mobile card accordion — expanded item IDs
+  const [expandedMobileItems, setExpandedMobileItems] = useState<Set<number>>(
+    new Set(),
+  );
+  const toggleMobileExpand = (id: number) => {
+    setExpandedMobileItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Procurement Quotations — selected item IDs (progress_id 7, dept 9)
   const [selectedProcurementItemIds, setSelectedProcurementItemIds] = useState<
@@ -2560,6 +2663,22 @@ export default function MrLinesView({
     return false;
   }
 
+  // Returns true if any line is missing qty, unit, or BOQ ref
+  function hasIncompleteLines() {
+    for (const category in mrLines) {
+      for (const subCategory in mrLines[category]) {
+        for (const supplier in mrLines[category][subCategory]) {
+          for (const item of mrLines[category][subCategory][supplier]) {
+            if (!item.quantity || Number(item.quantity) <= 0) return true;
+            if (!item.unit) return true;
+            if (!item.boq_line_ids) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   function hasAnyQSRejectedItems() {
     for (const category in mrLines) {
       for (const subCategory in mrLines[category]) {
@@ -2671,7 +2790,7 @@ export default function MrLinesView({
                 {(mrHeader.progress_id === 1 || mrHeader.progress_id === 5) &&
                   userInfo?.departmentID === mrHeader.department_id &&
                   showByItem && (
-                    <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {/* CATEGORY + SUBCATEGORY + ITEM */}
                       <AddMrItemButton
                         mrHeaderID={mrHeader.id}
@@ -2683,7 +2802,20 @@ export default function MrLinesView({
                       >
                         ADD ITEM +
                       </AddMrItemButton>
-                    </>
+
+                      {mrHeader.progress_id === 1 && !isMobile && (
+                        <DepartmentActionsButton
+                          selectedItems={getAllFlatItems().filter((i) =>
+                            selectedDraftItemIds.has(i.id),
+                          )}
+                          mrHeaderId={mrHeader.id}
+                          stageName={currentStageName}
+                          onComplete={() =>
+                            setSelectedDraftItemIds(new Set())
+                          }
+                        />
+                      )}
+                    </div>
                   )}
 
                 {/* QS Review — ACTIONS + DOWNLOAD inline with category tabs */}
@@ -2837,9 +2969,40 @@ export default function MrLinesView({
                               key={supplier}
                               style={{ marginBottom: "2rem" }}
                             >
+                              {!isMobile && (
                               <table className="items-table two-toned fixed-layout">
                                 <thead>
                                   <tr>
+                                    {mrHeader.progress_id === 1 &&
+                                      isDeptEditable && (
+                                        <th style={{ width: "24px" }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={
+                                              items.length > 0 &&
+                                              items.every((i) =>
+                                                selectedDraftItemIds.has(i.id),
+                                              )
+                                            }
+                                            onChange={(e) => {
+                                              const newSet = new Set(
+                                                selectedDraftItemIds,
+                                              );
+                                              items.forEach((i) => {
+                                                if (e.target.checked)
+                                                  newSet.add(i.id);
+                                                else newSet.delete(i.id);
+                                              });
+                                              setSelectedDraftItemIds(newSet);
+                                            }}
+                                            style={{
+                                              cursor: "pointer",
+                                              accentColor:
+                                                "rgba(0, 163, 93, 1)",
+                                            }}
+                                          />
+                                        </th>
+                                      )}
                                     {isQSReview && (
                                       <th style={{ width: "24px" }}>
                                         <input
@@ -2952,7 +3115,7 @@ export default function MrLinesView({
                                         )}
                                       </>
                                     ) : (
-                                      <th style={{ width: "120px" }}>
+                                      <th style={{ width: "150px" }}>
                                         REQ. QTY
                                       </th>
                                     )}
@@ -3118,6 +3281,34 @@ export default function MrLinesView({
                                     items.map(function (item, itemIndex) {
                                       return (
                                         <tr key={item.id}>
+                                          {/* Draft dept checkbox */}
+                                          {mrHeader.progress_id === 1 &&
+                                            isDeptEditable && (
+                                              <td>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={selectedDraftItemIds.has(
+                                                    item.id,
+                                                  )}
+                                                  onChange={(e) => {
+                                                    const newSet = new Set(
+                                                      selectedDraftItemIds,
+                                                    );
+                                                    if (e.target.checked)
+                                                      newSet.add(item.id);
+                                                    else newSet.delete(item.id);
+                                                    setSelectedDraftItemIds(
+                                                      newSet,
+                                                    );
+                                                  }}
+                                                  style={{
+                                                    cursor: "pointer",
+                                                    accentColor:
+                                                      "rgba(0, 163, 93, 1)",
+                                                  }}
+                                                />
+                                              </td>
+                                            )}
                                           {/* QS Review checkbox */}
                                           {isQSReview && (
                                             <td>
@@ -3311,6 +3502,99 @@ export default function MrLinesView({
                                                 </td>
                                               )}
                                             </>
+                                          ) : isDeptEditable ? (
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  border:
+                                                    "1px solid rgba(217,217,217,1)",
+                                                  borderRadius: "5px",
+                                                  backgroundColor: "white",
+                                                  overflow: "hidden",
+                                                }}
+                                              >
+                                                <input
+                                                  type="text"
+                                                  value={
+                                                    inlineQty[item.id] !==
+                                                    undefined
+                                                      ? inlineQty[item.id]
+                                                      : item.quantity > 0
+                                                        ? formatQtyWithCommas(
+                                                            item.quantity,
+                                                          )
+                                                        : ""
+                                                  }
+                                                  placeholder="ENTER QTY"
+                                                  onChange={(e) => {
+                                                    const raw =
+                                                      e.target.value.replace(
+                                                        /,/g,
+                                                        "",
+                                                      );
+                                                    if (
+                                                      raw === "" ||
+                                                      /^\d*\.?\d*$/.test(raw)
+                                                    )
+                                                      setInlineQty((prev) => ({
+                                                        ...prev,
+                                                        [item.id]: raw
+                                                          ? formatQtyWithCommas(
+                                                              raw,
+                                                            )
+                                                          : "",
+                                                      }));
+                                                  }}
+                                                  onBlur={() =>
+                                                    saveInlineQty(item)
+                                                  }
+                                                  style={{
+                                                    flex: 1,
+                                                    border: "none",
+                                                    borderRadius: 0,
+                                                    padding: "7px",
+                                                    background: "transparent",
+                                                    width: "125px",
+                                                  }}
+                                                />
+                                                <select
+                                                  value={
+                                                    inlineUnit[item.id] ??
+                                                    (item.unit
+                                                      ? mapPredefinedUnit(
+                                                          item.unit,
+                                                        )
+                                                      : "N/A")
+                                                  }
+                                                  onChange={(e) =>
+                                                    setInlineUnit((prev) => ({
+                                                      ...prev,
+                                                      [item.id]: e.target.value,
+                                                    }))
+                                                  }
+                                                  onBlur={() =>
+                                                    saveInlineQty(item)
+                                                  }
+                                                  style={{
+                                                    border: "none",
+                                                    borderRadius: 0,
+                                                    padding: "7px 4px",
+                                                    background: "transparent",
+                                                    cursor: "pointer",
+                                                  }}
+                                                >
+                                                  <option value="N/A">
+                                                    N/A
+                                                  </option>
+                                                  {UNIT_OPTIONS.map((u) => (
+                                                    <option key={u} value={u}>
+                                                      {u}
+                                                    </option>
+                                                  ))}
+                                                </select>
+                                              </div>
+                                            </td>
                                           ) : (
                                             <td>
                                               {formatNumber(item?.quantity)}{" "}
@@ -3318,7 +3602,23 @@ export default function MrLinesView({
                                             </td>
                                           )}
                                           <td>
-                                            {item.boq_line_ids ? (
+                                            {isDeptEditable ? (
+                                              <MultipleSelectBoqItemButton
+                                                projectID={mrHeader.project_id}
+                                                onSelectBoq={(ids) =>
+                                                  saveInlineBoq(item, ids)
+                                                }
+                                                currentBoqLineIDs={
+                                                  item.boq_line_ids
+                                                    ? String(item.boq_line_ids)
+                                                        .split(",")
+                                                        .map(Number)
+                                                        .filter(Boolean)
+                                                    : []
+                                                }
+                                                compact
+                                              />
+                                            ) : item.boq_line_ids ? (
                                               <BoqReferencePopUp
                                                 item={item}
                                                 mrHeader={mrHeader}
@@ -3329,48 +3629,59 @@ export default function MrLinesView({
                                           </td>
                                           {hasAnyBrandSpecs && (
                                             <td>
-                                              <div
-                                                style={{
-                                                  display: "flex",
-                                                  gap: "10px",
-                                                  alignItems: "center",
-                                                }}
-                                              >
-                                                {item.brand ||
-                                                item.specification ? (
-                                                  <InfoPopUpButton
-                                                    text={
-                                                      <>
-                                                        <small>BRAND</small>
-                                                        <h2>
-                                                          {item.brand || "-"}
-                                                        </h2>
-                                                        <br />
-                                                        <small>
-                                                          SPECIFICATION
-                                                        </small>
-                                                        <h2>
-                                                          {item.specification ||
-                                                            "-"}
-                                                        </h2>
-                                                      </>
-                                                    }
-                                                    header="BRAND & SPECIFICATION"
-                                                  />
-                                                ) : !isQSReview ? (
-                                                  <span>-</span>
-                                                ) : null}
-                                                {isQSReview && (
-                                                  <QSEditBrandSpecButton
-                                                    item={item}
-                                                  />
-                                                )}
-                                              </div>
+                                              {isDeptEditable ? (
+                                                <AddBrandAndSpecs
+                                                  item={item}
+                                                  stageName="INITIAL APPROVAL"
+                                                />
+                                              ) : (
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    gap: "10px",
+                                                    alignItems: "center",
+                                                  }}
+                                                >
+                                                  {item.brand ||
+                                                  item.specification ? (
+                                                    <InfoPopUpButton
+                                                      text={
+                                                        <>
+                                                          <small>BRAND</small>
+                                                          <h2>
+                                                            {item.brand || "-"}
+                                                          </h2>
+                                                          <br />
+                                                          <small>
+                                                            SPECIFICATION
+                                                          </small>
+                                                          <h2>
+                                                            {item.specification ||
+                                                              "-"}
+                                                          </h2>
+                                                        </>
+                                                      }
+                                                      header="BRAND & SPECIFICATION"
+                                                    />
+                                                  ) : !isQSReview ? (
+                                                    <span>-</span>
+                                                  ) : null}
+                                                  {isQSReview && (
+                                                    <QSEditBrandSpecButton
+                                                      item={item}
+                                                    />
+                                                  )}
+                                                </div>
+                                              )}
                                             </td>
                                           )}
                                           {hasAnyAttachment && (
                                             <td>
-                                              {item.attachment ? (
+                                              {isDeptEditable ? (
+                                                <AddMrLineAttachment
+                                                  item={item}
+                                                />
+                                              ) : item.attachment ? (
                                                 <Button
                                                   componentType={"link"}
                                                   bgColor={
@@ -4104,6 +4415,266 @@ export default function MrLinesView({
                                   </tfoot>
                                 )}
                               </table>
+                              )}
+
+                              {/* ── Mobile card accordion view ── */}
+                              {isMobile && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                  {Array.isArray(items) && items.map((item, itemIndex) => {
+                                    const isExpanded = expandedMobileItems.has(item.id);
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        style={{
+                                          border: "1px solid rgba(217,217,217,1)",
+                                          borderRadius: "8px",
+                                          overflow: "hidden",
+                                          backgroundColor: "rgba(245,245,245,1)",
+                                        }}
+                                      >
+                                        {/* Card header */}
+                                        <div
+                                          onClick={() => toggleMobileExpand(item.id)}
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "10px",
+                                            padding: "12px",
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              width: 32,
+                                              height: 32,
+                                              borderRadius: "8px",
+                                              backgroundColor: "white",
+                                              flexShrink: 0,
+                                              transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                                              transition: "transform 0.2s",
+                                            }}
+                                          >
+                                            <img
+                                              src="/icons/arrow-right.svg"
+                                              alt=""
+                                              style={{
+                                                width: 14,
+                                                height: 14,
+                                                filter: "brightness(0)",
+                                              }}
+                                            />
+                                          </div>
+                                          <span style={{ flex: 1, fontWeight: 600, fontSize: "13px" }}>
+                                            {itemIndex + 1}. {item.material_description}
+                                          </span>
+                                          {/* Qty + Unit pill */}
+                                          {isDeptEditable ? (
+                                            <div
+                                              onClick={(e) => e.stopPropagation()}
+                                              style={{
+                                                display: "flex",
+                                                border: "1px solid rgba(217,217,217,1)",
+                                                borderRadius: "5px",
+                                                backgroundColor: "white",
+                                                overflow: "hidden",
+                                                flexShrink: 0,
+                                              }}
+                                            >
+                                              <input
+                                                type="text"
+                                                value={
+                                                  inlineQty[item.id] !== undefined
+                                                    ? inlineQty[item.id]
+                                                    : item.quantity > 0
+                                                    ? formatQtyWithCommas(item.quantity)
+                                                    : ""
+                                                }
+                                                placeholder="QTY"
+                                                onChange={(e) => {
+                                                  const raw = e.target.value.replace(/,/g, "");
+                                                  if (raw === "" || /^\d*\.?\d*$/.test(raw))
+                                                    setInlineQty((prev) => ({
+                                                      ...prev,
+                                                      [item.id]: raw ? formatQtyWithCommas(raw) : "",
+                                                    }));
+                                                }}
+                                                onBlur={() => saveInlineQty(item)}
+                                                style={{
+                                                  width: "55px",
+                                                  border: "none",
+                                                  padding: "5px 6px",
+                                                  background: "transparent",
+                                                  fontSize: "12px",
+                                                }}
+                                              />
+                                              <select
+                                                value={inlineUnit[item.id] ?? (item.unit ? mapPredefinedUnit(item.unit) : "N/A")}
+                                                onChange={(e) =>
+                                                  setInlineUnit((prev) => ({ ...prev, [item.id]: e.target.value }))
+                                                }
+                                                onBlur={() => saveInlineQty(item)}
+                                                style={{
+                                                  border: "none",
+                                                  padding: "5px 4px",
+                                                  background: "transparent",
+                                                  cursor: "pointer",
+                                                  fontSize: "12px",
+                                                }}
+                                              >
+                                                <option value="N/A">N/A</option>
+                                                {UNIT_OPTIONS.map((u) => (
+                                                  <option key={u} value={u}>{u}</option>
+                                                ))}
+                                              </select>
+                                            </div>
+                                          ) : (
+                                            <span style={{ fontSize: "12px", color: "rgba(100,100,100,1)", flexShrink: 0 }}>
+                                              {formatNumber(item?.quantity)} {item.unit}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Expanded body */}
+                                        {isExpanded && (
+                                          <div
+                                            style={{
+                                              padding: "12px",
+                                              borderTop: "1px solid rgba(239,239,239,1)",
+                                              display: "flex",
+                                              flexDirection: "column",
+                                              gap: "12px",
+                                            }}
+                                          >
+                                            {/* Row 1: Inventory Status + BOQ Ref */}
+                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 0.5fr", gap: "12px" }}>
+                                              {/* Inventory Status */}
+                                              {mrHeader.progress_id === 1 && (
+                                                <div>
+                                                  <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
+                                                    Inventory Status
+                                                  </div>
+                                                  <InventoryStatusCell
+                                                    matches={
+                                                      itemInventoryStatus === null
+                                                        ? undefined
+                                                        : (itemInventoryStatus[item.material_description] ?? [])
+                                                    }
+                                                  />
+                                                </div>
+                                              )}
+
+                                              {/* BOQ Ref */}
+                                              <div>
+                                                <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
+                                                  BOQ Ref
+                                                </div>
+                                                {isDeptEditable ? (
+                                                  <MultipleSelectBoqItemButton
+                                                    projectID={mrHeader.project_id}
+                                                    onSelectBoq={(ids) => saveInlineBoq(item, ids)}
+                                                    currentBoqLineIDs={
+                                                      item.boq_line_ids
+                                                        ? String(item.boq_line_ids).split(",").map(Number).filter(Boolean)
+                                                        : []
+                                                    }
+                                                    compact
+                                                  />
+                                                ) : item.boq_line_ids ? (
+                                                  <BoqReferencePopUp item={item} mrHeader={mrHeader} />
+                                                ) : (
+                                                  <span style={{ fontSize: "12px" }}>-</span>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Row 2: Brand & Specs + Attachment */}
+                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 0.5fr", gap: "12px" }}>
+                                              {/* Brand & Specs */}
+                                              <div>
+                                                <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
+                                                  Brand & Specs
+                                                </div>
+                                                {isDeptEditable ? (
+                                                  <AddBrandAndSpecs item={item} stageName="INITIAL APPROVAL" />
+                                                ) : item.brand || item.specification ? (
+                                                  <InfoPopUpButton
+                                                    text={
+                                                      <>
+                                                        <small>BRAND</small>
+                                                        <h2>{item.brand || "-"}</h2>
+                                                        <br />
+                                                        <small>SPECIFICATION</small>
+                                                        <h2>{item.specification || "-"}</h2>
+                                                      </>
+                                                    }
+                                                    header="BRAND & SPECIFICATION"
+                                                  />
+                                                ) : (
+                                                  <span style={{ fontSize: "12px" }}>-</span>
+                                                )}
+                                              </div>
+
+                                              {/* Attachment */}
+                                              <div>
+                                                <div style={{ fontSize: "10px", color: "rgba(120,120,120,1)", fontWeight: 600, marginBottom: "6px", textTransform: "uppercase" }}>
+                                                  Attachment
+                                                </div>
+                                                {isDeptEditable ? (
+                                                  <AddMrLineAttachment item={item} />
+                                                ) : item.attachment ? (
+                                                  <Button
+                                                    componentType="link"
+                                                    bgColor="rgba(239,239,239,1)"
+                                                    borderColor="rgba(223,223,223,1)"
+                                                    textColor="black"
+                                                    style={{ padding: "7px 7px" }}
+                                                    href={item.attachment}
+                                                    target="_blank"
+                                                  >
+                                                    <img src={externalLinkIcon} alt="external link" />
+                                                  </Button>
+                                                ) : (
+                                                  <span style={{ fontSize: "12px" }}>-</span>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Edit / Delete actions (draft only) */}
+                                            {isDeptEditable && (
+                                              <>
+                                                <br /><br />
+                                                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                                <EditMrItemButton
+                                                  item={item}
+                                                  bgColor="rgba(239,239,239,1)"
+                                                  borderColor="rgba(223,223,223,1)"
+                                                  textColor="black"
+                                                  stageName={currentStageName}
+                                                >
+                                                  <img src={pencilIcon} alt="edit" />
+                                                </EditMrItemButton>
+                                                <DeleteMrItemButton
+                                                  item={item}
+                                                  bgColor="rgba(239,239,239,1)"
+                                                  borderColor="rgba(223,223,223,1)"
+                                                  textColor="black"
+                                                  stageName={currentStageName}
+                                                >
+                                                  <img src={trashIcon} alt="delete" />
+                                                </DeleteMrItemButton>
+                                              </div>
+                                              </>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
 
                               {isManagerPriceApproval &&
                                 items.filter((i) =>
@@ -5958,7 +6529,10 @@ export default function MrLinesView({
           )}
 
         {/* ── Duplicate empty table (same columns as main table, no rows) ── */}
-        <table className="items-table two-toned fixed-layout" style={{ minHeight: 0 }}>
+        <table
+          className="items-table two-toned fixed-layout"
+          style={{ minHeight: 0 }}
+        >
           <colgroup>
             {isQSReview && <col style={{ width: "24px" }} />}
             {isProcurementQuotations && <col style={{ width: "24px" }} />}
@@ -6018,18 +6592,20 @@ export default function MrLinesView({
                 <col style={{ width: "100px" }} />
                 <col style={{ width: "100px" }} />
                 <col style={{ width: "100px" }} />
-                {userInfo?.departmentID === 9 && <col style={{ width: "160px" }} />}
+                {userInfo?.departmentID === 9 && (
+                  <col style={{ width: "160px" }} />
+                )}
               </>
             )}
             {mrHeader.progress_id === 9 && userInfo?.departmentID === 16 && (
               <col style={{ width: "160px" }} />
             )}
-            {mrHeader.progress_id >= 10 && canSeePrice && !isManagerPriceApproval && (
-              <col style={{ width: "100px" }} />
-            )}
-            {mrHeader.progress_id >= 10 && canSeePrice && !isManagerPriceApproval && (
-              <col style={{ width: "100px" }} />
-            )}
+            {mrHeader.progress_id >= 10 &&
+              canSeePrice &&
+              !isManagerPriceApproval && <col style={{ width: "100px" }} />}
+            {mrHeader.progress_id >= 10 &&
+              canSeePrice &&
+              !isManagerPriceApproval && <col style={{ width: "100px" }} />}
             {isManagerPriceApproval && (
               <>
                 <col style={{ width: "100px" }} />
@@ -6055,11 +6631,15 @@ export default function MrLinesView({
           </colgroup>
           <tbody />
           {mrHeader.progress_id >= 10 && canSeePrice && (
-            <tfoot
-              style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}
-            >
+            <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
               <tr>
-                <td colSpan={isManagerPriceApproval ? subtotalLabelColSpan + 4 : subtotalLabelColSpan} />
+                <td
+                  colSpan={
+                    isManagerPriceApproval
+                      ? subtotalLabelColSpan + 4
+                      : subtotalLabelColSpan
+                  }
+                />
                 <td style={{ fontWeight: "600" }}>MR VALUE</td>
                 <td style={{ fontWeight: "600" }}>
                   {formatPriceAED(
@@ -6073,7 +6653,6 @@ export default function MrLinesView({
             </tfoot>
           )}
         </table>
-
       </div>
       {/* end mr-with-id */}
 
@@ -6091,32 +6670,37 @@ export default function MrLinesView({
               // If any item has BOQ → Submit for QS Approval
               <SubmitForQSApprovalButton
                 mrHeader={mrHeader}
-                disabled={hasAnyRejectedItems() || hasAnyQSRejectedItems()}
-                style={{
-                  opacity:
-                    hasAnyRejectedItems() || hasAnyQSRejectedItems()
-                      ? "0.5"
-                      : "1",
-                  cursor:
-                    hasAnyRejectedItems() || hasAnyQSRejectedItems()
-                      ? "not-allowed"
-                      : "pointer",
-                  pointerEvents:
-                    hasAnyRejectedItems() || hasAnyQSRejectedItems()
-                      ? "none"
-                      : "auto",
-                }}
+                disabled={
+                  hasAnyRejectedItems() ||
+                  hasAnyQSRejectedItems() ||
+                  (requireStrictValidation && hasIncompleteLines())
+                }
               />
             ) : (
               // If no items have BOQ → Submit directly to Manager Approval
               <SubmitForInitialApprovalButton
                 mrHeader={mrHeader}
                 progressId={mrHeader.progress_id}
-                disabled={hasAnyRejectedItems()}
+                disabled={
+                  hasAnyRejectedItems() ||
+                  (requireStrictValidation && hasIncompleteLines())
+                }
                 style={{
-                  opacity: hasAnyRejectedItems() ? "0.5" : "1",
-                  cursor: hasAnyRejectedItems() ? "not-allowed" : "pointer",
-                  pointerEvents: hasAnyRejectedItems() ? "none" : "auto",
+                  opacity:
+                    hasAnyRejectedItems() ||
+                    (requireStrictValidation && hasIncompleteLines())
+                      ? "0.5"
+                      : "1",
+                  cursor:
+                    hasAnyRejectedItems() ||
+                    (requireStrictValidation && hasIncompleteLines())
+                      ? "not-allowed"
+                      : "pointer",
+                  pointerEvents:
+                    hasAnyRejectedItems() ||
+                    (requireStrictValidation && hasIncompleteLines())
+                      ? "none"
+                      : "auto",
                 }}
               />
             )}
@@ -6158,7 +6742,10 @@ export default function MrLinesView({
             <SubmitForQuotationsButton
               mrHeader={mrHeader}
               progressId={mrHeader.progress_id}
-              disabled={!allItemsApproved()}
+              disabled={
+                !allItemsApproved() ||
+                (requireStrictValidation && hasIncompleteLines())
+              }
               label={(() => {
                 const allItems = getAllFlatItems();
                 const hasItemAvailable = allItems.some(
@@ -6168,11 +6755,6 @@ export default function MrLinesView({
                   ? "SUBMIT FOR STOCK TRANSFER"
                   : "SUBMIT FOR QUOTATIONS";
               })()}
-              style={{
-                opacity: !allItemsApproved() ? "0.5" : "1",
-                cursor: !allItemsApproved() ? "not-allowed" : "pointer",
-                pointerEvents: !allItemsApproved() ? "none" : "auto",
-              }}
             />
           )}
         </div>

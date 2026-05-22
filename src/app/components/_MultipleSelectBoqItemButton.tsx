@@ -1505,9 +1505,9 @@ export default function MultipleSelectBoqItemButton({
       {compact ? (
         <Button
           componentType={"button"}
-          bgColor={"black"}
-          borderColor={"black"}
-          textColor={"white"}
+          bgColor={"rgb(239, 239, 239)"}
+          borderColor={"rgb(223, 223, 223)"}
+          textColor={"black"}
           onClick={(e) => {
             (e as React.MouseEvent).preventDefault();
             setIsOpen(true);
@@ -1516,17 +1516,9 @@ export default function MultipleSelectBoqItemButton({
           style={{ padding: "7px 7px", ...style }}
         >
           {currentBoqLineIDs.length > 0 ? (
-            <img
-              src="/icons/pencil.svg"
-              alt="edit boq"
-              style={{ filter: "invert(1)" }}
-            />
+            <img src="/icons/pencil.svg" alt="edit boq" />
           ) : (
-            <img
-              src={externalLinkIcon}
-              alt="select boq"
-              style={{ filter: "invert(1)" }}
-            />
+            <img src="/icons/plus.svg" alt="select boq" />
           )}
         </Button>
       ) : (

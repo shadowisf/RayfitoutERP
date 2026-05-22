@@ -2187,6 +2187,28 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "updateMrLineBoqRef") {
+      await db.query(
+        `DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`,
+        [Number(body.id)],
+      );
+      const boqLineIds = Array.isArray(body.boq_line_ids)
+        ? body.boq_line_ids
+        : body.boq_line_ids
+          ? [body.boq_line_ids]
+          : [];
+      const validBoqLineIds = (boqLineIds as any[]).filter(
+        (id) => id && !isNaN(Number(id)),
+      );
+      if (validBoqLineIds.length > 0) {
+        await db.query(
+          `INSERT INTO jt_mr_lines_boq_lines (mr_line_id, boq_line_id) VALUES ?`,
+          [validBoqLineIds.map((boqId: any) => [Number(body.id), Number(boqId)])],
+        );
+      }
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateMrLineBrandSpec") {
       // Fetch old values before updating
       const [oldBsRows]: any = await db.query(
@@ -2196,8 +2218,8 @@ export async function PUT(req: Request) {
       const oldBsLine = oldBsRows?.[0];
 
       await db.query(
-        `UPDATE mr_lines SET brand = ?, specification = ? WHERE id = ?`,
-        [body.brand || null, body.specification || null, Number(body.id)],
+        `UPDATE mr_lines SET brand = ?, specification = ?, notes = ? WHERE id = ?`,
+        [body.brand || null, body.specification || null, body.notes || null, Number(body.id)],
       );
 
       // ── Activity log: BRAND_SPEC_EDITED ───────────────────────────────────
@@ -2222,6 +2244,14 @@ export async function PUT(req: Request) {
         );
       }
 
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "updateMrLineAttachment") {
+      await db.query(
+        `UPDATE mr_lines SET attachment = ? WHERE id = ?`,
+        [body.attachment || null, Number(body.id)],
+      );
       return NextResponse.json({ success: true });
     }
 

@@ -461,16 +461,24 @@ export default function MobileMaterialSelect({
         setIsOpen={(open) => {
           if (!open) onClose();
         }}
-        handleSubmit={handleConfirm}
+        handleSubmit={tab === "quickadd" ? handleQuickAddSubmit : handleConfirm}
         addButtonLabel={"CONFIRM"}
         stickyFooter={tab === "library" ? searchAndFilterFooter : undefined}
       >
-        {/* Hidden validity gate — disables CONFIRM when nothing selected on library tab */}
+        {/* Hidden validity gate */}
         <input
           type="text"
           required
           readOnly
-          value={tab === "library" && selectedItems.length > 0 ? "x" : ""}
+          value={
+            (tab === "library" && selectedItems.length > 0) ||
+            (tab === "quickadd" &&
+              !!newMatDescription.trim() &&
+              !!newMatCategoryID &&
+              !!newMatSubCategoryID)
+              ? "x"
+              : ""
+          }
           tabIndex={-1}
           style={{
             position: "absolute",
@@ -570,6 +578,10 @@ export default function MobileMaterialSelect({
             newMatBrand={newMatBrand}
             setNewMatBrand={setNewMatBrand}
             inventorySuggestion={inventorySuggestion}
+            onUseSuggestion={(desc) => {
+              setNewMatDescription(desc);
+              setInventorySuggestion(null);
+            }}
             isSubmitting={isSubmittingNew}
             onSubmit={handleQuickAddSubmit}
             GREY_TEXT={GREY_TEXT}
@@ -803,7 +815,15 @@ function ItemRow({ item, isSelected, onToggle, showDivider }: ItemRowProps) {
         }}
         aria-label={isSelected ? "Remove item" : "Add item"}
       >
-        {isSelected ? "×" : "+"}
+        {isSelected ? (
+          <img
+            src="/icons/cross-small.svg"
+            alt="remove"
+            style={{ width: 12, height: 12, filter: "invert(1)" }}
+          />
+        ) : (
+          "+"
+        )}
       </button>
     </div>
   );
@@ -825,6 +845,7 @@ type QuickAddTabProps = {
   newMatBrand: string;
   setNewMatBrand: (v: string) => void;
   inventorySuggestion: { id: number; description: string } | null;
+  onUseSuggestion: (description: string) => void;
   isSubmitting: boolean;
   onSubmit: (e: React.FormEvent) => void;
   GREY_TEXT: string;
@@ -845,80 +866,28 @@ function QuickAddTab({
   newMatBrand,
   setNewMatBrand,
   inventorySuggestion,
+  onUseSuggestion,
   isSubmitting,
   onSubmit,
   GREY_TEXT,
   BORDER_COLOR,
 }: QuickAddTabProps) {
   return (
-    <form
-      onSubmit={onSubmit}
-      style={{
-        padding: "16px 16px 24px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-      }}
-    >
-      {/* CATEGORY */}
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 6,
-          }}
-        >
-          <label
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-
-              color: "#000",
-            }}
-          >
-            CATEGORY <span style={{ color: "red" }}>*</span>
-          </label>
-          <CreateCategoryButton />
-        </div>
+    <div>
+      <br />
+      <br />
+      <div className="input-row half">
         <SingleSelectDropdown
-          label=""
+          label="CATEGORY"
           dbData={categories}
           selectedValue={newMatCategoryID}
           onChange={setNewMatCategoryID}
           placeholder="SELECT CATEGORY"
           required
+          bottomButtonComponent={<CreateCategoryButton />}
         />
-      </div>
-
-      {/* SUBCATEGORY */}
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 6,
-          }}
-        >
-          <label
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#000",
-            }}
-          >
-            SUBCATEGORY <span style={{ color: "red" }}>*</span>
-          </label>
-          {newMatCategoryID ? (
-            <CreateSubCategoryButton
-              materialCategoryID={Number(newMatCategoryID)}
-            />
-          ) : null}
-        </div>
         <SingleSelectDropdown
-          label=""
+          label="SUBCATEGORY"
           dbData={quickAddSubcategories}
           selectedValue={newMatSubCategoryID}
           onChange={setNewMatSubCategoryID}
@@ -926,78 +895,107 @@ function QuickAddTab({
             newMatCategoryID ? "SELECT SUBCATEGORY" : "Select a category first"
           }
           required
+          bottomButtonComponent={
+            newMatCategoryID ? (
+              <CreateSubCategoryButton
+                materialCategoryID={Number(newMatCategoryID)}
+              />
+            ) : undefined
+          }
         />
       </div>
 
-      {/* NAME */}
-      <div>
+      <div className="input-row half">
         <InputItem
           label="NAME"
           value={newMatDescription}
           type="text"
           onChange={(e) => setNewMatDescription(e.target.value)}
           required
-          placeholder="Enter material name"
+          itooltip={
+            <p>
+              Use standardized naming format.
+              <br />
+              <br />
+              Example: <br />
+              MATERIAL NAME – SIZE / VARIATION
+              <br />
+              <br />
+              Avoid using brand or supplier names unless required.
+            </p>
+          }
         />
-        {inventorySuggestion && (
-          <div
-            style={{
-              marginTop: 6,
-              padding: "6px 10px",
-              background: "rgba(239,239,239,1)",
-              borderRadius: 8,
-              fontSize: 11,
-              color: GREY_TEXT,
-            }}
-          >
-            Inventory match:{" "}
-            <strong style={{ color: "#000" }}>
-              {inventorySuggestion.description}
-            </strong>
-          </div>
-        )}
+        <InputItem
+          label="UNIT"
+          value={newMatUnit}
+          type="select"
+          onChange={(e) => setNewMatUnit(e.target.value)}
+          placeholder="SELECT UNIT"
+          selectOptions={[...UNIT_OPTIONS]}
+        />
       </div>
 
-      {/* UNIT */}
-      <InputItem
-        label="UNIT"
-        value={newMatUnit}
-        type="select"
-        onChange={(e) => setNewMatUnit(e.target.value)}
-        placeholder="SELECT UNIT"
-        selectOptions={[...UNIT_OPTIONS]}
-      />
+      {inventorySuggestion && (
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: 12,
+            fontSize: 10,
+            fontStyle: "italic",
+            color: GREY_TEXT,
+          }}
+        >
+          Possible match in material database:&nbsp;
+          <span style={{ fontWeight: 600, color: "#000", fontStyle: "normal" }}>
+            &ldquo;{inventorySuggestion.description}&rdquo;
+          </span>
+          &nbsp;
+          <a
+            href={`/inventory/${inventorySuggestion.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              verticalAlign: "middle",
+            }}
+          >
+            <img
+              src="/icons/external-link.svg"
+              alt="open"
+              style={{ width: 9, height: 9 }}
+            />
+          </a>
+          &nbsp;&nbsp;
+          <button
+            type="button"
+            onClick={() => onUseSuggestion(inventorySuggestion.description)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "rgba(36,160,237,1)",
+              fontStyle: "normal",
+              fontWeight: 600,
+              fontSize: 10,
+              textDecoration: "underline",
+            }}
+          >
+            Use This Item
+          </button>
+        </div>
+      )}
 
-      {/* BRAND */}
-      <InputItem
-        label="BRAND"
-        value={newMatBrand}
-        type="text"
-        onChange={(e) => setNewMatBrand(e.target.value)}
-        placeholder="Enter brand (optional)"
-      />
-
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        style={{
-          width: "100%",
-          padding: "14px",
-          background: isSubmitting ? "rgba(150,150,150,1)" : "#000",
-          color: "#fff",
-          border: "none",
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: isSubmitting ? "default" : "pointer",
-
-          marginTop: 8,
-        }}
-      >
-        {isSubmitting ? "CREATING…" : "CREATE & ADD MATERIAL"}
-      </button>
-    </form>
+      <div className="input-row full">
+        <InputItem
+          label="BRAND"
+          value={newMatBrand}
+          type="text"
+          onChange={(e) => setNewMatBrand(e.target.value)}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1010,7 +1008,9 @@ type FilterSheetProps = {
   activeCategoryFilter: number | null;
   setActiveCategoryFilter: (id: number) => void;
   selectedSubcategoryIDs: Set<number>;
-  setSelectedSubcategoryIDs: (s: Set<number> | ((prev: Set<number>) => Set<number>)) => void;
+  setSelectedSubcategoryIDs: (
+    s: Set<number> | ((prev: Set<number>) => Set<number>),
+  ) => void;
   filteredCount: number;
   onClose: () => void;
   BORDER_COLOR: string;
