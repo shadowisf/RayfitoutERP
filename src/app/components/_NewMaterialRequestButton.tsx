@@ -33,6 +33,7 @@ export default function NewMrButton() {
   const [requestedBy, setRequestedBy] = useState<string | number>("");
   const [requestedFor, setRequestedFor] = useState("");
   const [neededBy, setNeededBy] = useState("");
+  const [deliveryLocation, setDeliveryLocation] = useState("");
   const [selectedJoId, setSelectedJoId] = useState<string | number>("");
   const [skipApprovals, setSkipApprovals] = useState(false);
 
@@ -192,7 +193,10 @@ export default function NewMrButton() {
         requested_for: mode === "material" ? requestedFor || null : null,
         required_date: neededBy,
         purpose_id: purposeReasonID,
-        skip_approvals: (mode === "material" || mode === "job") ? skipApprovals : false,
+        skip_approvals:
+          mode === "material" || mode === "job" ? skipApprovals : false,
+        delivery_location:
+          mode === "material" ? deliveryLocation || null : null,
       }),
     });
 
@@ -209,6 +213,7 @@ export default function NewMrButton() {
       setPurposeReasonID("");
       setProjectID("");
       setNeededBy("");
+      setDeliveryLocation("");
       setMode("");
       setSkipApprovals(false);
 
@@ -553,25 +558,16 @@ export default function NewMrButton() {
               disabled
             />
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "5px",
-                flex: 1,
-              }}
-            >
-              <InputItem
-                label={"REQUIRED DATE"}
-                value={neededBy}
-                type={"date"}
-                placeholder={"ENTER DATE"}
-                min={new Date().toISOString().split("T")[0]}
-                onChange={(e) => setNeededBy(e.target.value)}
-                required
-                style={dateWarning ? { borderColor: "red" } : undefined}
-              />
-            </div>
+            <InputItem
+              label={"REQUIRED DATE"}
+              value={neededBy}
+              type={"date"}
+              placeholder={"ENTER DATE"}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) => setNeededBy(e.target.value)}
+              required
+              style={dateWarning ? { borderColor: "red" } : undefined}
+            />
           </div>
 
           {mode === "material" &&
@@ -587,6 +583,23 @@ export default function NewMrButton() {
                 />
               </div>
             )}
+
+          {mode === "material" && (
+            <div className="input-row full">
+              <InputItem
+                label="DELIVERY LOCATION"
+                value={deliveryLocation}
+                type="select"
+                placeholder="SELECT DELIVERY LOCATION"
+                onChange={(e) => setDeliveryLocation(e.target.value)}
+                selectOptions={[
+                  "Headquarters",
+                  "Umm Al Quwain Warehouse",
+                  ...(projects as any[]).map((p: any) => p.name),
+                ]}
+              />
+            </div>
+          )}
 
           {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) &&
             (mode === "material" || mode === "job") && (

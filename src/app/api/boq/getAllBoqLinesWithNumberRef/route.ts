@@ -4,10 +4,10 @@ import { db } from "@/lib/db";
 export async function GET() {
   try {
     const [rows]: any = await db.query(
-      `SELECT * FROM vw_boq_lines ORDER BY 
-    category_order ASC, 
-    subcategory_order ASC, 
-    item_order ASC`,
+      `SELECT bl.* FROM vw_boq_lines bl
+       JOIN boq_headers bh ON bh.id = bl.boq_id
+       WHERE bh.is_draft = 0
+       ORDER BY bl.category_order ASC, bl.subcategory_order ASC, bl.item_order ASC`,
     );
 
     // Track numbering per project
@@ -107,14 +107,17 @@ export async function POST(req: Request) {
       [rows] = await db.query(
         `SELECT bl.*, COALESCE(jjbl.subcontracted_qty, 0) AS subcontracted_qty
          FROM vw_boq_lines bl
+         JOIN boq_headers bh ON bh.id = bl.boq_id
          LEFT JOIN jt_jo_lines_boq_lines jjbl
            ON jjbl.boq_line_id = bl.id AND jjbl.jo_line_id = ?
-         WHERE bl.project_id = ?`,
+         WHERE bl.project_id = ? AND bh.is_draft = 0`,
         [jo_line_id, project_id],
       );
     } else {
       [rows] = await db.query(
-        `SELECT * FROM vw_boq_lines WHERE project_id = ?`,
+        `SELECT bl.* FROM vw_boq_lines bl
+         JOIN boq_headers bh ON bh.id = bl.boq_id
+         WHERE bl.project_id = ? AND bh.is_draft = 0`,
         [project_id],
       );
     }

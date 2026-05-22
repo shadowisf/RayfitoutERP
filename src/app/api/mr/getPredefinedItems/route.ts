@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { ResultSetHeader } from "mysql2";
 import { db } from "@/lib/db";
 
+function toTitleCase(str: string): string {
+  return str
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export async function GET(req: NextRequest) {
   try {
     const [rows] = await db.query(
@@ -31,8 +39,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { item_code, material_description, category_id, subcategory_id, unit, brand } =
-      body;
+    const { item_code, category_id, subcategory_id, unit, brand } = body;
+    const material_description = body.material_description
+      ? toTitleCase(body.material_description)
+      : body.material_description;
 
     if (!material_description || !category_id || !subcategory_id) {
       return NextResponse.json(

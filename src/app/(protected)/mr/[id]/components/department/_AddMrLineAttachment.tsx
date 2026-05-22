@@ -80,7 +80,7 @@ export default function AddMrLineAttachment({ item }: Props) {
 
       {isOpen && (
         <FormPopUp
-          header="UPLOAD ATTACHMENT FOR MATERIAL REQUEST ITEM"
+          header="UPLOAD ATTACHMENT"
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
           addButtonLabel="CONFIRM"

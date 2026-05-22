@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type props = {
-  onSuccess?: () => void;
+  onSuccess?: (newId: number) => void;
   materialCategoryID: number;
 };
 
@@ -35,11 +35,13 @@ export default function CreateSubCategoryButton({
       });
 
       if (res.ok) {
+        const data = await res.json();
         toast("Subcategory created", "success");
         setIsOpen(false);
+        setValue("");
         router.refresh();
 
-        onSuccess && onSuccess();
+        onSuccess && onSuccess(data.id);
       } else {
         toast("Failed to create subcategory", "error");
       }
