@@ -89,7 +89,14 @@ export default function LpoLinesView({
   const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(true);
 
   // Checkbox selection (awaiting delivery stage only)
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(
+    new Set(),
+  );
+
+  // Stock button coordination: trigger a single-row AddToInventoryButton to open,
+  // and refresh all AddToInventoryButton instances after a bulk add
+  const [stockTriggerItemId, setStockTriggerItemId] = useState<number | null>(null);
+  const [stockRefreshKey, setStockRefreshKey] = useState(0);
 
   // LPO invoice status
   const [lpoInvoiceStatus, setLpoInvoiceStatus] = useState<{
@@ -135,7 +142,8 @@ export default function LpoLinesView({
 
   // Conditionally hide columns when all rows have no value
   const hasAnyAttachment = allItems.some((item) => !!item.attachment);
-  const hasAnyBrandSpecs = progressId === 17 || allItems.some((item) => !!item.specification);
+  const hasAnyBrandSpecs =
+    progressId === 17 || allItems.some((item) => !!item.specification);
   const hasAnyQtyStocks = allItems.some((item) => {
     const proposedQty = Number(item.approved_proposed_quantity) || 0;
     const requestedQty = Number(item.quantity) || 0;
@@ -162,7 +170,8 @@ export default function LpoLinesView({
   // TEMPORARILY DISABLED QC/CR columns
   const hasQcColumn = false; // was: userInfo?.departmentID === 12 && progressId === 21;
   const hasCrColumn = false; // was: progressId >= 21;
-  const hasStocksColumn = (progressId === 17 || progressId === 24) && userInfo?.departmentID === 11;
+  const hasStocksColumn =
+    (progressId === 17 || progressId === 24) && userInfo?.departmentID === 11;
   const actionColumnCount = [hasQcColumn, hasCrColumn, hasStocksColumn].filter(
     Boolean,
   ).length;
@@ -172,7 +181,10 @@ export default function LpoLinesView({
 
   // Total visible columns in the table
   const totalVisibleColumns =
-    BASE_COLUMN_COUNT + priceColumnCount + actionColumnCount + (hasCheckboxColumn ? 1 : 0);
+    BASE_COLUMN_COUNT +
+    priceColumnCount +
+    actionColumnCount +
+    (hasCheckboxColumn ? 1 : 0);
 
   // For summary rows: we need to span across the base columns to align with price columns
   // If prices are visible, SUBTOTAL label aligns with UNIT PRICE (column 11)
@@ -723,21 +735,41 @@ export default function LpoLinesView({
               {/* At Awaiting Delivery (17) and Stock Entry stage (24) show Documents popup + GRN button */}
               {progressId === 17 || progressId === 24 ? (
                 <>
+                  <DocumentsPopup lpoId={lpoId} />
                   {progressId === 17 && userInfo?.departmentID === 11 && (
                     <>
-                      <StorekeeperActionsButton
-                        selectedItemIds={selectedItemIds}
-                        setSelectedItemIds={setSelectedItemIds}
-                        allItems={displayItems}
-                      />
                       <CreateGRNButton
                         mrHeader={lpoAsMrHeader}
                         mrLines={allItems}
                         progress_id={progressId}
                       />
+                      <Button
+                        componentType="button"
+                        bgColor={selectedItemIds.size === 0 ? "white" : "black"}
+                        borderColor={
+                          selectedItemIds.size === 0
+                            ? "rgba(211,211,211,1)"
+                            : "black"
+                        }
+                        textColor={
+                          selectedItemIds.size === 0 ? "black" : "white"
+                        }
+                        disabled={selectedItemIds.size === 0}
+                        onClick={() => setSelectedItemIds(new Set())}
+                      >
+                        RESET
+                      </Button>
+                      <StorekeeperActionsButton
+                        selectedItemIds={selectedItemIds}
+                        setSelectedItemIds={setSelectedItemIds}
+                        allItems={displayItems}
+                        hasGrn={hasGrn}
+                        inventoryStatus={inventoryStatus}
+                        onSingleItemStock={(itemId) => setStockTriggerItemId(itemId)}
+                        onStockAdded={() => setStockRefreshKey((k) => k + 1)}
+                      />
                     </>
                   )}
-                  <DocumentsPopup lpoId={lpoId} />
                 </>
               ) : (
                 <>
@@ -816,9 +848,10 @@ export default function LpoLinesView({
               {hasAnyAttachment && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
-              {(progressId === 17 || progressId === 24) && userInfo?.departmentID === 11 && (
-                <col style={{ width: "150px" }} />
-              )}
+              {(progressId === 17 || progressId === 24) &&
+                userInfo?.departmentID === 11 && (
+                  <col style={{ width: "150px" }} />
+                )}
             </colgroup>
             <thead>
               <tr>
@@ -833,7 +866,9 @@ export default function LpoLinesView({
                       }
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedItemIds(new Set(displayItems.map((i) => i.id)));
+                          setSelectedItemIds(
+                            new Set(displayItems.map((i) => i.id)),
+                          );
                         } else {
                           setSelectedItemIds(new Set());
                         }
@@ -859,9 +894,15 @@ export default function LpoLinesView({
               )}
               {hasCrColumn && <th>CR</th>}
               */}
-                {(progressId === 17 || progressId === 24) && userInfo?.departmentID === 11 && (
-                  <th>STOCKS</th>
-                )}
+                {(progressId === 17 || progressId === 24) &&
+                  userInfo?.departmentID === 11 && (
+                    <th>
+                      STOCKS
+                      {progressId === 17 && (
+                        <span style={{ color: "red", marginLeft: "3px" }}>*</span>
+                      )}
+                    </th>
+                  )}
               </tr>
             </thead>
             <tbody>
@@ -1014,11 +1055,18 @@ export default function LpoLinesView({
                   )}
                   */}
 
-                    {userInfo?.departmentID === 11 && (progressId === 17 || progressId === 24) && (
-                      <td>
-                        <AddToInventoryButton mrLine={item} />
-                      </td>
-                    )}
+                    {userInfo?.departmentID === 11 &&
+                      (progressId === 17 || progressId === 24) && (
+                        <td>
+                          <AddToInventoryButton
+                            mrLine={item}
+                            disabled={progressId === 17 && !hasGrn}
+                            forceOpen={stockTriggerItemId === item.id}
+                            onForceOpenHandled={() => setStockTriggerItemId(null)}
+                            refreshKey={stockRefreshKey}
+                          />
+                        </td>
+                      )}
                   </tr>
                 );
               })}
@@ -1143,6 +1191,7 @@ export default function LpoLinesView({
             style={{ minHeight: 0 }}
           >
             <colgroup>
+              {hasCheckboxColumn && <col style={{ width: "45px" }} />}
               <col style={{ width: "75px" }} />
               <col style={{ width: "175px" }} />
               <col style={{ width: "175px" }} />
@@ -1155,9 +1204,10 @@ export default function LpoLinesView({
               {hasAnyAttachment && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
-              {(progressId === 17 || progressId === 24) && userInfo?.departmentID === 11 && (
-                <col style={{ width: "150px" }} />
-              )}
+              {(progressId === 17 || progressId === 24) &&
+                userInfo?.departmentID === 11 && (
+                  <col style={{ width: "150px" }} />
+                )}
             </colgroup>
             <tbody />
             <tfoot style={{ borderTop: "1px solid rgba(239, 239, 239, 1)" }}>
@@ -1259,11 +1309,22 @@ export default function LpoLinesView({
               mrLineItems={lpoLines}
               lpoId={lpoId}
               label="SUBMIT FOR COMPLETION"
-              disabled={!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()}
+              disabled={
+                !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+              }
               style={{
-                opacity: (!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()) ? "0.5" : "1",
-                cursor: (!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()) ? "not-allowed" : "pointer",
-                pointerEvents: (!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()) ? "none" : "auto",
+                opacity:
+                  !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+                    ? "0.5"
+                    : "1",
+                cursor:
+                  !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+                    ? "not-allowed"
+                    : "pointer",
+                pointerEvents:
+                  !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+                    ? "none"
+                    : "auto",
               }}
             />
           )}

@@ -15,12 +15,20 @@ type Props = {
   selectedItemIds: Set<number>;
   setSelectedItemIds: (ids: Set<number>) => void;
   allItems: MrLine[];
+  hasGrn?: boolean;
+  inventoryStatus?: { [itemId: number]: boolean };
+  onSingleItemStock?: (itemId: number) => void;
+  onStockAdded?: () => void;
 };
 
 export default function StorekeeperActionsButton({
   selectedItemIds,
   setSelectedItemIds,
   allItems,
+  hasGrn = false,
+  inventoryStatus = {},
+  onSingleItemStock,
+  onStockAdded,
 }: Props) {
   const { userInfo } = useAuth();
   const router = useRouter();
@@ -66,7 +74,11 @@ export default function StorekeeperActionsButton({
       .then((data) => setLocationValues(data.map((p: any) => p.name)));
   }, []);
 
-  const selectedItems = allItems.filter((item) => selectedItemIds.has(item.id));
+  // Only include items that are selected AND don't already have stock
+  const selectedItems = allItems.filter(
+    (item) => selectedItemIds.has(item.id) && !inventoryStatus[item.id],
+  );
+  const eligibleCount = selectedItems.length;
 
   async function handleAddStock(e: React.FormEvent) {
     e.preventDefault();
@@ -146,6 +158,7 @@ export default function StorekeeperActionsButton({
       setInventoryItemID("");
       setLocation("");
       setNotes("");
+      onStockAdded?.();
       router.refresh();
     } catch {
       toast("Failed to add stock for some items", "error");
@@ -200,20 +213,58 @@ export default function StorekeeperActionsButton({
           <div style={dropdownStyle}>
             <button
               type="button"
-              style={dropdownItemStyle}
+              style={{
+                ...dropdownItemStyle,
+                opacity: !hasGrn || eligibleCount === 0 ? 0.4 : 1,
+                cursor: !hasGrn || eligibleCount === 0 ? "not-allowed" : "pointer",
+              }}
+              disabled={!hasGrn || eligibleCount === 0}
               onClick={() => {
+                if (!hasGrn || eligibleCount === 0) return;
                 setActionsOpen(false);
+                // Single eligible item: delegate to the row's own AddToInventoryButton
+                if (eligibleCount === 1 && onSingleItemStock) {
+                  onSingleItemStock(selectedItems[0].id);
+                  return;
+                }
                 setAddStockOpen(true);
               }}
-              onMouseEnter={(e) =>
-                ((e.target as HTMLElement).style.backgroundColor =
-                  "rgba(245,245,245,1)")
-              }
+              onMouseEnter={(e) => {
+                if (hasGrn && eligibleCount > 0)
+                  (e.target as HTMLElement).style.backgroundColor =
+                    "rgba(245,245,245,1)";
+              }}
               onMouseLeave={(e) =>
-                ((e.target as HTMLElement).style.backgroundColor = "transparent")
+                ((e.target as HTMLElement).style.backgroundColor =
+                  "transparent")
               }
             >
-              Add Stock ({selectedItemIds.size})
+              Add Stock ({eligibleCount})
+              {!hasGrn ? (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    fontWeight: "400",
+                    color: "rgba(175,61,61,1)",
+                    marginTop: "2px",
+                  }}
+                >
+                  GRN required
+                </span>
+              ) : eligibleCount === 0 ? (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    fontWeight: "400",
+                    color: "rgba(150,150,150,1)",
+                    marginTop: "2px",
+                  }}
+                >
+                  All selected have stock
+                </span>
+              ) : null}
             </button>
           </div>
         )}
