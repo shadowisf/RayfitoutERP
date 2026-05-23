@@ -13,6 +13,10 @@ import CreateInventoryItemButton from "@/app/(protected)/inventory/components/_C
 
 type AddToStockButtonProps = {
   mrLine: MrLine;
+  disabled?: boolean;
+  forceOpen?: boolean;
+  onForceOpenHandled?: () => void;
+  refreshKey?: number;
 };
 
 type ExistingStock = {
@@ -24,7 +28,13 @@ type ExistingStock = {
   notes: string;
 };
 
-export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
+export default function AddToStockButton({
+  mrLine,
+  disabled = false,
+  forceOpen,
+  onForceOpenHandled,
+  refreshKey,
+}: AddToStockButtonProps) {
   const { userInfo } = useAuth();
 
   const router = useRouter();
@@ -118,6 +128,21 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
   useEffect(() => {
     checkExistingStock();
   }, [mrLine.id]);
+
+  // Open this button programmatically (e.g. triggered by single-item actions button)
+  useEffect(() => {
+    if (forceOpen) {
+      setIsOpen(true);
+      onForceOpenHandled?.();
+    }
+  }, [forceOpen]);
+
+  // Re-check existing stock when a bulk add completes externally
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      checkExistingStock();
+    }
+  }, [refreshKey]);
 
   // Load existing stock data when modal opens in edit mode
   useEffect(() => {
@@ -244,8 +269,14 @@ export default function AddToStockButton({ mrLine }: AddToStockButtonProps) {
         bgColor={"rgba(239, 239, 239, 1)"}
         borderColor={"rgba(207, 207, 207, 1)"}
         textColor={"black"}
-        onClick={() => setIsOpen(true)}
-        style={{ borderRadius: "5px", padding: "7px 7px" }}
+        onClick={() => !disabled && setIsOpen(true)}
+        disabled={disabled}
+        style={{
+          borderRadius: "5px",
+          padding: "7px 7px",
+          opacity: disabled ? 0.4 : 1,
+          cursor: disabled ? "not-allowed" : "pointer",
+        }}
       >
         <img src={isEditMode ? pencilIcon : plusIcon} alt="plus or pencil" />
       </Button>

@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     const [rows] = await db.query(
-      "SELECT * FROM lut_material_subcategories WHERE category_id = ? AND category_id >= 191",
+      "SELECT * FROM lut_material_subcategories WHERE category_id = ?",
       [body.category_id]
     );
 
