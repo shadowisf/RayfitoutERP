@@ -95,7 +95,9 @@ export default function LpoLinesView({
 
   // Stock button coordination: trigger a single-row AddToInventoryButton to open,
   // and refresh all AddToInventoryButton instances after a bulk add
-  const [stockTriggerItemId, setStockTriggerItemId] = useState<number | null>(null);
+  const [stockTriggerItemId, setStockTriggerItemId] = useState<number | null>(
+    null,
+  );
   const [stockRefreshKey, setStockRefreshKey] = useState(0);
 
   // LPO invoice status
@@ -765,7 +767,9 @@ export default function LpoLinesView({
                         allItems={displayItems}
                         hasGrn={hasGrn}
                         inventoryStatus={inventoryStatus}
-                        onSingleItemStock={(itemId) => setStockTriggerItemId(itemId)}
+                        onSingleItemStock={(itemId) =>
+                          setStockTriggerItemId(itemId)
+                        }
                         onStockAdded={() => setStockRefreshKey((k) => k + 1)}
                       />
                     </>
@@ -899,7 +903,9 @@ export default function LpoLinesView({
                     <th>
                       STOCKS
                       {progressId === 17 && (
-                        <span style={{ color: "red", marginLeft: "3px" }}>*</span>
+                        <span style={{ color: "red", marginLeft: "3px" }}>
+                          *
+                        </span>
                       )}
                     </th>
                   )}
@@ -1062,7 +1068,9 @@ export default function LpoLinesView({
                             mrLine={item}
                             disabled={progressId === 17 && !hasGrn}
                             forceOpen={stockTriggerItemId === item.id}
-                            onForceOpenHandled={() => setStockTriggerItemId(null)}
+                            onForceOpenHandled={() =>
+                              setStockTriggerItemId(null)
+                            }
                             refreshKey={stockRefreshKey}
                           />
                         </td>

@@ -2286,6 +2286,57 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "updateMrLineDescription") {
+      const { id, material_description, predefined_item_id, changed_by, stage_name } = body;
+
+      if (!material_description?.trim()) {
+        return NextResponse.json({ error: "Description is required" }, { status: 400 });
+      }
+
+      const [oldRows]: any = await db.query(
+        `SELECT mr_header_id, material_description FROM mr_lines WHERE id = ?`,
+        [Number(id)],
+      );
+      const oldLine = oldRows?.[0];
+
+      if (predefined_item_id) {
+        // Update the predefined item's description — affects all mr_lines using it
+        await db.query(
+          `UPDATE lut_predefined_items SET material_description = ? WHERE id = ?`,
+          [material_description.trim(), Number(predefined_item_id)],
+        );
+        // Also sync all mr_lines that reference this predefined item
+        await db.query(
+          `UPDATE mr_lines SET material_description = ? WHERE predefined_item_id = ?`,
+          [material_description.trim(), Number(predefined_item_id)],
+        );
+      } else {
+        // No predefined item — update this mr_line directly
+        await db.query(
+          `UPDATE mr_lines SET material_description = ? WHERE id = ?`,
+          [material_description.trim(), Number(id)],
+        );
+      }
+
+      // Activity log
+      if (oldLine) {
+        await db.query(
+          `INSERT INTO mr_line_activity_log (mr_header_id, mr_line_id, activity_type, handled_by, stage_name, old_value, new_value)
+           VALUES (?, ?, 'DESCRIPTION_EDITED', ?, ?, ?, ?)`,
+          [
+            oldLine.mr_header_id,
+            Number(id),
+            changed_by || null,
+            normalizeStageNameForLog(stage_name),
+            oldLine.material_description,
+            material_description.trim(),
+          ],
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
     return NextResponse.json(
       { error: `Unknown action: ${body.action}` },
       { status: 400 },
