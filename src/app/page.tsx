@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Login from "./components/Login";
 import { useAuth } from "./context/AuthContext";
+import LoadingSpinner from "./components/LoadingSpinner";
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -16,18 +17,7 @@ export default function Home() {
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <p>Loading...</p>
-      </div>
-    );
+    return <LoadingSpinner size={32} style={{ minHeight: "100vh" }} />;
   }
 
   if (isAuthenticated) {

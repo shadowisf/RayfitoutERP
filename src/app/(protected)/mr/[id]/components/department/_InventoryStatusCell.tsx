@@ -87,24 +87,35 @@ export default function InventoryStatusCell({ matches }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [expanded]);
 
+  // Recalculate dropdown position from the pill's current bounding rect
+  const recalcPosition = useCallback(() => {
+    if (pillRef.current) {
+      const rect = pillRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: "fixed",
+        top: rect.bottom + 6,
+        left: rect.left,
+        width: "max-content",
+        minWidth: rect.width,
+        zIndex: 99999,
+      });
+    }
+  }, []);
+
+  // Keep dropdown pinned to the pill while any ancestor scrolls
+  useEffect(() => {
+    if (!expanded) return;
+    window.addEventListener("scroll", recalcPosition, true);
+    return () => window.removeEventListener("scroll", recalcPosition, true);
+  }, [expanded, recalcPosition]);
+
   const toggle = useCallback(() => {
     if (!expanded) {
-      // Broadcast to close all others
       window.dispatchEvent(new CustomEvent(CLOSE_OTHERS, { detail: uid.current }));
-      // Calculate dropdown position from pill rect
-      if (pillRef.current) {
-        const rect = pillRef.current.getBoundingClientRect();
-        setDropdownStyle({
-          position: "fixed",
-          top: rect.bottom + 6,
-          left: rect.left,
-          width: rect.width,
-          zIndex: 99999,
-        });
-      }
+      recalcPosition();
     }
     setExpanded((v) => !v);
-  }, [expanded]);
+  }, [expanded, recalcPosition]);
 
   if (matches === undefined) {
     return <div style={{ width: "120px", height: "30px" }} />;
@@ -151,7 +162,7 @@ export default function InventoryStatusCell({ matches }: Props) {
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "7px", flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: "11px", fontWeight: 500, color: "#111", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span style={{ fontSize: "11px", fontWeight: 500, color: "#111", whiteSpace: "nowrap" }}>
                   {m.inventory_description} ({m.total_qty} {m.unit})
                 </span>
                 <a href={`/inventory/${m.inventory_item_id}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>

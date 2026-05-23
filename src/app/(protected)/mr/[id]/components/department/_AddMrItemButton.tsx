@@ -21,6 +21,7 @@ type AddMrItemButtonProps = {
   full?: boolean;
   style?: React.CSSProperties;
   stageName?: string;
+  downloadButton?: React.ReactNode;
 };
 
 export default function AddMrItemButton({
@@ -32,6 +33,7 @@ export default function AddMrItemButton({
   full,
   style,
   stageName,
+  downloadButton,
 }: AddMrItemButtonProps) {
   const router = useRouter();
   const { userInfo } = useAuth();
@@ -120,6 +122,7 @@ export default function AddMrItemButton({
         currentItemIDs={[]}
         isOpen={isMaterialPickerOpen}
         setIsOpen={setIsMaterialPickerOpen}
+        downloadButton={downloadButton}
       />
 
       {/* Mobile — bottom sheet material picker */}

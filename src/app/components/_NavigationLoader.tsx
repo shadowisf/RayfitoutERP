@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import LoadingSpinner from "./LoadingSpinner";
 
 export default function NavigationLoader({
   children,
@@ -20,25 +21,10 @@ export default function NavigationLoader({
   return (
     <>
       {isLoading && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "60vh",
-          }}
-        >
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              border: "3px solid rgba(0,0,0,0.12)",
-              borderTop: "3px solid black",
-              borderRadius: "50%",
-              animation: "spin 0.7s linear infinite",
-            }}
-          />
-        </div>
+        <LoadingSpinner
+          size={32}
+          style={{ minHeight: "60vh" }}
+        />
       )}
       <div style={{ display: isLoading ? "none" : "block" }}>{children}</div>
     </>

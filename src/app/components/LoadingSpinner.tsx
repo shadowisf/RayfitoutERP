@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 
 type LoadingSpinnerProps = {
@@ -31,12 +33,6 @@ export default function LoadingSpinner({
           animation: "spin 0.7s linear infinite",
         }}
       />
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,30 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 
 type MrFilterButtonProps = {
   availableProjects: { id: number; name: string }[];
+  availableRequesters: string[];
   onApplyFilters: (filters: {
-    itemsRequestedIn: string;
-    selectedDepartments: number[];
-    selectedProjects: number[];
-    requestType: string;
+    selectedTypes: string[];
     selectedStages: number[];
+    selectedProjects: number[];
+    selectedShow: string[];
+    selectedRequesters: string[];
   }) => void;
   currentFilters: {
-    itemsRequestedIn: string;
-    selectedDepartments: number[];
-    selectedProjects: number[];
-    requestType: string;
+    selectedTypes: string[];
     selectedStages: number[];
+    selectedProjects: number[];
+    selectedShow: string[];
+    selectedRequesters: string[];
   };
 };
 
 export default function MrFilterButton({
   availableProjects,
+  availableRequesters,
   onApplyFilters,
   currentFilters,
 }: MrFilterButtonProps) {
@@ -32,82 +34,97 @@ export default function MrFilterButton({
   const filterIcon = "/icons/filter.svg";
 
   const [isOpen, setIsOpen] = useState(false);
-  const [itemsRequestedIn, setItemsRequestedIn] = useState<string>(
-    currentFilters.itemsRequestedIn,
-  );
-  const [selectedDepartments, setSelectedDepartments] = useState<number[]>(
-    currentFilters.selectedDepartments,
-  );
-  const [selectedProjects, setSelectedProjects] = useState<number[]>(
-    currentFilters.selectedProjects,
-  );
-  const [requestType, setRequestType] = useState<string>(
-    currentFilters.requestType,
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(
+    currentFilters.selectedTypes,
   );
   const [selectedStages, setSelectedStages] = useState<number[]>(
     currentFilters.selectedStages,
   );
+  const [selectedProjects, setSelectedProjects] = useState<number[]>(
+    currentFilters.selectedProjects,
+  );
+  const [selectedShow, setSelectedShow] = useState<string[]>(
+    currentFilters.selectedShow,
+  );
+  const [selectedRequesters, setSelectedRequesters] = useState<string[]>(
+    currentFilters.selectedRequesters,
+  );
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
+  const [requesterSearchQuery, setRequesterSearchQuery] = useState("");
+  const [stageSearchQuery, setStageSearchQuery] = useState("");
 
   const handleOpen = () => {
-    setItemsRequestedIn(currentFilters.itemsRequestedIn);
-    setSelectedDepartments(currentFilters.selectedDepartments);
-    setSelectedProjects(currentFilters.selectedProjects);
-    setRequestType(currentFilters.requestType);
+    setSelectedTypes(currentFilters.selectedTypes);
     setSelectedStages(currentFilters.selectedStages);
+    setSelectedProjects(currentFilters.selectedProjects);
+    setSelectedShow(currentFilters.selectedShow);
+    setSelectedRequesters(currentFilters.selectedRequesters);
+    setProjectSearchQuery("");
+    setRequesterSearchQuery("");
+    setStageSearchQuery("");
     setIsOpen(true);
   };
 
   const handleApply = () => {
     onApplyFilters({
-      itemsRequestedIn,
-      selectedDepartments,
-      selectedProjects,
-      requestType,
+      selectedTypes,
       selectedStages,
+      selectedProjects,
+      selectedShow,
+      selectedRequesters,
     });
     setIsOpen(false);
   };
 
   const handleReset = () => {
-    setItemsRequestedIn("all");
-    setSelectedDepartments([]);
-    setSelectedProjects([]);
-    setRequestType("all");
+    setSelectedTypes([]);
     setSelectedStages([]);
+    setSelectedProjects([]);
+    setSelectedShow([]);
+    setSelectedRequesters([]);
     setProjectSearchQuery("");
+    setRequesterSearchQuery("");
+    setStageSearchQuery("");
   };
 
-  // Department/Role options with their department IDs
-  const departmentOptions = [
-    { label: "Manager", departmentId: 8 },
-    { label: "Quantity Surveyor", departmentId: 16 },
-    { label: "Procurement", departmentId: 9 },
-    { label: "Finance", departmentId: 10 },
-    { label: "Quality Check", departmentId: 12 },
-    { label: "Storekeeper", departmentId: 11 },
-    /*     { label: "Civil", departmentId: 1 },
-    { label: "MEP", departmentId: 2 },
-    { label: "Electrical", departmentId: 3 },
-    { label: "Plumbing", departmentId: 4 },
-    { label: "HVAC", departmentId: 5 },
-    { label: "Finishing", departmentId: 6 },
-    { label: "Landscaping", departmentId: 7 }, */
+  // TYPE options (no "All")
+  const typeOptions = [
+    { value: "material", label: "Material Request" },
+    { value: "job", label: "Job Order" },
+    { value: "payment", label: "Payment Request" },
   ];
 
-  // Stage options matching the kanban stageGroups
+  const handleTypeChange = (value: string, checked: boolean) => {
+    setSelectedTypes((prev) =>
+      checked ? [...prev, value] : prev.filter((t) => t !== value),
+    );
+  };
+
+  // SHOW options (no "All")
+  const showOptions = [
+    { value: "rejected", label: "Rejected Only" },
+    { value: "incomplete", label: "Incomplete" },
+  ];
+
+  const handleShowChange = (value: string, checked: boolean) => {
+    setSelectedShow((prev) =>
+      checked ? [...prev, value] : prev.filter((s) => s !== value),
+    );
+  };
+
+  // Stage options
   const stageOptions = [
     { label: "Draft", progressId: 1 },
     { label: "QS Review", progressId: 2 },
-    { label: "Manager Approval", progressId: 3 },
-    { label: "Stock Transfer", progressId: 4 },
+    // { label: "Manager Approval", progressId: 3 },
+    // { label: "Stock Transfer", progressId: 4 },
     { label: "Quotations", progressId: 7 },
-    { label: "QS Price Check", progressId: 9 },
+    // { label: "QS Price Check", progressId: 9 },
     { label: "Manager Price Approval", progressId: 10 },
     { label: "LPO & Invoice", progressId: 12 },
-    { label: "Pending Payments", progressId: 14 },
+    // { label: "Pending Payments", progressId: 14 },
     { label: "Awaiting Delivery", progressId: 17 },
-    { label: "Stock Entry", progressId: 24 },
+    // { label: "Stock Entry", progressId: 24 },
     { label: "Request Rejected", progressId: 5 },
     { label: "Price Approval Rejected", progressId: 11 },
     { label: "Payment Rejected", progressId: 13 },
@@ -116,47 +133,46 @@ export default function MrFilterButton({
   ];
 
   const handleStageChange = (progressId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedStages([...selectedStages, progressId]);
-    } else {
-      setSelectedStages(selectedStages.filter((s) => s !== progressId));
-    }
+    setSelectedStages((prev) =>
+      checked ? [...prev, progressId] : prev.filter((s) => s !== progressId),
+    );
   };
 
-  const handleDepartmentChange = (departmentId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedDepartments([...selectedDepartments, departmentId]);
-    } else {
-      setSelectedDepartments(
-        selectedDepartments.filter((d) => d !== departmentId),
-      );
-    }
-  };
+  const filteredStages = stageOptions.filter((s) =>
+    s.label.toLowerCase().includes(stageSearchQuery.toLowerCase()),
+  );
 
   // Project handlers
   const handleSelectAllProjects = (checked: boolean) => {
-    if (checked) {
-      setSelectedProjects(availableProjects.map((p) => p.id));
-    } else {
-      setSelectedProjects([]);
-    }
+    setSelectedProjects(checked ? availableProjects.map((p) => p.id) : []);
   };
-
   const handleProjectChange = (projectId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedProjects([...selectedProjects, projectId]);
-    } else {
-      setSelectedProjects(selectedProjects.filter((p) => p !== projectId));
-    }
+    setSelectedProjects((prev) =>
+      checked ? [...prev, projectId] : prev.filter((p) => p !== projectId),
+    );
   };
-
-  // Check if all projects are selected
   const isAllProjectsSelected =
-    selectedProjects.length === availableProjects.length;
+    selectedProjects.length === availableProjects.length &&
+    availableProjects.length > 0;
 
-  // Filter projects based on search
-  const filteredProjects = availableProjects.filter((project) =>
-    project?.name?.toLowerCase().includes(projectSearchQuery.toLowerCase()),
+  // Requester handlers
+  const handleSelectAllRequesters = (checked: boolean) => {
+    setSelectedRequesters(checked ? [...availableRequesters] : []);
+  };
+  const handleRequesterChange = (name: string, checked: boolean) => {
+    setSelectedRequesters((prev) =>
+      checked ? [...prev, name] : prev.filter((r) => r !== name),
+    );
+  };
+  const isAllRequestersSelected =
+    selectedRequesters.length === availableRequesters.length &&
+    availableRequesters.length > 0;
+
+  const filteredProjects = availableProjects.filter((p) =>
+    p?.name?.toLowerCase().includes(projectSearchQuery.toLowerCase()),
+  );
+  const filteredRequesters = availableRequesters.filter((r) =>
+    r?.toLowerCase().includes(requesterSearchQuery.toLowerCase()),
   );
 
   return (
@@ -194,7 +210,7 @@ export default function MrFilterButton({
               </Button>
             }
           >
-            {/* Request Type Section */}
+            {/* SHOW Section */}
             <div style={{ marginBottom: "30px" }}>
               <h3
                 style={{
@@ -203,15 +219,10 @@ export default function MrFilterButton({
                   fontWeight: "600",
                 }}
               >
-                REQUEST TYPE
+                SHOW
               </h3>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                {[
-                  { value: "all", label: "All" },
-                  { value: "material", label: "Material Request" },
-                  { value: "job", label: "Job Order" },
-                  { value: "payment", label: "Payment Request" },
-                ].map((option) => (
+                {showOptions.map((option) => (
                   <label
                     key={option.value}
                     style={{
@@ -222,16 +233,12 @@ export default function MrFilterButton({
                     }}
                   >
                     <input
-                      type="radio"
-                      name="requestType"
-                      value={option.value}
-                      checked={requestType === option.value}
-                      onChange={(e) => setRequestType(e.target.value)}
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        cursor: "pointer",
-                      }}
+                      type="checkbox"
+                      className="filter-checkbox"
+                      checked={selectedShow.includes(option.value)}
+                      onChange={(e) =>
+                        handleShowChange(option.value, e.target.checked)
+                      }
                     />
                     <h4>{option.label}</h4>
                   </label>
@@ -239,7 +246,7 @@ export default function MrFilterButton({
               </div>
             </div>
 
-            {/* Items Requested In Section */}
+            {/* TYPE Section */}
             <div style={{ marginBottom: "30px" }}>
               <h3
                 style={{
@@ -248,17 +255,10 @@ export default function MrFilterButton({
                   fontWeight: "600",
                 }}
               >
-                ITEMS REQUESTED IN
+                TYPE
               </h3>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                {[
-                  { value: "all", label: "All Times" },
-                  { value: "24h", label: "Last 24 Hours" },
-                  { value: "3d", label: "Last 3 Days" },
-                  { value: "7d", label: "Last 7 Days" },
-                  { value: "14d", label: "Last 14 Days" },
-                  { value: "30d", label: "Last 30 Days" },
-                ].map((option) => (
+                {typeOptions.map((option) => (
                   <label
                     key={option.value}
                     style={{
@@ -269,16 +269,12 @@ export default function MrFilterButton({
                     }}
                   >
                     <input
-                      type="radio"
-                      name="itemsRequestedIn"
-                      value={option.value}
-                      checked={itemsRequestedIn === option.value}
-                      onChange={(e) => setItemsRequestedIn(e.target.value)}
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        cursor: "pointer",
-                      }}
+                      type="checkbox"
+                      className="filter-checkbox"
+                      checked={selectedTypes.includes(option.value)}
+                      onChange={(e) =>
+                        handleTypeChange(option.value, e.target.checked)
+                      }
                     />
                     <h4>{option.label}</h4>
                   </label>
@@ -286,7 +282,7 @@ export default function MrFilterButton({
               </div>
             </div>
 
-            {/* Department Section */}
+            {/* REQUESTER Section */}
             <div style={{ marginBottom: "30px" }}>
               <h3
                 style={{
@@ -295,13 +291,46 @@ export default function MrFilterButton({
                   fontWeight: "600",
                 }}
               >
-                DEPARTMENT
+                REQUESTER
               </h3>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                {departmentOptions.map((dept) => (
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ position: "relative", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={requesterSearchQuery}
+                    onChange={(e) => setRequesterSearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                      backgroundColor: "rgba(245, 245, 245, 1)",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+                <div style={{ marginBottom: "10px" }}>
                   <label
-                    key={dept.departmentId}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -311,70 +340,55 @@ export default function MrFilterButton({
                   >
                     <input
                       type="checkbox"
-                      checked={selectedDepartments.includes(dept.departmentId)}
+                      className="filter-checkbox"
+                      checked={isAllRequestersSelected}
                       onChange={(e) =>
-                        handleDepartmentChange(
-                          dept.departmentId,
-                          e.target.checked,
-                        )
+                        handleSelectAllRequesters(e.target.checked)
                       }
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        cursor: "pointer",
-                        accentColor: "#10b981",
-                      }}
                     />
-                    <h4>{dept.label}</h4>
+                    <h4>Select All</h4>
                   </label>
-                ))}
+                </div>
+                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                  {filteredRequesters.length > 0 ? (
+                    filteredRequesters.map((name) => (
+                      <div key={name} style={{ marginBottom: "10px" }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            className="filter-checkbox"
+                            checked={selectedRequesters.includes(name)}
+                            onChange={(e) =>
+                              handleRequesterChange(name, e.target.checked)
+                            }
+                          />
+                          <h4>{name}</h4>
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: "#888",
+                      }}
+                    >
+                      No requesters found
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Stage Section */}
-            <div style={{ marginBottom: "30px" }}>
-              <h3
-                style={{
-                  marginBottom: "15px",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                STAGE
-              </h3>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                {stageOptions.map((stage) => (
-                  <label
-                    key={stage.progressId}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                      minWidth: "200px",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedStages.includes(stage.progressId)}
-                      onChange={(e) =>
-                        handleStageChange(stage.progressId, e.target.checked)
-                      }
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        cursor: "pointer",
-                        accentColor: "#10b981",
-                      }}
-                    />
-                    <h4>{stage.label}</h4>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Projects Section */}
+            {/* PROJECTS Section */}
             <div style={{ marginBottom: "30px" }}>
               <h3
                 style={{
@@ -385,7 +399,6 @@ export default function MrFilterButton({
               >
                 PROJECTS
               </h3>
-
               <div
                 style={{
                   border: "1px solid #e5e7eb",
@@ -422,7 +435,6 @@ export default function MrFilterButton({
                     }}
                   />
                 </div>
-
                 <div style={{ marginBottom: "10px" }}>
                   <label
                     style={{
@@ -434,21 +446,15 @@ export default function MrFilterButton({
                   >
                     <input
                       type="checkbox"
+                      className="filter-checkbox"
                       checked={isAllProjectsSelected}
                       onChange={(e) =>
                         handleSelectAllProjects(e.target.checked)
                       }
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        cursor: "pointer",
-                        accentColor: "#10b981",
-                      }}
                     />
                     <h4>Select All</h4>
                   </label>
                 </div>
-
                 <div style={{ maxHeight: "250px", overflowY: "auto" }}>
                   {filteredProjects.length > 0 ? (
                     filteredProjects.map((project) => (
@@ -463,16 +469,11 @@ export default function MrFilterButton({
                         >
                           <input
                             type="checkbox"
+                            className="filter-checkbox"
                             checked={selectedProjects.includes(project.id)}
                             onChange={(e) =>
                               handleProjectChange(project.id, e.target.checked)
                             }
-                            style={{
-                              width: "18px",
-                              height: "18px",
-                              cursor: "pointer",
-                              accentColor: "#10b981",
-                            }}
                           />
                           <h4>{project.name}</h4>
                         </label>
@@ -487,6 +488,98 @@ export default function MrFilterButton({
                       }}
                     >
                       No projects found
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* STAGE Section — searchable list */}
+            <div>
+              <h3
+                style={{
+                  marginBottom: "15px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                STAGE
+              </h3>
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ position: "relative", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={stageSearchQuery}
+                    onChange={(e) => setStageSearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                      backgroundColor: "rgba(245, 245, 245, 1)",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "15px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                  {filteredStages.length > 0 ? (
+                    filteredStages.map((stage) => (
+                      <div
+                        key={stage.progressId}
+                        style={{ marginBottom: "10px" }}
+                      >
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            className="filter-checkbox"
+                            checked={selectedStages.includes(stage.progressId)}
+                            onChange={(e) =>
+                              handleStageChange(
+                                stage.progressId,
+                                e.target.checked,
+                              )
+                            }
+                          />
+                          <h4>{stage.label}</h4>
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: "#888",
+                      }}
+                    >
+                      No stages found
                     </div>
                   )}
                 </div>

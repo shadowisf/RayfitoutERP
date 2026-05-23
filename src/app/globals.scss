@@ -518,6 +518,12 @@ textarea {
   &[type="date"] {
     text-transform: uppercase;
     background-color: rgba(248, 249, 251, 1) !important;
+    // Safari / iOS date inputs ignore width:100% set on the parent and
+    // expand to their intrinsic minimum width, overflowing the layout.
+    // These three properties together force them to respect their container.
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 }
 
@@ -923,7 +929,7 @@ label {
 .subcategory-header {
   display: flex;
   align-items: center;
-  /* justify-content: space-between; */
+  justify-content: space-between;
   gap: 25px;
 
   .right {
@@ -1402,6 +1408,15 @@ label {
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -600px 0;
+  }
+  100% {
+    background-position: 600px 0;
+  }
+}
+
 @keyframes hover-cursor-fill {
   from {
     stroke-dashoffset: 44;
@@ -1693,6 +1708,14 @@ label {
 .form-outer-container .items-table tbody tr:hover td {
   background-color: rgba(253, 249, 249, 1) !important;
 }
+/* ── Active / detailing row ── */
+.form-outer-container .items-table tbody tr.row-detailing td {
+  background-color: rgba(219, 255, 240, 1) !important;
+}
+.form-outer-container .items-table tbody tr.row-detailing {
+  outline: 1px solid rgba(0, 163, 93, 1);
+  outline-offset: -1px;
+}
 .form-outer-container .items-table tfoot tr td,
 .form-outer-container .items-table tfoot tr:hover td {
   background-color: white !important;
@@ -1890,7 +1913,6 @@ label {
         width: 100% !important;
         justify-content: center !important;
       }
-
     }
 
     /* Hide cross icon — drag-to-dismiss replaces it */

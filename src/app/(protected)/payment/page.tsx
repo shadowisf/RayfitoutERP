@@ -1159,11 +1159,17 @@ export default function Payments() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType="none"
+                    componentType="button"
                     bgColor="rgba(239, 239, 239, 1)"
                     borderColor="transparent"
                     textColor="black"
+                    onClick={() =>
+                      setActiveDateRange({ start: null, end: null, preset: null })
+                    }
                   >
                     CREATION DATE:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -1183,6 +1189,11 @@ export default function Payments() {
                             .join(" – ")
                             .toUpperCase()}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 
@@ -1194,11 +1205,20 @@ export default function Payments() {
                         borderRadius: "50px",
                         fontWeight: 600,
                         textWrap: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
                       }}
-                      componentType="none"
+                      componentType="button"
                       bgColor="rgba(239, 239, 239, 1)"
                       borderColor="transparent"
                       textColor="black"
+                      onClick={() =>
+                        setActiveFilters((prev) => ({
+                          ...prev,
+                          selectedVendors: [],
+                        }))
+                      }
                     >
                       VENDOR:{" "}
                       <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -1206,6 +1226,11 @@ export default function Payments() {
                         {activeFilters.selectedVendors.length > 1 &&
                           `, +${activeFilters.selectedVendors.length - 1} MORE`}
                       </span>
+                      <img
+                        src="/icons/cross-small.svg"
+                        alt="remove"
+                        style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                      />
                     </Button>
                   )}
 
@@ -1217,11 +1242,20 @@ export default function Payments() {
                         borderRadius: "50px",
                         fontWeight: 600,
                         textWrap: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
                       }}
-                      componentType="none"
+                      componentType="button"
                       bgColor="rgba(239, 239, 239, 1)"
                       borderColor="transparent"
                       textColor="black"
+                      onClick={() =>
+                        setActiveFilters((prev) => ({
+                          ...prev,
+                          selectedPaymentTypes: [],
+                        }))
+                      }
                     >
                       TYPE:{" "}
                       <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -1229,6 +1263,11 @@ export default function Payments() {
                         {activeFilters.selectedPaymentTypes.length > 1 &&
                           `, +${activeFilters.selectedPaymentTypes.length - 1} MORE`}
                       </span>
+                      <img
+                        src="/icons/cross-small.svg"
+                        alt="remove"
+                        style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                      />
                     </Button>
                   )}
 
@@ -1239,11 +1278,20 @@ export default function Payments() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType="none"
+                    componentType="button"
                     bgColor="rgba(239, 239, 239, 1)"
                     borderColor="transparent"
                     textColor="black"
+                    onClick={() =>
+                      setActiveFilters((prev) => ({
+                        ...prev,
+                        selectedStatuses: [],
+                      }))
+                    }
                   >
                     STATUS:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -1251,6 +1299,11 @@ export default function Payments() {
                       {activeFilters.selectedStatuses.length > 1 &&
                         `, +${activeFilters.selectedStatuses.length - 1} MORE`}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 
@@ -1261,11 +1314,20 @@ export default function Payments() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType="none"
+                    componentType="button"
                     bgColor="rgba(239, 239, 239, 1)"
                     borderColor="transparent"
                     textColor="black"
+                    onClick={() =>
+                      setActiveFilters((prev) => ({
+                        ...prev,
+                        selectedProjects: [],
+                      }))
+                    }
                   >
                     PROJECT:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -1273,6 +1335,11 @@ export default function Payments() {
                       {activeFilters.selectedProjects.length > 1 &&
                         `, +${activeFilters.selectedProjects.length - 1} MORE`}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 
@@ -1284,11 +1351,20 @@ export default function Payments() {
                         borderRadius: "50px",
                         fontWeight: 600,
                         textWrap: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
                       }}
-                      componentType="none"
+                      componentType="button"
                       bgColor="rgba(239, 239, 239, 1)"
                       borderColor="transparent"
                       textColor="black"
+                      onClick={() =>
+                        setActiveFilters((prev) => ({
+                          ...prev,
+                          selectedSubcontractors: [],
+                        }))
+                      }
                     >
                       SUBCONTRACTOR:{" "}
                       <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -1296,6 +1372,11 @@ export default function Payments() {
                         {activeFilters.selectedSubcontractors.length > 1 &&
                           `, +${activeFilters.selectedSubcontractors.length - 1} MORE`}
                       </span>
+                      <img
+                        src="/icons/cross-small.svg"
+                        alt="remove"
+                        style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                      />
                     </Button>
                   )}
 

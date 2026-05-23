@@ -149,7 +149,13 @@ export default function InputItem({
             required={required}
             disabled={disabled}
             min={min}
-            style={!label ? { flex: "1 1 auto" } : undefined}
+            style={{
+              width: "100%",
+              maxWidth: "100%",
+              minWidth: 0,
+              boxSizing: "border-box",
+              ...(!label ? { flex: "1 1 auto" } : {}),
+            }}
             onClick={(e) => {
               e.currentTarget.showPicker?.();
               onClick?.();

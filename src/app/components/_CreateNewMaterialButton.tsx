@@ -11,6 +11,7 @@ import { PredefinedItem } from "@/app/components/_MultipleSelectMaterialItemButt
 import CreateCategoryButton from "../(protected)/mr/[id]/components/department/_CreateCategoryButton";
 import CreateSubCategoryButton from "../(protected)/mr/[id]/components/department/_CreateSubcategoryButton";
 import { toast } from "@/app/components/Toast";
+import { useAuth } from "../context/AuthContext";
 
 type CreateNewMaterialButtonProps = {
   onSuccess?: (newItem: PredefinedItem) => void;
@@ -21,6 +22,7 @@ export default function CreateNewMaterialButton({
   onSuccess,
   style,
 }: CreateNewMaterialButtonProps) {
+  const { userInfo } = useAuth();
   const [showNewMaterial, setShowNewMaterial] = useState(false);
   const [newMatDescription, setNewMatDescription] = useState("");
   const [newMatCategoryID, setNewMatCategoryID] = useState<string | number>("");
@@ -156,6 +158,7 @@ export default function CreateNewMaterialButton({
             subcategory_id: Number(newMatSubCategoryID),
             unit: newMatUnit || null,
             brand: newMatBrand || null,
+            added_by: userInfo?.name || null,
           }),
         },
       );
