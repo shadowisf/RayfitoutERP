@@ -8,7 +8,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import Button from "./Button";
 import { BoqLine } from "../(protected)/project/[id]/boq/[boqId]/types/boqLine";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
-import MobileBoqSelect from "./_MobileBoqSelect";
+import MobileBoqSelectWithAllocation from "./_MobileBoqSelectWithAllocation";
 import InputItem from "./InputItem";
 
 type props = {
@@ -37,6 +37,183 @@ type GroupedBoqLines = {
 };
 
 const ITEMS_PER_PAGE = 50;
+
+// ── Skeleton shimmer ──────────────────────────────────────────────────────────
+const SHIMMER: React.CSSProperties = {
+  background:
+    "linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.10) 37%, rgba(0,0,0,0.06) 63%)",
+  backgroundSize: "600px 100%",
+  animation: "shimmer 1.4s ease infinite",
+  borderRadius: "6px",
+};
+
+function SkeletonBlock({
+  w = "100%",
+  h = 12,
+  style,
+}: {
+  w?: string | number;
+  h?: number;
+  style?: React.CSSProperties;
+}) {
+  return <div style={{ width: w, height: h, ...SHIMMER, ...style }} />;
+}
+
+function BoqSkeletonLayout() {
+  // Varying widths for item name rows (2 lines each)
+  const tableRows: [string, string][] = [
+    ["72%", "44%"],
+    ["55%", "30%"],
+    ["80%", "50%"],
+    ["63%", "38%"],
+    ["76%", "46%"],
+    ["58%", "33%"],
+    ["82%", "52%"],
+    ["67%", "40%"],
+    ["70%", "43%"],
+    ["60%", "36%"],
+  ];
+
+  return (
+    <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", height: "calc(100dvh - 220px)", overflow: "hidden" }}>
+      {/* ── Left / centre panel ── */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Search bar row */}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "20px" }}>
+          <div
+            style={{
+              width: 250,
+              height: 37,
+              borderRadius: "8px",
+              border: "1px solid rgba(223,223,223,1)",
+              backgroundColor: "rgba(252,252,252,1)",
+              flexShrink: 0,
+            }}
+          />
+        </div>
+
+        {/* Category tabs row */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px", overflow: "hidden" }}>
+          {["60px", "110px", "140px", "130px", "120px", "115px", "105px"].map((w, i) => (
+            <SkeletonBlock key={i} w={w} h={30} style={{ borderRadius: "50px", flexShrink: 0 }} />
+          ))}
+        </div>
+
+        {/* Filter row + subcategory tabs row */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px", alignItems: "center", overflow: "hidden" }}>
+          <SkeletonBlock w="60px" h={26} style={{ borderRadius: "4px", flexShrink: 0 }} />
+          {["90px", "120px", "100px", "110px", "95px", "115px"].map((w, i) => (
+            <SkeletonBlock key={i} w={w} h={26} style={{ borderRadius: "50px", flexShrink: 0 }} />
+          ))}
+        </div>
+
+        {/* Table */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <table style={{ tableLayout: "fixed", width: "100%", borderCollapse: "collapse" }}>
+            <colgroup>
+              <col style={{ width: "40px" }} />
+              <col style={{ width: "70px" }} />
+              <col />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "140px" }} />
+              <col style={{ width: "110px" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                {["", "#", "ITEM", "QUANTITY", "RATE", "TOTAL PRICE", "ALLOCATED QTY", "ATTACHMENTS"].map((col, i) => (
+                  <th
+                    key={i}
+                    style={{ padding: "8px 10px", borderBottom: "1px solid rgba(220,220,220,1)", textAlign: "left" }}
+                  >
+                    {col && <SkeletonBlock w={col === "#" ? "16px" : col === "" ? "16px" : "60%"} h={10} />}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map(([nameW, subW], i) => (
+                <tr key={i} style={{ borderBottom: "1px solid rgba(239,239,239,1)" }}>
+                  {/* checkbox */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <div style={{ width: 16, height: 16, borderRadius: 3, border: "1.5px solid rgba(200,200,200,1)", backgroundColor: "white" }} />
+                  </td>
+                  {/* # */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <SkeletonBlock w="40px" h={10} />
+                  </td>
+                  {/* ITEM — 2 lines */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <SkeletonBlock w={nameW} h={12} style={{ marginBottom: "6px" }} />
+                    <SkeletonBlock w={subW} h={9} />
+                  </td>
+                  {/* QUANTITY */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <SkeletonBlock w="55px" h={10} />
+                  </td>
+                  {/* RATE */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <SkeletonBlock w="60px" h={10} />
+                  </td>
+                  {/* TOTAL PRICE */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <SkeletonBlock w="80px" h={10} />
+                  </td>
+                  {/* ALLOCATED QTY — input shell */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <div style={{ height: 32, borderRadius: "6px", border: "1px solid rgba(220,220,220,1)", backgroundColor: "rgba(252,252,252,1)" }} />
+                  </td>
+                  {/* ATTACHMENTS */}
+                  <td style={{ padding: "14px 10px" }}>
+                    <SkeletonBlock w="40px" h={10} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Right panel ── */}
+      <div
+        style={{
+          width: 320,
+          flexShrink: 0,
+          backgroundColor: "rgba(248,248,248,1)",
+          borderRadius: "10px",
+          padding: "16px",
+          height: "100%",
+          overflowY: "auto",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* Header label */}
+        <SkeletonBlock w="55%" h={11} style={{ marginBottom: "16px" }} />
+
+        {/* Item name block */}
+        <SkeletonBlock w="90%" h={14} style={{ marginBottom: "6px" }} />
+        <SkeletonBlock w="65%" h={14} style={{ marginBottom: "6px" }} />
+        <SkeletonBlock w="38%" h={10} style={{ marginBottom: "20px" }} />
+
+        {/* Remaining / Allocated rows */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
+          {[["40%", "60%"], ["38%", "55%"]].map(([lW, vW], i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <SkeletonBlock w={lW} h={10} />
+              <SkeletonBlock w={vW} h={10} />
+            </div>
+          ))}
+        </div>
+
+        {/* Top Allocations section */}
+        <SkeletonBlock w="50%" h={11} style={{ marginBottom: "10px" }} />
+        <SkeletonBlock w="80%" h={9} style={{ marginBottom: "4px" }} />
+        <SkeletonBlock w="70%" h={9} />
+      </div>
+    </div>
+  );
+}
 
 function FilterCheckbox({
   checked,
@@ -166,7 +343,7 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
     new Set(),
   );
   const [filterGroupSearch, setFilterGroupSearch] = useState("");
-  const [isFetchingItems, setIsFetchingItems] = useState(false);
+  const [isFetchingItems, setIsFetchingItems] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Scroll functions for category tabs
@@ -356,56 +533,55 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
     setFilteredGroupedBoqLines(filtered);
   }, [searchQuery, groupedBoqLines, filterCategories, filterSubCategories]);
 
-  // Fetch BOQ lines when projectID is available
+  // Fetch BOQ lines when the modal opens
   useEffect(() => {
-    if (projectID && projectID > 0) {
-      setIsFetchingItems(true);
-      fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            project_id: projectID,
-          }),
-        },
-      )
-        .then((res) => res.json())
-        .then(function (data) {
-          if (!data || !Array.isArray(data)) {
-            console.error("Invalid BOQ data:", data);
-            setBoqLineValues([]);
-            return;
-          }
-
-          setBoqLineValues(data);
-
-          // Group BOQ lines by category and subcategory
-          const grouped: GroupedBoqLines = {};
-          data.forEach((boqLine: BoqLine) => {
-            const category = boqLine.category || "Uncategorized";
-            const subCategory = boqLine.sub_category || "General";
-
-            if (!grouped[category]) {
-              grouped[category] = {};
-            }
-            if (!grouped[category][subCategory]) {
-              grouped[category][subCategory] = [];
-            }
-            grouped[category][subCategory].push(boqLine);
-          });
-
-          setGroupedBoqLines(grouped);
-          setFilteredGroupedBoqLines(grouped);
-        })
-        .catch((err) => {
-          console.error("Error fetching BOQ lines:", err);
+    if (!isOpen || !projectID || projectID <= 0) return;
+    setIsFetchingItems(true);
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: projectID,
+        }),
+      },
+    )
+      .then((res) => res.json())
+      .then(function (data) {
+        if (!data || !Array.isArray(data)) {
+          console.error("Invalid BOQ data:", data);
           setBoqLineValues([]);
-          setGroupedBoqLines({});
-          setFilteredGroupedBoqLines({});
-        })
-        .finally(() => setIsFetchingItems(false));
-    }
+          return;
+        }
+
+        setBoqLineValues(data);
+
+        // Group BOQ lines by category and subcategory
+        const grouped: GroupedBoqLines = {};
+        data.forEach((boqLine: BoqLine) => {
+          const category = boqLine.category || "Uncategorized";
+          const subCategory = boqLine.sub_category || "General";
+
+          if (!grouped[category]) {
+            grouped[category] = {};
+          }
+          if (!grouped[category][subCategory]) {
+            grouped[category][subCategory] = [];
+          }
+          grouped[category][subCategory].push(boqLine);
+        });
+
+        setGroupedBoqLines(grouped);
+        setFilteredGroupedBoqLines(grouped);
+      })
+      .catch((err) => {
+        console.error("Error fetching BOQ lines:", err);
+        setBoqLineValues([]);
+        setGroupedBoqLines({});
+        setFilteredGroupedBoqLines({});
+      })
+      .finally(() => setIsFetchingItems(false));
   }, [projectID, isOpen]);
 
   // Set selectedBoqInfo when currentBoqLineIDs exist (for editing)
@@ -430,6 +606,7 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
   // Reset temp selection and search when form opens; pre-populate allocations in edit mode
   useEffect(() => {
     if (!isOpen) return;
+    setIsFetchingItems(true);
     setTempSelectedBoqIDs(currentBoqLineIDs || []);
     setSearchQuery("");
     setActiveCategoryTab("");
@@ -984,7 +1161,11 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
           </div>
         ) : undefined
       }
+      haveLoadingState
     >
+      {isFetchingItems ? (
+        <BoqSkeletonLayout />
+      ) : (
       <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
         {/* ── Left panel ───────────────────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1921,6 +2102,7 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
           </div>
         </div>
       </div>
+      )}
     </FormPopUp>
   );
 
@@ -1995,16 +2177,18 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
       )}
 
       {isMobileOpen && (
-        <MobileBoqSelect
+        <MobileBoqSelectWithAllocation
           projectID={projectID}
-          onSelectBoq={(ids, info, lines) => {
-            onSelectBoq(ids, info, lines);
+          onSelectBoq={(ids, info, lines, allocatedQtys) => {
+            onSelectBoq(ids, info, lines, allocatedQtys);
             setIsMobileOpen(false);
           }}
           currentBoqLineIDs={currentBoqLineIDs}
           onClose={() => setIsMobileOpen(false)}
           singleSelect={singleSelect}
-          itemName={itemName}
+          mrLineQuantity={mrLineQuantity}
+          mrLineUnit={mrLineUnit}
+          mrLineId={mrLineId}
         />
       )}
 
