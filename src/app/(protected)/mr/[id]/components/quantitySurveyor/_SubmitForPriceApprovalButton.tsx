@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubitForPricingApprovalButtonProps = {
   mrHeaderID: number;
@@ -21,6 +22,8 @@ export default function SubmitForPricingApprovalButton({
   progressId,
 }: SubitForPricingApprovalButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -45,7 +48,7 @@ export default function SubmitForPricingApprovalButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       toast("Failed to submit material request", "error");

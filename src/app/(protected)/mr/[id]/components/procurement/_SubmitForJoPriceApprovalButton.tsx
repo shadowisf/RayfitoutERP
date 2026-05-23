@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { BulkQuotationData } from "./_BulkSubcontractorButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubmitForJoPriceApprovalButtonProps = {
   mrHeaderID: number;
@@ -28,6 +29,8 @@ export default function SubmitForJoPriceApprovalButton({
   boqItemsByJoLine,
 }: SubmitForJoPriceApprovalButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -112,7 +115,7 @@ export default function SubmitForJoPriceApprovalButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       toast("Failed to submit job order", "error");

@@ -8,6 +8,7 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../types/mrHeader";
 import InputItem from "@/app/components/InputItem";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type CancelMaterialRequestButtonProps = {
   mrHeader: MrHeader;
@@ -31,6 +32,8 @@ export default function CancelMaterialRequestButton({
   children,
 }: CancelMaterialRequestButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -224,8 +227,8 @@ export default function CancelMaterialRequestButton({
           : "Material request rolled back",
         "success",
       );
+      await refresh();
       setIsOpen(false);
-      router.refresh();
       router.replace(`/mr`);
     } else {
       toast(

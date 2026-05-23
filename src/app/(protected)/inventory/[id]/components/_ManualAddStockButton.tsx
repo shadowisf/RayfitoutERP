@@ -13,6 +13,7 @@ import { InventoryItem } from "../../types/inventoryItem";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import CreateSupplierButton from "@/app/(protected)/vendor/components/_CreateSupplierButton";
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type ManualAddToStockButtonProps = {
   inventoryItem: InventoryItem;
@@ -24,6 +25,8 @@ export default function ManualAddToStockButton({
   const { userInfo } = useAuth();
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -228,7 +231,7 @@ export default function ManualAddToStockButton({
       setDnFile(null);
       setUnitPrice("");
 
-      router.refresh();
+      await refresh();
 
       setIsOpen(false);
     } else {

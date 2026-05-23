@@ -11,6 +11,7 @@ import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 import DownloadLPOButton from "../../lpo/[lpoId]/components/_DownloadLPOButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type BoqLineItem = {
   boq_line_id: number;
@@ -34,6 +35,8 @@ export default function IssueJoLpoButton({
   onLpoCreated,
 }: IssueJoLpoButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -186,7 +189,7 @@ export default function IssueJoLpoButton({
       );
       setIsOpen(false);
       await checkExistingLpo();
-      router.refresh();
+      await refresh();
     } else {
       toast(
         existingLpoId ? "Failed to update LPO" : "Failed to create LPO",
@@ -217,7 +220,7 @@ export default function IssueJoLpoButton({
         if (res.ok) {
           setExistingLpoId(null);
           onLpoCreated?.(0 as any);
-          router.refresh();
+          await refresh();
         } else {
           toast("Failed to delete LPO", "error");
         }

@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import FormPopUp from "@/app/components/FormPopup";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   transactionID: number;
@@ -17,6 +18,8 @@ export default function UploadSignedDnButton({
   onSuccess,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const uploadIcon = "/icons/upload.svg";
 
@@ -147,7 +150,7 @@ export default function UploadSignedDnButton({
         throw new Error("Failed to update database");
       }
 
-      router.refresh();
+      await refresh();
 
       toast("Signed DN uploaded", "success");
 
@@ -215,7 +218,7 @@ export default function UploadSignedDnButton({
       // Update local state
       setTscFiles(updatedTscFiles);
 
-      router.refresh();
+      await refresh();
     } catch (error) {
       console.error("Error deleting DN:", error);
       toast("Failed to delete signed DN", "error");

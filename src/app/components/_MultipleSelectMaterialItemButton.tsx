@@ -6,8 +6,8 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "./Button";
 import CreateNewMaterialButton from "./_CreateNewMaterialButton";
 import { InventoryMatch } from "../(protected)/mr/[id]/components/department/_InventoryStatusCell";
-import { UNIT_OPTIONS } from "@/constants/units";
 import ExportMaterialListPDFButton from "../(protected)/mr/[id]/components/_ExportMaterialListPDFButton";
+import { UNIT_OPTIONS } from "@/constants/units";
 
 export type PredefinedItem = {
   id: number;
@@ -102,6 +102,20 @@ function SkeletonLayout() {
     ["63%", "36%"],
     ["70%", "40%"],
     ["58%", "33%"],
+    ["74%", "44%"],
+    ["50%", "29%"],
+    ["66%", "37%"],
+    ["83%", "50%"],
+    ["61%", "34%"],
+    ["77%", "46%"],
+    ["54%", "31%"],
+    ["69%", "41%"],
+    ["57%", "32%"],
+    ["75%", "43%"],
+    ["64%", "39%"],
+    ["81%", "47%"],
+    ["53%", "27%"],
+    ["71%", "42%"],
   ];
 
   return (
@@ -937,8 +951,10 @@ export default function MultipleSelectMaterialItemButton({
         borderRadius: 0,
       }}
       stickyFooter={
-        tempSelectedIDs.length > 0 ? (
-          <div>
+        totalPages > 1 || tempSelectedIDs.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            {totalPages > 1 && <PaginationControls />}
+            {tempSelectedIDs.length > 0 && <div>
             <span
               style={{
                 fontSize: "13px",
@@ -984,6 +1000,7 @@ export default function MultipleSelectMaterialItemButton({
                 );
               })}
             </div>
+            </div>}
           </div>
         ) : undefined
       }
@@ -1136,14 +1153,6 @@ export default function MultipleSelectMaterialItemButton({
                       color: isCatActive ? "white" : "black",
                     }}
                   >
-                    <input
-                      type="checkbox"
-                      className="manager-checkbox"
-                      checked={catChecked}
-                      onChange={() => toggleCatSelection(cat)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ marginLeft: "8px" }}
-                    />
                     <button
                       type="button"
                       onClick={() => {
@@ -1161,7 +1170,7 @@ export default function MultipleSelectMaterialItemButton({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "9px 10px 9px 0",
+                        padding: "9px 10px 9px 10px",
                         background: "transparent",
                         border: "none",
                         cursor: "pointer",
@@ -1251,14 +1260,6 @@ export default function MultipleSelectMaterialItemButton({
                               color: isSubActive ? "white" : "black",
                             }}
                           >
-                            <input
-                              type="checkbox"
-                              className="manager-checkbox"
-                              checked={subChecked}
-                              onChange={() => toggleSubSelection(cat, sub)}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ marginLeft: "8px" }}
-                            />
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1271,7 +1272,7 @@ export default function MultipleSelectMaterialItemButton({
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "space-between",
-                                padding: "7px 10px 7px 0",
+                                padding: "7px 10px 7px 10px",
                                 background: "transparent",
                                 border: "none",
                                 cursor: "pointer",
@@ -1435,6 +1436,7 @@ export default function MultipleSelectMaterialItemButton({
               </div>
               <CreateNewMaterialButton
                 onSuccess={handleNewMaterialCreated}
+                allItems={allItems}
                 style={{ padding: "7px 16px", whiteSpace: "nowrap" }}
               />
               <ExportMaterialListPDFButton allItems={allItems} />
@@ -1773,37 +1775,34 @@ export default function MultipleSelectMaterialItemButton({
                             </tr>
                           )}
                           <tr
-                            onClick={() => setDetailItem(item)}
+                            onClick={() => {
+                              setDetailItem(item);
+                              handleCheckboxToggle(item.id);
+                            }}
                             className={isDetailing ? "row-detailing" : ""}
                             style={{ cursor: "pointer" }}
                           >
-                            <td
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ textAlign: "center" }}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => handleCheckboxToggle(item.id)}
+                            <td style={{ textAlign: "center" }}>
+                              <div
                                 style={{
                                   width: "32px",
                                   height: "32px",
                                   borderRadius: "50%",
-                                  border: "none",
                                   backgroundColor: isSelected
                                     ? "black"
                                     : "rgba(237,237,237,1)",
                                   color: isSelected ? "white" : "black",
-                                  cursor: "pointer",
                                   display: "inline-flex",
                                   alignItems: "center",
                                   justifyContent: "center",
                                   fontSize: isSelected ? "20px" : "22px",
                                   fontWeight: 600,
                                   flexShrink: 0,
+                                  pointerEvents: "none",
                                 }}
                               >
                                 {isSelected ? "×" : "+"}
-                              </button>
+                              </div>
                             </td>
                             <td>
                               <div
@@ -1837,7 +1836,6 @@ export default function MultipleSelectMaterialItemButton({
                     })}
                   </tbody>
                 </table>
-                <PaginationControls />
               </>
             )}
           </div>

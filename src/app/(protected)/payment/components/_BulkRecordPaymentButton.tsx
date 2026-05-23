@@ -9,6 +9,7 @@ import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import { formatPriceAED } from "@/lib/formatPrice";
 import { PAYMENT_TYPES, PAYMENT_METHODS } from "./_RecordPaymentForm";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,8 @@ export default function BulkRecordPaymentButton({
   setIsOpenControlled,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const [isOpenInternal, setIsOpenInternal] = useState(false);
   const isOpen =
     isOpenControlled !== undefined ? isOpenControlled : isOpenInternal;
@@ -201,8 +204,8 @@ export default function BulkRecordPaymentButton({
           "success",
         );
         reset();
+        await refresh();
         setIsOpen(false);
-        router.refresh();
         onSuccess();
       } else {
         toast(`${failed.length} payment(s) failed`, "error");

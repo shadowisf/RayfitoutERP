@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import FormPopUp from "@/app/components/FormPopup";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   transactionID: number;
@@ -19,6 +20,8 @@ export default function MrUploadSignedDnButton({
   onSuccess,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const uploadIcon = "/icons/upload.svg";
   const downloadIcon = "/icons/download.svg";
@@ -143,7 +146,7 @@ export default function MrUploadSignedDnButton({
       setIsUploadFormOpen(false);
 
       if (onSuccess) onSuccess();
-      router.refresh();
+      await refresh();
     } catch {
       toast("Failed to upload signed DN", "error");
     } finally {

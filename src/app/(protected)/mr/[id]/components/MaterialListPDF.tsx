@@ -8,9 +8,8 @@ import {
   Image,
 } from "@react-pdf/renderer";
 
-Font.register({ family: "Mont",         src: "/fonts/Mont-Regular.otf" });
+Font.register({ family: "Mont",          src: "/fonts/Mont-Regular.otf" });
 Font.register({ family: "Mont-SemiBold", src: "/fonts/Mont-SemiBold.otf" });
-Font.register({ family: "Mont-Bold",    src: "/fonts/Mont-Bold.otf" });
 Font.registerHyphenationCallback((word) => [word]);
 
 export type MaterialListItem = {
@@ -26,17 +25,10 @@ type Props = {
   exportDate: string;
 };
 
-const COL_NUM      = "5%";
-const COL_CATEGORY = "20%";
-const COL_SUB      = "20%";
-const COL_MATERIAL = "45%";
-const COL_UNIT     = "10%";
-
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
-    padding: 24,
-    paddingBottom: 60,
+    padding: 20,
     fontFamily: "Mont",
   },
 
@@ -45,78 +37,69 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 30,
   },
   logo: {
-    width: 100,
-    height: 34,
+    width: 120,
+    height: 40,
     objectFit: "contain",
   },
-  titleBlock: {
-    alignItems: "flex-end",
-  },
   title: {
-    fontSize: 16,
-    fontFamily: "Mont-Bold",
+    fontSize: 20,
     color: "#000000",
   },
-  subtitle: {
+  titleBold: {
+    fontFamily: "Mont-SemiBold",
+  },
+
+  // ── Info Row ──────────────────────────────────────────────────────────────
+  infoRow: {
+    flexDirection: "row",
+    marginBottom: 30,
+    gap: 30,
+  },
+  infoLabel: {
     fontSize: 8,
-    color: "#888888",
-    marginTop: 3,
+    color: "#666666",
+    textTransform: "uppercase",
+    marginBottom: 3,
+  },
+  infoValue: {
+    fontSize: 10,
+    fontFamily: "Mont-SemiBold",
+    color: "#000000",
   },
 
   // ── Table ─────────────────────────────────────────────────────────────────
-  table: {
-    marginTop: 8,
-  },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#111111",
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-  },
-  tableHeaderCell: {
-    fontSize: 7,
+    backgroundColor: "#f5f5f5",
+    padding: "8 12",
+    fontSize: 8,
     fontFamily: "Mont-SemiBold",
-    color: "#ffffff",
     textTransform: "uppercase",
   },
-  rowOdd: {
+  tableRow: {
     flexDirection: "row",
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    padding: "8 12",
+    borderBottom: "1 solid #e0e0e0",
+    fontSize: 8,
+    color: "#333333",
   },
-  rowEven: {
-    flexDirection: "row",
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    backgroundColor: "#f8f8f8",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  cell: {
-    fontSize: 7.5,
-    color: "#222222",
-    fontFamily: "Mont",
-    paddingRight: 6,
-  },
-  cellBold: {
-    fontSize: 7.5,
-    color: "#000000",
-    fontFamily: "Mont-SemiBold",
-    paddingRight: 6,
-  },
+
+  // ── Columns ───────────────────────────────────────────────────────────────
+  colNum:      { width: "5%",  paddingRight: 4 },
+  colCategory: { width: "20%", paddingRight: 4 },
+  colSub:      { width: "20%", paddingRight: 4 },
+  colMaterial: { width: "45%", paddingRight: 4 },
+  colUnit:     { width: "10%", paddingRight: 4 },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
     position: "absolute",
     bottom: 20,
-    left: 24,
-    right: 24,
+    left: 20,
+    right: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -134,7 +117,6 @@ const styles = StyleSheet.create({
 export function MaterialListPDF({ items, exportDate }: Props) {
   const logo = "/icons/logo.jpg";
 
-  // Sort by category → subcategory → material
   const sorted = [...items].sort((a, b) => {
     const catCmp = (a.category_name || "").localeCompare(b.category_name || "");
     if (catCmp !== 0) return catCmp;
@@ -146,53 +128,48 @@ export function MaterialListPDF({ items, exportDate }: Props) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+
         {/* Header */}
         <View style={styles.header}>
           <Image src={logo} style={styles.logo} />
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>MATERIAL LIST</Text>
-            <Text style={styles.subtitle}>
-              {sorted.length} items · Exported {exportDate}
-            </Text>
+          <Text style={styles.title}>
+            MATERIAL <Text style={styles.titleBold}>LIST</Text>
+          </Text>
+        </View>
+
+        {/* Info Row */}
+        <View style={styles.infoRow}>
+          <View>
+            <Text style={styles.infoLabel}>Export Date</Text>
+            <Text style={styles.infoValue}>{exportDate}</Text>
+          </View>
+          <View>
+            <Text style={styles.infoLabel}>Total Items</Text>
+            <Text style={styles.infoValue}>{items.length.toLocaleString()}</Text>
           </View>
         </View>
 
         {/* Table */}
-        <View style={styles.table}>
-          {/* Table header */}
+        <View>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { width: COL_NUM }]}>#</Text>
-            <Text style={[styles.tableHeaderCell, { width: COL_CATEGORY }]}>Category</Text>
-            <Text style={[styles.tableHeaderCell, { width: COL_SUB }]}>Sub Category</Text>
-            <Text style={[styles.tableHeaderCell, { width: COL_MATERIAL }]}>Material</Text>
-            <Text style={[styles.tableHeaderCell, { width: COL_UNIT }]}>Unit</Text>
+            <Text style={styles.colNum}>#</Text>
+            <Text style={styles.colCategory}>CATEGORY</Text>
+            <Text style={styles.colSub}>SUBCATEGORY</Text>
+            <Text style={styles.colMaterial}>MATERIAL</Text>
+            <Text style={styles.colUnit}>UNIT</Text>
           </View>
 
-          {/* Rows */}
-          {sorted.map((item, idx) => {
-            const rowStyle = idx % 2 === 0 ? styles.rowOdd : styles.rowEven;
-            return (
-              <View key={item.id} style={rowStyle}>
-                <Text style={[styles.cell, { width: COL_NUM }]}>{idx + 1}</Text>
-                <Text style={[styles.cell, { width: COL_CATEGORY }]}>{item.category_name || "-"}</Text>
-                <Text style={[styles.cell, { width: COL_SUB }]}>{item.subcategory_name || "-"}</Text>
-                <Text style={[styles.cellBold, { width: COL_MATERIAL }]}>{item.material_description}</Text>
-                <Text style={[styles.cell, { width: COL_UNIT }]}>{item.unit || "-"}</Text>
-              </View>
-            );
-          })}
+          {sorted.map((item, idx) => (
+            <View key={item.id} style={styles.tableRow}>
+              <Text style={styles.colNum}>{idx + 1}</Text>
+              <Text style={styles.colCategory}>{item.category_name || "-"}</Text>
+              <Text style={styles.colSub}>{item.subcategory_name || "-"}</Text>
+              <Text style={styles.colMaterial}>{item.material_description}</Text>
+              <Text style={styles.colUnit}>{item.unit || "-"}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Footer */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>RAYFITOUT ERP · Material Library</Text>
-          <Text
-            style={styles.footerText}
-            render={({ pageNumber, totalPages }) =>
-              `Page ${pageNumber} of ${totalPages}`
-            }
-          />
-        </View>
       </Page>
     </Document>
   );

@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../../types/boqLine";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type DuplicateBoqItemButtonProps = {
   item: BoqLine;
@@ -17,6 +18,8 @@ export default function DuplicateBoqItemButton({
   onSuccess,
 }: DuplicateBoqItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const duplicateIcon = "/icons/duplicate.svg";
 
@@ -42,7 +45,7 @@ export default function DuplicateBoqItemButton({
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         toast(
           "Failed to duplicate bill of quantity item. Something went wrong",

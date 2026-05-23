@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { BoqHeader } from "../../types/boqHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   boqHeader: BoqHeader | null;
@@ -25,6 +26,8 @@ export default function EditBoqHeaderButton({
   onClose,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -101,7 +104,7 @@ export default function EditBoqHeaderButton({
 
       toast("Bill of quantity updated", "success");
 
-      router.refresh();
+      await refresh();
 
       onSuccess && onSuccess();
     } else {

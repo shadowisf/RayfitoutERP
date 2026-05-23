@@ -8,6 +8,7 @@ import { toast } from "@/app/components/Toast";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type CreateCAQCChecklistButtonProps = {
   lpoMrLineId: number;
@@ -61,6 +62,8 @@ export default function CreateCAQCChecklistButton({
   onRefresh,
 }: CreateCAQCChecklistButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const uploadIcon = "/icons/upload.svg";
@@ -466,7 +469,7 @@ export default function CreateCAQCChecklistButton({
         setAttachmentsToDelete([]);
         await checkExistingQc();
         onRefresh?.();
-        router.refresh();
+        await refresh();
       } else {
         toast(
           result.message || "Failed to create quality control checklist",

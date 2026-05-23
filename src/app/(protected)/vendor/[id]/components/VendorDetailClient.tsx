@@ -10,6 +10,7 @@ import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import EditSupplierButton from "../../components/_EditSupplierButton";
 import DeleteSupplierButton from "../../components/_DeleteSupplierButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type LpoRow = {
   lpo_id: number;
@@ -37,6 +38,8 @@ export default function VendorDetailClient({
 }: VendorDetailClientProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [lpos, setLpos] = useState<LpoRow[]>(initialLpos);
   const [mrHeader, setMrHeader] = useState<MrHeader | null>(null);
@@ -164,7 +167,7 @@ export default function VendorDetailClient({
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <EditSupplierButton
               supplier={supplier}
-              onSuccess={() => router.refresh()}
+              onSuccess={() => refresh()}
               iconOnly
             />
             <DeleteSupplierButton

@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import InputItem from "@/app/components/InputItem";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type EditBoqCategoryButtonProps = {
   oldCategory: string;
@@ -19,6 +20,8 @@ export default function EditBoqCategoryButton({
   onSuccess,
 }: EditBoqCategoryButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -52,7 +55,7 @@ export default function EditBoqCategoryButton({
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         toast(
           "Failed to update bill of quantity item. Something went wrong",

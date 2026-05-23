@@ -3,6 +3,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   transferID: number;
@@ -18,6 +19,8 @@ export default function DeleteTransactionButton({
   const trashIcon = "/icons/trash.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -38,7 +41,7 @@ export default function DeleteTransactionButton({
         setIsOpen(false);
         onSuccess && onSuccess();
         toast("Transaction deleted", "success");
-        router.refresh();
+        await refresh();
       }
     } catch (err: any) {
       console.error(err);

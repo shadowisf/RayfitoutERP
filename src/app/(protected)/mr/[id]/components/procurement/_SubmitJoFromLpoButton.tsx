@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubmitJoFromLpoButtonProps = {
   mrHeader: MrHeader;
@@ -20,6 +21,8 @@ export default function SubmitJoFromLpoButton({
   style,
 }: SubmitJoFromLpoButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -40,8 +43,8 @@ export default function SubmitJoFromLpoButton({
 
     if (res.ok) {
       toast("Job order submitted", "success");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
       router.replace(`/mr/`);
     } else {
       toast("Failed to submit job order", "error");

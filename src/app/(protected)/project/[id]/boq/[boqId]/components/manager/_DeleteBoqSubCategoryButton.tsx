@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../../types/boqLine";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type DeleteBoqSubCategoryButtonProps = {
   item: BoqLine;
@@ -19,6 +20,8 @@ export default function DeleteBoqSubCategoryButton({
   subCategory,
 }: DeleteBoqSubCategoryButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -43,7 +46,7 @@ export default function DeleteBoqSubCategoryButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
     } else {
       toast(
         "Failed to delete bill of quantity subcategory. Something went wrong",

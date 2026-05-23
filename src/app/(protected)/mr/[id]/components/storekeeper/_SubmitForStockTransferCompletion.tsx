@@ -8,6 +8,7 @@ import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { useState } from "react";
 import FormPopUp from "@/app/components/FormPopup";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   mrHeader: MrHeader;
@@ -19,6 +20,8 @@ export default function SubmitForStockTransferCompletion({
   mrLines,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -66,7 +69,7 @@ export default function SubmitForStockTransferCompletion({
           : "Material request completed, material request fulfilled",
         "success",
       );
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       const data = await res.json();

@@ -10,6 +10,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import CreateInventoryItemButton from "@/app/(protected)/inventory/components/_CreateInventoryItemButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type AddToStockButtonProps = {
   mrLine: MrLine;
@@ -38,6 +39,8 @@ export default function AddToStockButton({
   const { userInfo } = useAuth();
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const plusIcon = "/icons/plus.svg";
   const pencilIcon = "/icons/pencil.svg";
@@ -177,7 +180,7 @@ export default function AddToStockButton({
         // Refetch the stock data after update
         await checkExistingStock();
 
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to update stock", "error");
       }
@@ -252,7 +255,7 @@ export default function AddToStockButton({
       // Refetch to check if stock now exists
       await checkExistingStock();
 
-      router.refresh();
+      await refresh();
 
       setIsOpen(false);
     }

@@ -8,6 +8,7 @@ import { Project } from "../types/project";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   project: Project | null;
@@ -19,6 +20,8 @@ export default function UploadAdditionalAttachmentsButton({
   onUploadSuccess,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
   const [nameOfAttachment, setNameOfAttachment] = useState("");
@@ -95,7 +98,7 @@ export default function UploadAdditionalAttachmentsButton({
       if (onUploadSuccess) {
         onUploadSuccess();
       } else {
-        router.refresh();
+        await refresh();
       }
     } catch (error: any) {
       console.error("Error uploading attachment:", error);

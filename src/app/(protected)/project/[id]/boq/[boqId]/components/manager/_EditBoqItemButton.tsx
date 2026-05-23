@@ -12,6 +12,7 @@ import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import CreateLocationButton from "./_AddLocationButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type EditBoqItemButtonProps = {
   item: BoqLine;
@@ -23,6 +24,8 @@ export default function EditBoqItemButton({
   onSuccess,
 }: EditBoqItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const pencilIcon = "/icons/pencil.svg";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -277,7 +280,7 @@ export default function EditBoqItemButton({
       setOriginalAttachments([]);
 
       onSuccess?.();
-      router.refresh();
+      await refresh();
     } catch (error: any) {
       console.error("Update error:", error);
       toast(error.message || "Failed to update item", "error");

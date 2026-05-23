@@ -12,6 +12,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { pdf } from "@react-pdf/renderer";
 import RequestedItemsPDF from "./RequestedItemsPDF";
 import InputItem from "@/app/components/InputItem";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 export type BulkQuotationItem = {
   line_id: number;
@@ -55,6 +56,8 @@ export default function BulkQuotationCreator({
 }: BulkQuotationCreatorProps) {
   const closeIcon = "/icons/cross-small.svg";
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [quotationPopupOpen, setQuotationPopupOpen] = useState(false);
@@ -325,7 +328,7 @@ export default function BulkQuotationCreator({
       setQuotationPopupOpen(false);
       window.dispatchEvent(new CustomEvent("quotations-created"));
       onSuccess();
-      router.refresh();
+      await refresh();
     } catch (error: any) {
       console.error("Submit error:", error);
       toast(error.message || "Failed to create quotations", "error");

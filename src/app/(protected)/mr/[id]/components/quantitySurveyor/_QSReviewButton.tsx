@@ -8,6 +8,7 @@ import ReplaceMaterialButton from "./_ReplaceMaterialButton";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   item: MrLine;
@@ -27,6 +28,8 @@ type ReviewStatus =
 
 export default function QSReviewButton({ item, progressID }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const checkIcon = "/icons/check.svg";
@@ -61,7 +64,7 @@ export default function QSReviewButton({ item, progressID }: Props) {
       body: JSON.stringify({ action: "setQSReviewNeedOrder", id: item.id }),
     });
     if (res.ok) {
-      router.refresh();
+      await refresh();
     } else {
       setStatus("pending");
     }
@@ -81,7 +84,7 @@ export default function QSReviewButton({ item, progressID }: Props) {
     if (res.ok) {
       setRejectText("");
       setIsRejectOpen(false);
-      router.refresh();
+      await refresh();
     } else {
       setStatus("pending");
     }
@@ -100,7 +103,7 @@ export default function QSReviewButton({ item, progressID }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "resetItemQS", id: item.id }),
     });
-    router.refresh();
+    await refresh();
   }
 
   const isQSAtStage2 = userInfo?.departmentID === 16 && progressID === 2;

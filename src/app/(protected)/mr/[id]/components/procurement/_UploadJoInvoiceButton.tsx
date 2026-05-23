@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import { MrHeader } from "../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type UploadJoInvoiceButtonProps = {
   mrHeader: MrHeader;
@@ -24,6 +25,8 @@ export default function UploadJoInvoiceButton({
   canDelete = true,
 }: UploadJoInvoiceButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,7 +113,7 @@ export default function UploadJoInvoiceButton({
       // Update parent state
       onFilesUpdate(updatedInvoiceFiles);
 
-      router.refresh();
+      await refresh();
     } catch (error) {
       console.error("Error uploading invoice:", error);
       toast("Failed to upload invoice", "error");
@@ -215,7 +218,7 @@ export default function UploadJoInvoiceButton({
       // Update parent state
       onFilesUpdate(updatedInvoiceFiles);
 
-      router.refresh();
+      await refresh();
     } catch (error) {
       console.error("Error deleting invoice:", error);
       toast("Failed to delete invoice", "error");

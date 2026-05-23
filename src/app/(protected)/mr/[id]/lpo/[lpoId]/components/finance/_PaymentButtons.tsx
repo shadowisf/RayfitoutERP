@@ -12,6 +12,7 @@ import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import { MrLine } from "../../../../types/mrLine";
 import { MrHeader } from "../../../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type PaymentButtonsProps = {
   mrHeader: MrHeader;
@@ -29,6 +30,8 @@ export default function PaymentButtons({
   const { userInfo } = useAuth();
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const crossIcon = "/icons/cross-small.svg";
   const externalLinkIcon = "/icons/external-link.svg";
@@ -245,7 +248,7 @@ export default function PaymentButtons({
       setSelectedFile(null);
       setIsProceedOpen(false);
 
-      router.refresh();
+      await refresh();
     } catch (error) {
       console.error("Error approving payment:", error);
       toast("Failed to approve payment", "error");
@@ -279,7 +282,7 @@ export default function PaymentButtons({
       setRejectText("");
       setIsRejectOpen(false);
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reject payment", "error");
       setStatus("pending");
@@ -331,7 +334,7 @@ export default function PaymentButtons({
         setPaymentFileUrl("");
         setIsRejectOpen(false);
 
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to reset payment approval", "error");
       }

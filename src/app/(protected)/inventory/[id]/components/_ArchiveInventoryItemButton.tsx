@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { InventoryItem } from "../../types/inventoryItem";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   inventoryItem: InventoryItem;
@@ -17,6 +18,8 @@ export default function ArchiveInventoryItemButton({
   onSuccess,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -44,7 +47,7 @@ export default function ArchiveInventoryItemButton({
       onSuccess && onSuccess();
 
       router.replace("/inventory");
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to archive inventory item", "error");
     }

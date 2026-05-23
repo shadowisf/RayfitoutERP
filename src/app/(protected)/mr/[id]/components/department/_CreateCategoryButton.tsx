@@ -4,6 +4,7 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   onSuccess?: (newId: number) => void;
@@ -11,6 +12,8 @@ type props = {
 
 export default function CreateCategoryButton({ onSuccess }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -34,7 +37,7 @@ export default function CreateCategoryButton({ onSuccess }: props) {
         toast("Category created", "success");
         setIsOpen(false);
         setValue("");
-        router.refresh();
+        await refresh();
 
         onSuccess && onSuccess(data.id);
       } else {

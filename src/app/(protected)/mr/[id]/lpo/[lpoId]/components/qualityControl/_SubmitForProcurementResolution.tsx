@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubmitForProcurementResolutionButtonProps = {
   mrHeaderID: number;
@@ -21,6 +22,8 @@ export default function SubmitForProcurementResolutionButton({
   disabled,
 }: SubmitForProcurementResolutionButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -57,7 +60,7 @@ export default function SubmitForProcurementResolutionButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to submit material request", "error");
     }

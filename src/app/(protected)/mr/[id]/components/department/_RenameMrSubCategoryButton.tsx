@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { MrLine } from "../../types/mrLine";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type RenameMrSubCategoryButtonProps = {
   items: MrLine[];
@@ -20,6 +21,8 @@ export default function RenameMrSubCategoryButton({
   subCategoryID,
 }: RenameMrSubCategoryButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -90,8 +93,8 @@ export default function RenameMrSubCategoryButton({
     if (res.ok) {
       toast("Material request subcategory updated", "success");
       setSelectedSubCategoryID("");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
     } else {
       const errorData = await res.json();
       toast(

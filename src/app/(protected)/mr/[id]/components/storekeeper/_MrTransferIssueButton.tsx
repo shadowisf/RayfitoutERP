@@ -12,6 +12,7 @@ import { MrLine } from "../../types/mrLine";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   item: MrLine;
@@ -23,6 +24,8 @@ export default function MrTransferIssueButton({
   onTransferComplete,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -277,8 +280,8 @@ export default function MrTransferIssueButton({
             : "Stock sent",
         "success",
       );
+      await refresh();
       setIsOpen(false);
-      router.refresh();
     } else {
       toast("Failed to transfer or issue stock", "error");
     }

@@ -11,6 +11,7 @@ import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import CreateLocationButton from "./_AddLocationButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type AddBoqItemButtonProps = {
   boqHeaderID: number;
@@ -38,6 +39,8 @@ export default function AddBoqItemButton({
   style,
 }: AddBoqItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -200,8 +203,8 @@ export default function AddBoqItemButton({
       setDnNumberAndDate("");
       setRemarks("");
 
+      await refresh();
       setIsOpen(false);
-      router.refresh();
     } catch (error: any) {
       console.error("Create error:", error);
       toast(error.message || "Failed to create bill of quantity item", "error");

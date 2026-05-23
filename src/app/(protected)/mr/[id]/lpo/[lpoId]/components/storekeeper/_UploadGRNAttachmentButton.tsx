@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type UploadGRNAttachmentButtonProps = {
   mrHeaderID: number;
@@ -22,6 +23,8 @@ export default function UploadGRNAttachmentButton({
   children,
 }: UploadGRNAttachmentButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -42,7 +45,7 @@ export default function UploadGRNAttachmentButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to cancel material request", "error");
     }

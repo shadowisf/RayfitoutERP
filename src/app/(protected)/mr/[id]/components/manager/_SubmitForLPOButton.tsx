@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubmitForLPOProps = {
   mrHeaderID: number;
@@ -23,6 +24,8 @@ export default function SubmitForLPO({
   skipApprovals = false,
 }: SubmitForLPOProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -156,8 +159,8 @@ export default function SubmitForLPO({
 
       if (res.ok) {
         toast("Material request submitted", "success");
+        await refresh();
         setIsOpen(false);
-        router.refresh();
         router.replace(`/mr/`);
       } else {
         const errorData = await res.json();

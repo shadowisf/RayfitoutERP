@@ -10,6 +10,7 @@ import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { MrPDF } from "../MrPDF";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   selectedItemIds: Set<number>;
@@ -41,6 +42,8 @@ export default function QSActionsButton({
   category,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const downloadIcon = "/icons/download.svg";
 
@@ -84,7 +87,7 @@ export default function QSActionsButton({
         ),
       );
       setSelectedItemIds(new Set());
-      router.refresh();
+      await refresh();
     } finally {
       setIsApproving(false);
     }
@@ -108,7 +111,7 @@ export default function QSActionsButton({
     setSelectedItemIds(new Set());
     setConfirmRejectOpen(false);
     setRejectText("");
-    router.refresh();
+    await refresh();
   }
 
   async function handleBulkDelete() {
@@ -124,7 +127,7 @@ export default function QSActionsButton({
     );
     setSelectedItemIds(new Set());
     setConfirmDeleteOpen(false);
-    router.refresh();
+    await refresh();
   }
 
   // ── PDF download ───────────────────────────────────────────────────────────

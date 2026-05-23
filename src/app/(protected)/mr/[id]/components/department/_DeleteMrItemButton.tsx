@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type DeleteMrItemButtonProps = {
   item: MrLine;
@@ -26,6 +27,8 @@ export default function DeleteMrItemButton({
   stageName,
 }: DeleteMrItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -76,8 +79,8 @@ export default function DeleteMrItemButton({
 
       if (res.ok) {
         toast(`${item.material_description} deleted`, "success");
+        await refresh();
         setIsOpen(false);
-        router.refresh();
       } else {
         toast("Failed to delete material request item", "error");
       }

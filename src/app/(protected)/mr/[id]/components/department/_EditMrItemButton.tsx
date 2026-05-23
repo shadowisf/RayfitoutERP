@@ -11,6 +11,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type EditMrItemButtonProps = {
   projectID?: number;
@@ -36,6 +37,8 @@ export default function EditMrItemButton({
   stageName,
 }: EditMrItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   // Mobile detection
@@ -104,7 +107,7 @@ export default function EditMrItemButton({
       }
 
       toast(`Updated to ${selected.material_description}`, "success");
-      router.refresh();
+      await refresh();
     } catch {
       toast("Failed to update material request item", "error");
     } finally {

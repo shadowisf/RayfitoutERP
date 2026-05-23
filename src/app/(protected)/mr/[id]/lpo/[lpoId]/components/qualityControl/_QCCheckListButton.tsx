@@ -11,6 +11,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../../../types/mrLine";
 import { MrHeader } from "../../../../types/mrHeader";
 import { LpoHeader } from "../../../../types/lpoHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type QCCheckListButtonProps = {
   mrHeader: MrHeader;
@@ -77,6 +78,8 @@ export default function QCCheckListButton({
   item,
 }: QCCheckListButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -707,7 +710,7 @@ export default function QCCheckListButton({
         // Clear the attachments to delete list
         setAttachmentsToDelete([]);
 
-        router.refresh();
+        await refresh();
       } else {
         toast(
           result.message || "Failed to create quality control checklist",

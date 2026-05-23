@@ -8,6 +8,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   item: MrLine;
@@ -16,6 +17,8 @@ type Props = {
 
 export default function EditPredefinedItemButton({ item, stageName }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -60,8 +63,8 @@ export default function EditPredefinedItemButton({ item, stageName }: Props) {
       }
 
       toast("Description updated", "success");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
     } catch {
       toast("Failed to update description", "error");
     } finally {

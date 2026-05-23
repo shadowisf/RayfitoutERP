@@ -10,6 +10,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type AddMrItemButtonProps = {
   mrHeaderID: number;
@@ -36,6 +37,8 @@ export default function AddMrItemButton({
   downloadButton,
 }: AddMrItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   // Mobile detection
@@ -90,7 +93,7 @@ export default function AddMrItemButton({
         `${items.length} item${items.length !== 1 ? "s" : ""} added`,
         "success",
       );
-      router.refresh();
+      await refresh();
     } catch {
       toast("Failed to add material request items", "error");
     } finally {

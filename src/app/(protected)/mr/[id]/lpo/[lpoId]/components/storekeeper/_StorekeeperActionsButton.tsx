@@ -10,6 +10,7 @@ import { MrLine } from "../../../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   selectedItemIds: Set<number>;
@@ -32,6 +33,8 @@ export default function StorekeeperActionsButton({
 }: Props) {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [actionsOpen, setActionsOpen] = useState(false);
   const [addStockOpen, setAddStockOpen] = useState(false);
@@ -159,7 +162,7 @@ export default function StorekeeperActionsButton({
       setLocation("");
       setNotes("");
       onStockAdded?.();
-      router.refresh();
+      await refresh();
     } catch {
       toast("Failed to add stock for some items", "error");
     } finally {

@@ -11,6 +11,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { BoqLine } from "@/app/(protected)/project/[id]/boq/[boqId]/types/boqLine";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 import { ATTACHMENT_TYPES } from "../../types/joLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type AttachmentItem = {
   type: string;
@@ -58,6 +59,7 @@ export default function AddJoItemButton({
   const crossIcon = "/icons/cross-small.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
 
   const formatQty = (val: any) => {
     const num = Number(val);
@@ -228,7 +230,7 @@ export default function AddJoItemButton({
         toast("Job added", "success");
         setIsOpen(false);
         resetForm();
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to add job", "error");
       }

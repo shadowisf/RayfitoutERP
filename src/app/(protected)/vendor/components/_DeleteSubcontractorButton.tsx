@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   subcontractor: Subcontractor;
@@ -18,6 +19,8 @@ export default function DeleteSubcontractorButton({
   iconOnly,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -46,7 +49,7 @@ export default function DeleteSubcontractorButton({
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to delete Subcontractor. Something went wrong", "error");
       }

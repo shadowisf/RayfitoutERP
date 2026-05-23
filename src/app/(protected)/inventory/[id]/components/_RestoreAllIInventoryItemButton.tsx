@@ -6,9 +6,12 @@ import { useState } from "react";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 export default function RestoreAllInventoryItemButton() {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -35,7 +38,7 @@ export default function RestoreAllInventoryItemButton() {
       setIsOpen(false);
 
       router.replace("/inventory");
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to restore all inventory items", "error");
     }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "@/app/components/Toast";
 import { Project } from "../types/project";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   project: Project | null;
@@ -14,6 +15,8 @@ type props = {
 
 export function DeleteProjectButton({ project, onSuccess }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -37,7 +40,7 @@ export function DeleteProjectButton({ project, onSuccess }: props) {
     if (res.ok) {
       toast("Project deleted", "success");
 
-      router.refresh();
+      await refresh();
       router.replace("/project");
 
       onSuccess && onSuccess();

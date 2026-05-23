@@ -7,6 +7,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { MrLine } from "../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   item: MrLine;
@@ -14,6 +15,8 @@ type Props = {
 
 export default function QSEditBrandSpecButton({ item }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
   const pencilIcon = "/icons/pencil.svg";
 
@@ -43,8 +46,8 @@ export default function QSEditBrandSpecButton({ item }: Props) {
         stage_name: "QS REVIEW",
       }),
     });
+    await refresh();
     setIsOpen(false);
-    router.refresh();
   }
 
   return (

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import InputItem from "@/app/components/InputItem";
 import { BoqLine } from "../../types/boqLine";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type RenameBoqSubCategoryButtonProps = {
   item: BoqLine;
@@ -20,6 +21,8 @@ export default function RenameBoqSubCategoryButton({
   subCategory,
 }: RenameBoqSubCategoryButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -49,7 +52,7 @@ export default function RenameBoqSubCategoryButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
     } else {
       toast(
         "Failed to update bill of quantity subcategory. Something went wrong",

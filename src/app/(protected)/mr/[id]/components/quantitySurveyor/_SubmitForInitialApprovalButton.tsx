@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 function getTypeLabel(type?: string) {
   if (type === "job") return "job order";
@@ -28,6 +29,8 @@ export default function SubmitForInitialApprovalButton({
   progressId,
 }: SubitForInitialApprovalButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -70,7 +73,7 @@ export default function SubmitForInitialApprovalButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       toast(`Failed to submit ${typeLabel}`, "error");

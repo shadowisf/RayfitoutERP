@@ -5,6 +5,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type DeleteBoqCategoryButtonProps = {
   boqID: number;
@@ -18,6 +19,8 @@ export default function DeleteBoqCategoryButton({
   onSuccess,
 }: DeleteBoqCategoryButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -43,7 +46,7 @@ export default function DeleteBoqCategoryButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
     } else {
       toast(
         "Failed to delete bill of quantity category. Something went wrong",

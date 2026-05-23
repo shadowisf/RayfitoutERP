@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import { MrHeader } from "../../types/mrHeader";
 import { MrLine } from "../../types/mrLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type UploadSignedLPOButtonProps = {
   mrHeader: MrHeader;
@@ -29,6 +30,8 @@ export default function UploadSignedLPOButton({
   canDelete = false,
 }: UploadSignedLPOButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +123,7 @@ export default function UploadSignedLPOButton({
       // Update parent state
       onFilesUpdate(updatedSignedLpoFiles);
 
-      router.refresh();
+      await refresh();
     } catch (error) {
       console.error("Error uploading signed LPO:", error);
       toast("Failed to upload signed local purchase order", "error");
@@ -231,7 +234,7 @@ export default function UploadSignedLPOButton({
       // Update parent state
       onFilesUpdate(updatedSignedLpoFiles);
 
-      router.refresh();
+      await refresh();
     } catch (error) {
       console.error("Error deleting signed LPO:", error);
       toast("Failed to delete signed local purchase order", "error");

@@ -12,6 +12,7 @@ import RejectCommentPopUp from "./RejectCommentPopUp";
 import { MrLine } from "../../types/mrLine";
 import SupplierDetailsPopUp from "../../../components/SupplierDetailsPopUp";
 import { formatPriceAED } from "@/lib/formatPrice";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type PriceApprovalButtonProps = {
   progressID: number;
@@ -47,6 +48,8 @@ export default function PriceApprovalButton({
   const plusIcon = "/icons/plus.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [supplierQuotations, setSupplierQuotations] = useState<
@@ -295,7 +298,7 @@ export default function PriceApprovalButton({
     }
 
     window.dispatchEvent(new CustomEvent("quotationsUpdated"));
-    router.refresh();
+    await refresh();
   }
 
   async function handleApproveSupplierAndQuotation(e: React.FormEvent) {
@@ -338,7 +341,7 @@ export default function PriceApprovalButton({
       setIsOpen(false);
       setRejectText("");
       fetchQuotations();
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to approve vendor and quotation", "error");
     }
@@ -366,7 +369,7 @@ export default function PriceApprovalButton({
       setIsRejectOpen(false);
       setIsOpen(false);
       fetchQuotations();
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reject vendor and quotation", "error");
     }
@@ -397,7 +400,7 @@ export default function PriceApprovalButton({
 
     if (res.ok) {
       fetchQuotations();
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reset vendor selection", "error");
     }

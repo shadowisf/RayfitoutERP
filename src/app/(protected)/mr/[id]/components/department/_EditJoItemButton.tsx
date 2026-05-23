@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { ATTACHMENT_TYPES, JoLine } from "../../types/joLine";
 import { BoqLine } from "@/app/(protected)/project/[id]/boq/[boqId]/types/boqLine";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type AttachmentItem = {
   id?: number;
@@ -55,6 +56,8 @@ export default function EditJoItemButton({ item, projectID }: props) {
   const crossIcon = "/icons/cross-small.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -328,7 +331,7 @@ export default function EditJoItemButton({ item, projectID }: props) {
 
       if (res.ok) {
         toast("Job updated", "success");
-        router.refresh();
+        await refresh();
         setIsOpen(false);
       } else {
         toast("Failed to update job", "error");

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Attachment = {
   name: string;
@@ -28,6 +29,8 @@ export default function AttachmentsList({
   const trashIcon = "/icons/trash.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
 
@@ -59,7 +62,7 @@ export default function AttachmentsList({
       if (onDeleteSuccess) {
         onDeleteSuccess();
       } else {
-        router.refresh();
+        await refresh();
       }
     } catch (error: any) {
       console.error("Error deleting attachment:", error);

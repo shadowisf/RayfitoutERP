@@ -11,6 +11,7 @@ import InputItem from "@/app/components/InputItem";
 import RejectCommentPopUp from "./RejectCommentPopUp";
 import { JoLine } from "../../types/joLine";
 import { formatPriceAED } from "@/lib/formatPrice";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type JoPriceApprovalButtonProps = {
   progressID: number;
@@ -47,6 +48,8 @@ export default function JoPriceApprovalButton({
   const crossIcon = "/icons/cross-small.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [subcontractorQuotations, setSubcontractorQuotations] = useState<
@@ -275,7 +278,7 @@ export default function JoPriceApprovalButton({
     }
 
     window.dispatchEvent(new CustomEvent("joQuotationsUpdated"));
-    router.refresh();
+    await refresh();
   }
 
   async function handleApproveSubcontractorQuotation(e: React.FormEvent) {
@@ -312,7 +315,7 @@ export default function JoPriceApprovalButton({
       setIsOpen(false);
       setRejectText("");
       fetchQuotations();
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to approve subcontractor and quotation", "error");
     }
@@ -341,7 +344,7 @@ export default function JoPriceApprovalButton({
       setIsRejectOpen(false);
       setIsOpen(false);
       fetchQuotations();
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reject subcontractor and quotation", "error");
     }
@@ -365,7 +368,7 @@ export default function JoPriceApprovalButton({
 
       if (res.ok) {
         fetchQuotations();
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to reset subcontractor selection", "error");
       }
@@ -386,7 +389,7 @@ export default function JoPriceApprovalButton({
 
       if (res.ok) {
         fetchQuotations();
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to reset quotations", "error");
       }

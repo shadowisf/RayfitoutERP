@@ -8,6 +8,7 @@ import InputItem from "./InputItem";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "./Toast";
 import SingleSelectDropdown from "./SingleSelectDropdown";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 export default function NewMrButton() {
   const { userInfo } = useAuth();
@@ -18,6 +19,8 @@ export default function NewMrButton() {
   const warningIcon = "/icons/warning.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -160,7 +163,7 @@ export default function NewMrButton() {
         setIsCreateOpen(false);
         setSelectedJoId("");
         setMode("");
-        router.refresh();
+        await refresh();
         router.replace(`/mr/${data.mrHeaderId}`);
       } else {
         toast("Failed to create payment request", "error");
@@ -217,7 +220,7 @@ export default function NewMrButton() {
       setMode("");
       setSkipApprovals(false);
 
-      router.refresh();
+      await refresh();
 
       router.replace(`/mr/${data.mrHeaderId}`);
     } else {
@@ -232,8 +235,8 @@ export default function NewMrButton() {
         bgColor={"white"}
         borderColor={"black"}
         textColor={"black"}
-        onClick={() => {
-          router.refresh();
+        onClick={async () => {
+          await refresh();
           setIsOpen(true);
         }}
       >

@@ -6,6 +6,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MrHeader } from "../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type QCRecheckButtonProps = {
   mrHeader: MrHeader;
@@ -13,6 +14,8 @@ type QCRecheckButtonProps = {
 
 export default function QCRecheckButton({ mrHeader }: QCRecheckButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -30,8 +33,8 @@ export default function QCRecheckButton({ mrHeader }: QCRecheckButtonProps) {
 
     if (res.ok) {
       toast("Material request submitted", "success");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
     } else {
       toast("Failed to submit material request", "error");
     }

@@ -7,6 +7,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Project } from "../../../../types/project";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   bgColor?: string;
@@ -26,6 +27,8 @@ export default function CreateBoqHeaderButton({
   onSuccess,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -77,7 +80,7 @@ vii. Contractor reserve the right to request for an extension of time for reason
     });
 
     if (res.ok) {
-      router.refresh();
+      await refresh();
 
       onSuccess && onSuccess();
 

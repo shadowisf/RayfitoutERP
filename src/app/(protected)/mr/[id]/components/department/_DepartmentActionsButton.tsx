@@ -7,6 +7,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
 import { MrLine } from "../../types/mrLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   selectedItems: MrLine[];
@@ -24,6 +25,8 @@ export default function DepartmentActionsButton({
   onReset,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -85,7 +88,7 @@ export default function DepartmentActionsButton({
       toast(`${count} item${count !== 1 ? "s" : ""} deleted`, "success");
       setDeleteOpen(false);
       onComplete?.();
-      router.refresh();
+      await refresh();
     } catch {
       toast("Failed to delete items", "error");
     } finally {
@@ -150,7 +153,7 @@ export default function DepartmentActionsButton({
 
       toast(`${count} item${count !== 1 ? "s" : ""} duplicated`, "success");
       onComplete?.();
-      router.refresh();
+      await refresh();
     } catch {
       toast("Failed to duplicate items", "error");
     } finally {

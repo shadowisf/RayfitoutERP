@@ -10,16 +10,19 @@ import { UNIT_OPTIONS } from "@/constants/units";
 import { PredefinedItem } from "@/app/components/_MultipleSelectMaterialItemButton";
 import CreateCategoryButton from "../(protected)/mr/[id]/components/department/_CreateCategoryButton";
 import CreateSubCategoryButton from "../(protected)/mr/[id]/components/department/_CreateSubcategoryButton";
+import ExportMaterialListPDFButton from "../(protected)/mr/[id]/components/_ExportMaterialListPDFButton";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "../context/AuthContext";
 
 type CreateNewMaterialButtonProps = {
   onSuccess?: (newItem: PredefinedItem) => void;
+  allItems?: PredefinedItem[];
   style?: React.CSSProperties;
 };
 
 export default function CreateNewMaterialButton({
   onSuccess,
+  allItems,
   style,
 }: CreateNewMaterialButtonProps) {
   const { userInfo } = useAuth();
@@ -40,8 +43,9 @@ export default function CreateNewMaterialButton({
   >([]);
 
   type InventorySuggestion = { id: number; description: string };
-  const [inventorySuggestion, setInventorySuggestion] =
-    useState<InventorySuggestion | null>(null);
+  const [inventorySuggestions, setInventorySuggestions] = useState<
+    InventorySuggestion[]
+  >([]);
 
   // Fetch all categories + all subcategories on mount
   useEffect(() => {
@@ -91,7 +95,7 @@ export default function CreateNewMaterialButton({
   useEffect(() => {
     const trimmed = newMatDescription.trim();
     if (trimmed.length < 3) {
-      setInventorySuggestion(null);
+      setInventorySuggestions([]);
       return;
     }
 
@@ -106,12 +110,14 @@ export default function CreateNewMaterialButton({
       )
         .then((r) => r.json())
         .then((data) => {
-          const match = data?.data?.[trimmed];
-          setInventorySuggestion(
-            match ? { id: match.id, description: match.description } : null,
+          const matches = data?.data?.[trimmed];
+          setInventorySuggestions(
+            Array.isArray(matches)
+              ? matches.map((m: any) => ({ id: m.id, description: m.description }))
+              : [],
           );
         })
-        .catch(() => setInventorySuggestion(null));
+        .catch(() => setInventorySuggestions([]));
     }, 350);
 
     return () => clearTimeout(timer);
@@ -181,7 +187,7 @@ export default function CreateNewMaterialButton({
       setNewMatSubCategoryID("");
       setNewMatUnit("");
       setNewMatBrand("");
-      setInventorySuggestion(null);
+      setInventorySuggestions([]);
     } catch (err: any) {
       toast(err?.message || "Something went wrong.", "error");
     }
@@ -194,14 +200,11 @@ export default function CreateNewMaterialButton({
       handleSubmit={handleNewMaterialSubmit}
       addButtonLabel={"CONFIRM"}
     >
-      {/* <div className="input-row full">
-        <InputItem
-          label={"CODE"}
-          value={newMatItemCode}
-          type={"text"}
-          onChange={(e) => setNewMatItemCode(e.target.value)}
-        />
-      </div> */}
+      {allItems && allItems.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <ExportMaterialListPDFButton allItems={allItems} />
+        </div>
+      )}
 
       <div className="input-row half">
         <SingleSelectDropdown
@@ -263,7 +266,7 @@ export default function CreateNewMaterialButton({
         />
       </div>
 
-      <div className="input-row half">
+      <div className="input-row full">
         <InputItem
           label={"NAME"}
           value={newMatDescription}
@@ -283,6 +286,73 @@ export default function CreateNewMaterialButton({
             </p>
           }
         />
+      </div>
+
+      {inventorySuggestions.length > 0 && (
+        <div
+          style={{
+            marginTop: "-8px",
+            marginBottom: "12px",
+            fontSize: "10px",
+            fontStyle: "italic",
+            color: "rgba(130, 130, 130, 1)",
+          }}
+        >
+          Possible match in material database:
+          {inventorySuggestions.map((suggestion) => (
+            <div key={suggestion.id} style={{ marginTop: "4px" }}>
+              <span
+                style={{ fontWeight: 600, color: "black", fontStyle: "normal" }}
+              >
+                &ldquo;{suggestion.description}&rdquo;
+              </span>
+              &nbsp;
+              <a
+                href={`/inventory/${suggestion.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  verticalAlign: "middle",
+                }}
+              >
+                <img
+                  src="/icons/external-link.svg"
+                  alt="open"
+                  style={{ width: "9px", height: "9px" }}
+                />
+              </a>
+              &nbsp;&nbsp;
+              <button
+                type="button"
+                onClick={() => setNewMatDescription(suggestion.description)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  color: "rgba(36, 160, 237, 1)",
+                  fontStyle: "normal",
+                  fontWeight: 600,
+                  fontSize: "10px",
+                  textDecoration: "underline",
+                }}
+              >
+                Use This Item
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="input-row half">
+        <InputItem
+          label={"BRAND"}
+          value={newMatBrand}
+          type={"text"}
+          onChange={(e) => setNewMatBrand(e.target.value)}
+        />
         <InputItem
           label={"UNIT"}
           value={newMatUnit}
@@ -293,70 +363,6 @@ export default function CreateNewMaterialButton({
         />
       </div>
 
-      {inventorySuggestion && (
-        <div
-          style={{
-            marginTop: "-8px",
-            marginBottom: "12px",
-            fontSize: "10px",
-            fontStyle: "italic",
-            color: "rgba(130, 130, 130, 1)",
-          }}
-        >
-          Possible match in material database:&nbsp;
-          <span
-            style={{ fontWeight: 600, color: "black", fontStyle: "normal" }}
-          >
-            &ldquo;{inventorySuggestion.description}&rdquo;
-          </span>
-          &nbsp;
-          <a
-            href={`/inventory/${inventorySuggestion.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              verticalAlign: "middle",
-            }}
-          >
-            <img
-              src="/icons/external-link.svg"
-              alt="open"
-              style={{ width: "9px", height: "9px" }}
-            />
-          </a>
-          &nbsp;&nbsp;
-          <button
-            type="button"
-            onClick={() =>
-              setNewMatDescription(inventorySuggestion.description)
-            }
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "rgba(36, 160, 237, 1)",
-              fontStyle: "normal",
-              fontWeight: 600,
-              fontSize: "10px",
-              textDecoration: "underline",
-            }}
-          >
-            Use This Item
-          </button>
-        </div>
-      )}
-
-      {/* <div className="input-row half">
-        <InputItem
-          label={"BRAND"}
-          value={newMatBrand}
-          type={"text"}
-          onChange={(e) => setNewMatBrand(e.target.value)}
-        />
-      </div> */}
     </FormPopUp>
   );
 

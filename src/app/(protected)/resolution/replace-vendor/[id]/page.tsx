@@ -14,6 +14,7 @@ import Link from "next/link";
 import FormPopUp from "@/app/components/FormPopup";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import Image from "next/image";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type ReplaceDetail = {
   id: number;
@@ -87,6 +88,8 @@ const STATUS_BADGES: {
 export default function ReplaceVendorDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
   const resolutionId = params.id as string;
 
@@ -189,7 +192,7 @@ export default function ReplaceVendorDetailPage() {
     if (res.ok) {
       toast("Resolution submitted", "success");
       setIsConfirmOpen(false);
-      router.refresh();
+      await refresh();
       router.replace("/resolution?tab=tracker");
     } else {
       const data = await res.json();

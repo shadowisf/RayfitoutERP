@@ -9,6 +9,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import CreateInventoryItemButton from "@/app/(protected)/inventory/components/_CreateInventoryItemButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type ConditionalDetail = {
   id: number;
@@ -44,6 +45,8 @@ export default function AddConditionalStockButton({
 }: AddConditionalStockButtonProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -156,7 +159,7 @@ export default function AddConditionalStockButton({
         setIsOpen(false);
         await checkExistingStock();
         onRefresh?.();
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to update stock", "error");
       }
@@ -192,7 +195,7 @@ export default function AddConditionalStockButton({
       setInventoryItemID("");
       await checkExistingStock();
       onRefresh?.();
-      router.refresh();
+      await refresh();
       setIsOpen(false);
     }
   }

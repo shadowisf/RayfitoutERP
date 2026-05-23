@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import Button from "@/app/components/Button";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   subcontractor: Subcontractor;
@@ -22,6 +23,8 @@ export default function EditSubcontractorButton({
   iconOnly,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -267,7 +270,7 @@ export default function EditSubcontractorButton({
         toast("Subcontractor updated", "success");
         setIsOpen(false);
         onSuccess && onSuccess();
-        router.refresh();
+        await refresh();
       } else {
         const errorData = await res.json();
         toast(errorData.error || "Failed to update subcontractor", "error");

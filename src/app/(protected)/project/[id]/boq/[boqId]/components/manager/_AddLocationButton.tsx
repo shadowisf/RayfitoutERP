@@ -4,6 +4,7 @@ import InputItem from "@/app/components/InputItem";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   onSuccess?: () => void;
@@ -11,6 +12,8 @@ type props = {
 
 export default function CreateLocationButton({ onSuccess }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -29,7 +32,7 @@ export default function CreateLocationButton({ onSuccess }: props) {
     });
 
     if (res.ok) {
-      router.refresh();
+      await refresh();
 
       onSuccess && onSuccess();
 

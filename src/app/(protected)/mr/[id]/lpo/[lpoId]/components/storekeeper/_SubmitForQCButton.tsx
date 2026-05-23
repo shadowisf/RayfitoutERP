@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubmitForQCProps = {
   mrHeaderID: number;
@@ -21,6 +22,8 @@ export default function SubmitForQC({
   disabled,
 }: SubmitForQCProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -68,8 +71,8 @@ export default function SubmitForQC({
 
     if (res.ok) {
       toast("Material request submitted", "success");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
       router.replace(`/mr/`);
     } else {
       toast("Failed to submit material request", "error");

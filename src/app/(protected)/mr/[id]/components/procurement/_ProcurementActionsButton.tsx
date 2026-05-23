@@ -12,6 +12,7 @@ import SupplierAndQuotationButton from "./_SupplierAndQuotationButton";
 import BulkQuotationCreator, {
   BulkQuotationItem,
 } from "@/app/(protected)/mr/components/_BulkQuotationCreator";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   selectedItemIds: Set<number>;
@@ -27,6 +28,8 @@ export default function ProcurementActionsButton({
   mrHeader,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const downloadIcon = "/icons/download.svg";
 
   // ── Dropdown states ────────────────────────────────────────────────────────
@@ -271,10 +274,10 @@ export default function ProcurementActionsButton({
             setShowBulkQuotation(false);
             setSelectedItemIds(new Set());
           }}
-          onSuccess={() => {
+          onSuccess={async () => {
             setShowBulkQuotation(false);
             setSelectedItemIds(new Set());
-            router.refresh();
+            await refresh();
           }}
           openOnMount
           mrRef={mrHeader.identifier || String(mrHeader.id)}
