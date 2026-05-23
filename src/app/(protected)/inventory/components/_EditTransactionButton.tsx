@@ -11,6 +11,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type TransactionItem = {
   id: number;
@@ -56,6 +57,8 @@ export default function EditTransactionButton({
   const noImageIcon = "/icons/no-image.jpg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -398,7 +401,7 @@ export default function EditTransactionButton({
       if (res.ok) {
         toast("Transaction updated successfully", "success");
         onSuccess && onSuccess();
-        router.refresh();
+        await refresh();
         setIsOpen(false);
       } else {
         const errorData = await res.json();

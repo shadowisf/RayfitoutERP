@@ -7,6 +7,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { InventoryItem } from "../../types/inventoryItem";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type DeleteInventoryItemButtonProps = {
   inventoryItem: InventoryItem;
@@ -16,6 +17,8 @@ export default function DeleteInventoryItemButton({
   inventoryItem,
 }: DeleteInventoryItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -68,7 +71,7 @@ export default function DeleteInventoryItemButton({
       setIsOpen(false);
 
       router.replace("/inventory");
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to delete inventory item", "error");
     }

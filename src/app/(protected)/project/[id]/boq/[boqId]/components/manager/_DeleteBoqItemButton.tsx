@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { BoqLine } from "../../types/boqLine";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type DeleteBoqItemButtonProps = {
   item: BoqLine;
@@ -17,6 +18,8 @@ export default function DeleteBoqItemButton({
   onSuccess,
 }: DeleteBoqItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -91,7 +94,7 @@ export default function DeleteBoqItemButton({
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         toast(
           "Failed to delete bill of quantity item. Something went wrong",

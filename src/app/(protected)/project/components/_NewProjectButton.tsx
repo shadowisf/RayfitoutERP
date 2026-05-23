@@ -7,9 +7,12 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 export default function NewProjectButton() {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -91,7 +94,7 @@ export default function NewProjectButton() {
       setIsOpen(false);
       setType("");
 
-      router.refresh();
+      await refresh();
 
       router.push(`/project/${data.id}`);
     } else {

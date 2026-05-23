@@ -5,6 +5,8 @@ import SideBar from "../components/SideBar";
 import ProtectedRoute from "../components/ProtectedRoute";
 import GlobalToast from "../components/Toast";
 import NavigationLoader from "../components/_NavigationLoader";
+import LoadingBar from "../components/LoadingBar";
+import { RefreshProvider } from "../context/RefreshContext";
 import { useState } from "react";
 
 export default function ProtectedLayout({
@@ -15,7 +17,9 @@ export default function ProtectedLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    <RefreshProvider>
     <ProtectedRoute>
+      <LoadingBar />
       <Navbar onHamburgerClick={() => setSidebarOpen(!sidebarOpen)} />
 
       <div style={{ display: "flex" }}>
@@ -46,5 +50,6 @@ export default function ProtectedLayout({
         </main>
       </div>
     </ProtectedRoute>
+    </RefreshProvider>
   );
 }

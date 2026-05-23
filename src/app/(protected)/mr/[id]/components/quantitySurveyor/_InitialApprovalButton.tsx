@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 import RejectCommentPopUp from "./RejectPopUp";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   item: MrLine;
@@ -19,6 +20,8 @@ type StatusType = "pending" | "approved" | "rejected";
 
 export default function QSInitialApprovalButtons({ item, progressID }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -59,7 +62,7 @@ export default function QSInitialApprovalButtons({ item, progressID }: props) {
     if (res.ok) {
       toast(`${item.material_description} approved`, "success");
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to approve material request item", "error");
       setStatus("pending");
@@ -84,7 +87,7 @@ export default function QSInitialApprovalButtons({ item, progressID }: props) {
 
       setRejectText("");
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reject material request item", "error");
       setStatus("pending");
@@ -108,7 +111,7 @@ export default function QSInitialApprovalButtons({ item, progressID }: props) {
     if (res.ok) {
       /* toast("Material request item approval reset", "success"); */
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reset approval for material request item", "error");
       setStatus("pending");

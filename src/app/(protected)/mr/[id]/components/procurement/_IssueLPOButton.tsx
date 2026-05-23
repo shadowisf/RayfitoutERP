@@ -14,6 +14,7 @@ import ViewLPOButton from "./_ViewLPOButton";
 import UploadInvoiceButton from "./_UploadInvoiceButton";
 import UploadSignedLPOButton from "./_UploadSignedLPOButton";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
@@ -25,6 +26,8 @@ export default function IssueLPOButton({
   mrLines,
 }: IssueLPOButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -376,7 +379,7 @@ export default function IssueLPOButton({
       );
       setIsOpen(false);
       await checkExistingLpo();
-      router.refresh();
+      await refresh();
     } else {
       toast(
         `Failed to ${existingLpoId ? "update" : "create"} local purchase order`,

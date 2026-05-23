@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type UploadedFile = {
   file: File;
@@ -34,6 +35,8 @@ export default function UploadFilesButton({
   stageDeletion = false, // Default to immediate deletion for backward compatibility
 }: UploadFilesButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const uploadIcon = "/icons/upload.svg";
 
@@ -173,7 +176,7 @@ export default function UploadFilesButton({
 
       toast("Attachment deleted", "success");
 
-      router.refresh();
+      await refresh();
     } catch (error: any) {
       console.error("Delete error:", error);
       toast("Failed to delete attachment. Something went wrong", "error");

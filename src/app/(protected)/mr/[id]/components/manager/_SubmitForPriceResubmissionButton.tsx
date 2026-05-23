@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 function getTypeLabel(type?: string) {
   if (type === "job") return "job order";
@@ -23,6 +24,8 @@ export default function SubmitForPricingResubmissionButton({
   type,
 }: SubmitForPricingResubmissionButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -50,7 +53,7 @@ export default function SubmitForPricingResubmissionButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       toast(`Failed to submit ${typeLabel}`, "error");

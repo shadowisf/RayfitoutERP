@@ -11,6 +11,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SelectedItem = {
   inventory_item_id: number;
@@ -40,6 +41,8 @@ export default function TransferIssueMultipleStocks({
   const searchIcon = "/icons/search.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -515,7 +518,7 @@ export default function TransferIssueMultipleStocks({
         setBoqLineIDs([]); // ✅ Reset array
         setSelectedItems([]);
 
-        router.refresh();
+        await refresh();
         setIsOpen(false);
       } else {
         const errorData = await res.json();

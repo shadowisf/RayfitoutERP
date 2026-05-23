@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import Button from "@/app/components/Button";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   onSuccess?: () => void;
@@ -17,6 +18,8 @@ type props = {
 
 export default function CreateSupplierButton({ onSuccess, full }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -243,7 +246,7 @@ export default function CreateSupplierButton({ onSuccess, full }: props) {
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to create vendor", "error");
       }

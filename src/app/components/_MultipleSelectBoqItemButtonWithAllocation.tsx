@@ -9,6 +9,7 @@ import Button from "./Button";
 import { BoqLine } from "../(protected)/project/[id]/boq/[boqId]/types/boqLine";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 import MobileBoqSelect from "./_MobileBoqSelect";
+import InputItem from "./InputItem";
 
 type props = {
   projectID: number;
@@ -16,6 +17,7 @@ type props = {
     boqLineIDs: number[],
     boqInfo: string,
     selectedLines?: BoqLine[],
+    allocatedQtys?: Record<number, number>,
   ) => void;
   currentBoqLineIDs?: number[];
   disabled?: boolean;
@@ -23,6 +25,9 @@ type props = {
   singleSelect?: boolean;
   compact?: boolean;
   itemName?: string;
+  mrLineQuantity?: number;
+  mrLineUnit?: string;
+  mrLineId?: number;
 };
 
 type GroupedBoqLines = {
@@ -57,7 +62,7 @@ function FilterCheckbox({
   );
 }
 
-export default function MultipleSelectBoqItemButton({
+export default function MultipleSelectBoqItemButtonWithAllocation({
   projectID,
   onSelectBoq,
   currentBoqLineIDs = [],
@@ -66,6 +71,9 @@ export default function MultipleSelectBoqItemButton({
   singleSelect = false,
   compact = false,
   itemName,
+  mrLineQuantity,
+  mrLineUnit,
+  mrLineId,
 }: props) {
   const locationIcon = "/icons/location-boq.svg";
   const arrowRight = "/icons/arrow-right.svg";
@@ -98,6 +106,10 @@ export default function MultipleSelectBoqItemButton({
   const [tempSelectedBoqIDs, setTempSelectedBoqIDs] = useState<number[]>(
     currentBoqLineIDs || [],
   );
+  const [allocatedQtys, setAllocatedQtys] = useState<Record<number, number>>(
+    {},
+  );
+  const [allocatedRaw, setAllocatedRaw] = useState<Record<number, string>>({});
   const [selectedBoqInfo, setSelectedBoqInfo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -415,16 +427,50 @@ export default function MultipleSelectBoqItemButton({
     }
   }, [currentBoqLineIDs, boqLineValues]);
 
-  // Reset temp selection and search when form opens
+  // Reset temp selection and search when form opens; pre-populate allocations in edit mode
   useEffect(() => {
-    if (isOpen) {
-      setTempSelectedBoqIDs(currentBoqLineIDs || []);
-      setSearchQuery("");
-      setActiveCategoryTab("");
-      setActiveSubCategoryTab("");
-      setShowOnlySelected(false);
+    if (!isOpen) return;
+    setTempSelectedBoqIDs(currentBoqLineIDs || []);
+    setSearchQuery("");
+    setActiveCategoryTab("");
+    setActiveSubCategoryTab("");
+    setShowOnlySelected(false);
+
+    if (mrLineId && currentBoqLineIDs.length > 0) {
+      // Edit mode: fetch saved allocated_qty values from DB
+      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "getMrLineBoqAllocations",
+          mr_line_id: mrLineId,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data: { boq_line_id: number; allocated_qty: number | null }[]) => {
+          const qtys: Record<number, number> = {};
+          const raw: Record<number, string> = {};
+          for (const row of data) {
+            if (row.allocated_qty !== null && row.allocated_qty !== undefined) {
+              const num = Number(row.allocated_qty);
+              if (!isNaN(num)) {
+                qtys[row.boq_line_id] = num;
+                raw[row.boq_line_id] = formatQty(num);
+              }
+            }
+          }
+          setAllocatedQtys(qtys);
+          setAllocatedRaw(raw);
+        })
+        .catch(() => {
+          setAllocatedQtys({});
+          setAllocatedRaw({});
+        });
+    } else {
+      setAllocatedQtys({});
+      setAllocatedRaw({});
     }
-  }, [isOpen, currentBoqLineIDs]);
+  }, [isOpen, currentBoqLineIDs, mrLineId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const parseAttachments = (attachments: any): string[] => {
     if (!attachments) return [];
@@ -451,6 +497,16 @@ export default function MultipleSelectBoqItemButton({
     setTempSelectedBoqIDs((prev) => {
       const isSelected = prev.includes(boqId);
       if (isSelected) {
+        setAllocatedQtys((prev2) => {
+          const next = { ...prev2 };
+          delete next[boqId];
+          return next;
+        });
+        setAllocatedRaw((prev2) => {
+          const next = { ...prev2 };
+          delete next[boqId];
+          return next;
+        });
         return prev.filter((id) => id !== boqId);
       } else {
         return [...prev, boqId];
@@ -545,6 +601,22 @@ export default function MultipleSelectBoqItemButton({
       return;
     }
 
+    if (mrQty > 0 && isOverAllocated) {
+      toast(
+        "Total allocated quantity exceeds the requested quantity. Please adjust before confirming.",
+        "error",
+      );
+      return;
+    }
+
+    if (mrQty > 0 && !isFullyAllocated) {
+      toast(
+        "Please allocate the full requested quantity across selected BOQ items before confirming.",
+        "error",
+      );
+      return;
+    }
+
     const selectedBoqs = boqLineValues.filter((boq) =>
       tempSelectedBoqIDs.includes(boq.id),
     );
@@ -554,7 +626,7 @@ export default function MultipleSelectBoqItemButton({
         ? `${selectedBoqs[0].item_number} ${selectedBoqs[0].item_name}`
         : `${selectedBoqs.length} BOQ ITEMS SELECTED`;
 
-    onSelectBoq(tempSelectedBoqIDs, infoText, selectedBoqs);
+    onSelectBoq(tempSelectedBoqIDs, infoText, selectedBoqs, allocatedQtys);
     setSelectedBoqInfo(infoText);
     setIsOpen(false);
   };
@@ -780,6 +852,59 @@ export default function MultipleSelectBoqItemButton({
       ? `SELECT BOQ ITEMS (${uniqueBoqIds.map((id) => `BOQ-${String(id).padStart(5, "0")}`).join(", ")})`
       : "SELECT BOQ ITEMS";
 
+  // Allocation summary derived values
+  const totalAllocated = tempSelectedBoqIDs.reduce(
+    (sum, id) => sum + (allocatedQtys[id] || 0),
+    0,
+  );
+  const mrQty = Number(mrLineQuantity ?? 0);
+  const remaining = mrQty - totalAllocated;
+  const allocatedPct =
+    mrQty > 0 ? Math.round((totalAllocated / mrQty) * 100) : 0;
+  const remainingPct = mrQty > 0 ? Math.round((remaining / mrQty) * 100) : 0;
+  const isOverAllocated = mrQty > 0 && totalAllocated > mrQty;
+  const isFullyAllocated =
+    mrQty > 0 && !isOverAllocated && totalAllocated >= mrQty;
+  const isUnderAllocated = totalAllocated > 0 && totalAllocated < mrQty;
+  const allocatedColor = isOverAllocated
+    ? "rgba(248,77,77,1)"
+    : isFullyAllocated
+      ? "rgba(0,125,71,1)"
+      : "rgba(248,143,77,1)";
+
+  // Detect which individual BOQ lines are causing the overallocation.
+  // Sort smallest-first, accumulate, and flag lines that push the total over mrQty.
+  const overAllocatedBoqIds = (() => {
+    if (!isOverAllocated) return new Set<number>();
+    const sorted = tempSelectedBoqIDs
+      .filter((id) => (allocatedQtys[id] || 0) > 0)
+      .map((id) => ({ id, qty: allocatedQtys[id] || 0 }))
+      .sort((a, b) => a.qty - b.qty);
+    let cumulative = 0;
+    let overflowStarted = false;
+    const flagged = new Set<number>();
+    for (const { id, qty } of sorted) {
+      cumulative += qty;
+      if (overflowStarted || cumulative > mrQty) {
+        overflowStarted = true;
+        flagged.add(id);
+      }
+    }
+    return flagged;
+  })();
+
+  const topAllocations = tempSelectedBoqIDs
+    .filter((id) => (allocatedQtys[id] || 0) > 0)
+    .map((id) => {
+      const boq = boqLineValues.find((b) => b.id === id);
+      const qty = allocatedQtys[id] || 0;
+      const pct = mrQty > 0 ? Math.round((qty / mrQty) * 100) : 0;
+      const isBoqOverAllocated = overAllocatedBoqIds.has(id);
+      return { boq, qty, pct, isBoqOverAllocated };
+    })
+    .filter((x) => x.boq)
+    .sort((a, b) => b.qty - a.qty);
+
   // Create the modal content
   const modalContent = isOpen && (
     <FormPopUp
@@ -787,7 +912,13 @@ export default function MultipleSelectBoqItemButton({
       setIsOpen={setIsOpen}
       handleSubmit={handleSubmit}
       addButtonLabel={"CONFIRM"}
-      style={{ width: "75dvw", height: "95dvh" }}
+      style={{
+        width: "100dvw",
+        height: "100dvh",
+        margin: 0,
+        borderRadius: 0,
+        maxHeight: "100dvh",
+      }}
       stickyFooter={
         totalPages > 1 || tempSelectedBoqIDs.length > 0 ? (
           <div
@@ -804,7 +935,7 @@ export default function MultipleSelectBoqItemButton({
                     display: "block",
                   }}
                 >
-                  ITEM SELECTED ({tempSelectedBoqIDs.length})
+                  ITEMS SELECTED ({tempSelectedBoqIDs.length})
                 </span>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {tempSelectedBoqIDs.map((id) => {
@@ -820,6 +951,16 @@ export default function MultipleSelectBoqItemButton({
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          setAllocatedQtys((prev) => {
+                            const next = { ...prev };
+                            delete next[id];
+                            return next;
+                          });
+                          setAllocatedRaw((prev) => {
+                            const next = { ...prev };
+                            delete next[id];
+                            return next;
+                          });
                           setTempSelectedBoqIDs((prev) =>
                             prev.filter((i) => i !== id),
                           );
@@ -844,157 +985,133 @@ export default function MultipleSelectBoqItemButton({
         ) : undefined
       }
     >
-      <div style={{ width: "100%", overflow: "hidden" }}>
-        {/* Search bar */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            alignItems: "center",
-          }}
-        >
+      <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+        {/* ── Left panel ───────────────────────────────────────────────────── */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Search bar */}
           <div
             style={{
-              position: "relative",
-              maxWidth: "250px",
-              flex: "0 0 250px",
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
             }}
           >
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "7px 40px 7px 15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(223,223,223,1)",
-              }}
-            />
-            <img
-              src={searchIcon}
-              alt="search"
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "16px",
-                height: "16px",
-                opacity: 0.5,
-              }}
-            />
-          </div>
-        </div>
-
-        <br />
-        <br />
-
-        {/* Category tabs */}
-        {availableCategoryTabs.length > 0 && (
-          <div
-            style={{
-              position: "relative",
-              maxWidth: "calc(75dvw - 90px)",
-              overflow: "hidden",
-            }}
-          >
-            {showLeftCatArrow && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: "120px",
-                  background:
-                    "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
-                  pointerEvents: "none",
-                  zIndex: 5,
-                }}
-              />
-            )}
-            {showLeftCatArrow && (
-              <button
-                type="button"
-                onClick={() => scrollCats("left")}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10,
-                  backgroundColor: "black",
-                  border: "none",
-                  borderRadius: "10px",
-                  width: "32px",
-                  height: "32px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <img
-                  src={arrowRight}
-                  style={{ transform: "rotate(180deg)" }}
-                  alt="scroll left"
-                />
-              </button>
-            )}
             <div
-              ref={catScrollContainerRef}
-              onScroll={checkCatScroll}
               style={{
-                display: "flex",
-                gap: "8px",
-                overflowX: "auto",
-                scrollbarWidth: "none",
-                msOverflowStyle: "none" as any,
-                paddingLeft: showLeftCatArrow ? "44px" : "0",
-                paddingRight: showRightCatArrow ? "44px" : "0",
+                position: "relative",
+                maxWidth: "250px",
+                flex: "0 0 250px",
               }}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveCategoryTab("");
-                  setActiveSubCategoryTab("");
-                }}
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
-                  padding: "6px 14px",
-                  borderRadius: "6px",
-                  border: "none",
-                  backgroundColor: !activeCategoryTab
-                    ? "rgba(239,239,239,1)"
-                    : "rgba(221,221,221,1)",
-                  color: "black",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  flexShrink: 0,
+                  width: "100%",
+                  padding: "7px 40px 7px 15px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223,223,223,1)",
+                }}
+              />
+              <img
+                src={searchIcon}
+                alt="search"
+                style={{
+                  position: "absolute",
+                  right: "15px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "16px",
+                  height: "16px",
+                  opacity: 0.5,
+                }}
+              />
+            </div>
+          </div>
+
+          <br />
+          <br />
+
+          {/* Category tabs */}
+          {availableCategoryTabs.length > 0 && (
+            <div
+              style={{
+                position: "relative",
+                maxWidth: "calc(85dvw - 150px)",
+                overflow: "hidden",
+              }}
+            >
+              {showLeftCatArrow && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "120px",
+                    background:
+                      "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 5,
+                  }}
+                />
+              )}
+              {showLeftCatArrow && (
+                <button
+                  type="button"
+                  onClick={() => scrollCats("left")}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    backgroundColor: "black",
+                    border: "none",
+                    borderRadius: "10px",
+                    width: "32px",
+                    height: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={arrowRight}
+                    style={{ transform: "rotate(180deg)" }}
+                    alt="scroll left"
+                  />
+                </button>
+              )}
+              <div
+                ref={catScrollContainerRef}
+                onScroll={checkCatScroll}
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none" as any,
+                  paddingLeft: showLeftCatArrow ? "44px" : "0",
+                  paddingRight: showRightCatArrow ? "44px" : "0",
                 }}
               >
-                ALL
-              </button>
-              {availableCategoryTabs.map((cat) => (
                 <button
-                  key={cat}
                   type="button"
                   onClick={() => {
-                    setActiveCategoryTab(activeCategoryTab === cat ? "" : cat);
+                    setActiveCategoryTab("");
                     setActiveSubCategoryTab("");
                   }}
                   style={{
                     padding: "6px 14px",
                     borderRadius: "6px",
                     border: "none",
-                    backgroundColor:
-                      activeCategoryTab === cat
-                        ? "rgba(239,239,239,1)"
-                        : "rgba(221,221,221,1)",
+                    backgroundColor: !activeCategoryTab
+                      ? "rgba(239,239,239,1)"
+                      : "rgba(221,221,221,1)",
                     color: "black",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
@@ -1003,249 +1120,26 @@ export default function MultipleSelectBoqItemButton({
                     flexShrink: 0,
                   }}
                 >
-                  {cat.toUpperCase()}
+                  ALL
                 </button>
-              ))}
-            </div>
-            {showRightCatArrow && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: "120px",
-                  background:
-                    "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
-                  pointerEvents: "none",
-                  zIndex: 5,
-                }}
-              />
-            )}
-            {showRightCatArrow && (
-              <button
-                type="button"
-                onClick={() => scrollCats("right")}
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10,
-                  backgroundColor: "black",
-                  border: "none",
-                  borderRadius: "10px",
-                  width: "32px",
-                  height: "32px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <img src={arrowRight} alt="scroll right" />
-              </button>
-            )}
-          </div>
-        )}
-
-        <br />
-        <br />
-
-        {/* Filter row */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginBottom: "15px",
-          }}
-        >
-          <Button
-            componentType="button"
-            bgColor="white"
-            borderColor="rgba(241,244,246,1)"
-            textColor="black"
-            onClick={(e) => {
-              e.preventDefault();
-              handleFilterOpen();
-            }}
-            style={{ borderRadius: "50px" }}
-          >
-            FILTER <img src={filterIcon} alt="filter" />
-          </Button>
-          {tempSelectedBoqIDs.length > 0 && (
-            <Button
-              componentType="button"
-              bgColor={showOnlySelected ? "black" : "rgba(239,239,239,1)"}
-              borderColor="transparent"
-              textColor={showOnlySelected ? "white" : "black"}
-              onClick={(e) => {
-                e.preventDefault();
-                setShowOnlySelected((v) => !v);
-                setActiveCategoryTab("");
-                setActiveSubCategoryTab("");
-              }}
-              style={{
-                borderRadius: "50px",
-                fontWeight: 600,
-                textWrap: "nowrap",
-              }}
-            >
-              SELECTED ITEMS ({tempSelectedBoqIDs.length})
-            </Button>
-          )}
-          {filterCategories.size > 0 && (
-            <Button
-              componentType="button"
-              bgColor="rgba(239,239,239,1)"
-              borderColor="transparent"
-              textColor="black"
-              onClick={() => {
-                setFilterCategories(new Set());
-                setFilterSubCategories(new Set());
-                setActiveSubCategoryTab("");
-              }}
-              style={{
-                borderRadius: "50px",
-                fontWeight: 600,
-                textWrap: "nowrap",
-              }}
-            >
-              CATEGORY:{" "}
-              <span style={{ color: "rgba(16,185,129,1)" }}>
-                {Array.from(filterCategories)[0].toUpperCase()}
-                {filterCategories.size > 1
-                  ? `, +${filterCategories.size - 1} MORE`
-                  : ""}
-              </span>{" "}
-              <img src={crossIcon} style={{ width: "12px" }} />
-            </Button>
-          )}
-          {filterSubCategories.size > 0 && (
-            <Button
-              componentType="button"
-              bgColor="rgba(239,239,239,1)"
-              borderColor="transparent"
-              textColor="black"
-              onClick={() => {
-                setFilterSubCategories(new Set());
-                setActiveSubCategoryTab("");
-              }}
-              style={{
-                borderRadius: "50px",
-                fontWeight: 600,
-                textWrap: "nowrap",
-              }}
-            >
-              SUBCATEGORY:{" "}
-              <span style={{ color: "rgba(16,185,129,1)" }}>
-                {Array.from(filterSubCategories)[0].toUpperCase()}
-                {filterSubCategories.size > 1
-                  ? `, +${filterSubCategories.size - 1} MORE`
-                  : ""}
-              </span>{" "}
-              <img src={crossIcon} style={{ width: "12px" }} />
-            </Button>
-          )}
-        </div>
-
-        {/* Subcategory tabs */}
-        {availableSubCategoryTabs.length > 0 && (
-          <div
-            style={{
-              position: "relative",
-              maxWidth: "calc(75dvw - 90px)",
-              overflow: "hidden",
-            }}
-          >
-            {showLeftTabArrow && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: "120px",
-                  background:
-                    "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
-                  pointerEvents: "none",
-                  zIndex: 5,
-                }}
-              />
-            )}
-            {showLeftTabArrow && (
-              <button
-                type="button"
-                onClick={() => scrollTabs("left")}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10,
-                  backgroundColor: "black",
-                  border: "none",
-                  borderRadius: "10px",
-                  width: "32px",
-                  height: "32px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <img
-                  src={arrowRight}
-                  style={{ transform: "rotate(180deg)" }}
-                  alt="scroll left"
-                />
-              </button>
-            )}
-            <div
-              ref={scrollContainerRef}
-              onScroll={checkTabScroll}
-              style={{
-                display: "flex",
-                gap: "8px",
-                overflowX: "auto",
-                scrollbarWidth: "none",
-                msOverflowStyle: "none" as any,
-                paddingLeft: showLeftTabArrow ? "44px" : "0",
-                paddingRight: showRightTabArrow ? "44px" : "0",
-              }}
-            >
-              {availableSubCategoryTabs.map((sub) => {
-                const isActive = activeSubCategoryTab === sub;
-                // check if all items in this sub (within active cat) are selected
-                const subItems: BoqLine[] = [];
-                Object.entries(filteredGroupedBoqLines).forEach(
-                  ([cat, subCats]) => {
-                    if (activeCategoryTab && cat !== activeCategoryTab) return;
-                    if (subCats[sub]) subItems.push(...subCats[sub]);
-                  },
-                );
-                const isChecked =
-                  subItems.length > 0 &&
-                  subItems.every((item) =>
-                    tempSelectedBoqIDs.includes(item.id),
-                  );
-                return (
+                {availableCategoryTabs.map((cat) => (
                   <button
-                    key={sub}
+                    key={cat}
                     type="button"
-                    onClick={() => setActiveSubCategoryTab(isActive ? "" : sub)}
+                    onClick={() => {
+                      setActiveCategoryTab(
+                        activeCategoryTab === cat ? "" : cat,
+                      );
+                      setActiveSubCategoryTab("");
+                    }}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
                       padding: "6px 14px",
-                      borderRadius: "6px 6px 0 0",
+                      borderRadius: "6px",
                       border: "none",
-                      backgroundColor: isActive
-                        ? "rgba(239,239,239,1)"
-                        : "rgba(221,221,221,1)",
+                      backgroundColor:
+                        activeCategoryTab === cat
+                          ? "rgba(239,239,239,1)"
+                          : "rgba(221,221,221,1)",
                       color: "black",
                       cursor: "pointer",
                       whiteSpace: "nowrap",
@@ -1254,209 +1148,778 @@ export default function MultipleSelectBoqItemButton({
                       flexShrink: 0,
                     }}
                   >
-                    {sub.toUpperCase()}
+                    {cat.toUpperCase()}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              {showRightCatArrow && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "120px",
+                    background:
+                      "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 5,
+                  }}
+                />
+              )}
+              {showRightCatArrow && (
+                <button
+                  type="button"
+                  onClick={() => scrollCats("right")}
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    backgroundColor: "black",
+                    border: "none",
+                    borderRadius: "10px",
+                    width: "32px",
+                    height: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img src={arrowRight} alt="scroll right" />
+                </button>
+              )}
             </div>
-            {showRightTabArrow && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: "120px",
-                  background:
-                    "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
-                  pointerEvents: "none",
-                  zIndex: 5,
-                }}
-              />
-            )}
-            {showRightTabArrow && (
-              <button
-                type="button"
-                onClick={() => scrollTabs("right")}
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10,
-                  backgroundColor: "black",
-                  border: "none",
-                  borderRadius: "10px",
-                  width: "32px",
-                  height: "32px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <img src={arrowRight} alt="scroll right" />
-              </button>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* No results */}
-        {!isFetchingItems && flatItems.length === 0 && (
+          <br />
+          <br />
+
+          {/* Filter row */}
           <div
             style={{
-              textAlign: "center",
-              padding: "40px",
-              color: "rgba(128,128,128,1)",
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginBottom: "15px",
             }}
           >
-            {showOnlySelected
-              ? "No selected items match current filters."
-              : searchQuery.trim()
-                ? `No results for "${searchQuery}"`
-                : "No items found."}
+            <Button
+              componentType="button"
+              bgColor="white"
+              borderColor="rgba(241,244,246,1)"
+              textColor="black"
+              onClick={(e) => {
+                e.preventDefault();
+                handleFilterOpen();
+              }}
+              style={{ borderRadius: "50px" }}
+            >
+              FILTER <img src={filterIcon} alt="filter" />
+            </Button>
+            {tempSelectedBoqIDs.length > 0 && (
+              <Button
+                componentType="button"
+                bgColor={showOnlySelected ? "black" : "rgba(239,239,239,1)"}
+                borderColor="transparent"
+                textColor={showOnlySelected ? "white" : "black"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowOnlySelected((v) => !v);
+                  setActiveCategoryTab("");
+                  setActiveSubCategoryTab("");
+                }}
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: 600,
+                  textWrap: "nowrap",
+                }}
+              >
+                SELECTED ITEMS ({tempSelectedBoqIDs.length})
+              </Button>
+            )}
+            {filterCategories.size > 0 && (
+              <Button
+                componentType="button"
+                bgColor="rgba(239,239,239,1)"
+                borderColor="transparent"
+                textColor="black"
+                onClick={() => {
+                  setFilterCategories(new Set());
+                  setFilterSubCategories(new Set());
+                  setActiveSubCategoryTab("");
+                }}
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: 600,
+                  textWrap: "nowrap",
+                }}
+              >
+                CATEGORY:{" "}
+                <span style={{ color: "rgba(16,185,129,1)" }}>
+                  {Array.from(filterCategories)[0].toUpperCase()}
+                  {filterCategories.size > 1
+                    ? `, +${filterCategories.size - 1} MORE`
+                    : ""}
+                </span>{" "}
+                <img src={crossIcon} style={{ width: "12px" }} />
+              </Button>
+            )}
+            {filterSubCategories.size > 0 && (
+              <Button
+                componentType="button"
+                bgColor="rgba(239,239,239,1)"
+                borderColor="transparent"
+                textColor="black"
+                onClick={() => {
+                  setFilterSubCategories(new Set());
+                  setActiveSubCategoryTab("");
+                }}
+                style={{
+                  borderRadius: "50px",
+                  fontWeight: 600,
+                  textWrap: "nowrap",
+                }}
+              >
+                SUBCATEGORY:{" "}
+                <span style={{ color: "rgba(16,185,129,1)" }}>
+                  {Array.from(filterSubCategories)[0].toUpperCase()}
+                  {filterSubCategories.size > 1
+                    ? `, +${filterSubCategories.size - 1} MORE`
+                    : ""}
+                </span>{" "}
+                <img src={crossIcon} style={{ width: "12px" }} />
+              </Button>
+            )}
           </div>
-        )}
 
-        {/* Flat BOQ table */}
-        {flatItems.length > 0 && (
-          <table
-            className="items-table two-toned"
-            style={{
-              tableLayout: "fixed",
-              width: "100%",
-              borderTopLeftRadius: "0",
-              borderTopRightRadius: "0",
-            }}
-          >
-            <colgroup>
-              <col style={{ width: "50px" }} />
-              <col style={{ width: "120px" }} />
-              <col />
-              <col style={{ width: "130px" }} />
-              {canSeePrice && (
-                <>
-                  <col style={{ width: "150px" }} />
-                  <col style={{ width: "180px" }} />
-                </>
+          {/* Subcategory tabs */}
+          {availableSubCategoryTabs.length > 0 && (
+            <div
+              style={{
+                position: "relative",
+                maxWidth: "calc(85dvw - 150px)",
+                overflow: "hidden",
+              }}
+            >
+              {showLeftTabArrow && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "120px",
+                    background:
+                      "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 5,
+                  }}
+                />
               )}
-              <col style={{ width: "150px" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th></th>
-                <th>#</th>
-                <th>ITEM</th>
-                <th>QUANTITY</th>
+              {showLeftTabArrow && (
+                <button
+                  type="button"
+                  onClick={() => scrollTabs("left")}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    backgroundColor: "black",
+                    border: "none",
+                    borderRadius: "10px",
+                    width: "32px",
+                    height: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={arrowRight}
+                    style={{ transform: "rotate(180deg)" }}
+                    alt="scroll left"
+                  />
+                </button>
+              )}
+              <div
+                ref={scrollContainerRef}
+                onScroll={checkTabScroll}
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none" as any,
+                  paddingLeft: showLeftTabArrow ? "44px" : "0",
+                  paddingRight: showRightTabArrow ? "44px" : "0",
+                }}
+              >
+                {availableSubCategoryTabs.map((sub) => {
+                  const isActive = activeSubCategoryTab === sub;
+                  // check if all items in this sub (within active cat) are selected
+                  const subItems: BoqLine[] = [];
+                  Object.entries(filteredGroupedBoqLines).forEach(
+                    ([cat, subCats]) => {
+                      if (activeCategoryTab && cat !== activeCategoryTab)
+                        return;
+                      if (subCats[sub]) subItems.push(...subCats[sub]);
+                    },
+                  );
+                  const isChecked =
+                    subItems.length > 0 &&
+                    subItems.every((item) =>
+                      tempSelectedBoqIDs.includes(item.id),
+                    );
+                  return (
+                    <button
+                      key={sub}
+                      type="button"
+                      onClick={() =>
+                        setActiveSubCategoryTab(isActive ? "" : sub)
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "6px 14px",
+                        borderRadius: "6px 6px 0 0",
+                        border: "none",
+                        backgroundColor: isActive
+                          ? "rgba(239,239,239,1)"
+                          : "rgba(221,221,221,1)",
+                        color: "black",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {sub.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+              {showRightTabArrow && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "120px",
+                    background:
+                      "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 5,
+                  }}
+                />
+              )}
+              {showRightTabArrow && (
+                <button
+                  type="button"
+                  onClick={() => scrollTabs("right")}
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    backgroundColor: "black",
+                    border: "none",
+                    borderRadius: "10px",
+                    width: "32px",
+                    height: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img src={arrowRight} alt="scroll right" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* No results */}
+          {!isFetchingItems && flatItems.length === 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px",
+                color: "rgba(128,128,128,1)",
+              }}
+            >
+              {showOnlySelected
+                ? "No selected items match current filters."
+                : searchQuery.trim()
+                  ? `No results for "${searchQuery}"`
+                  : "No items found."}
+            </div>
+          )}
+
+          {/* Flat BOQ table */}
+          {flatItems.length > 0 && (
+            <table
+              className="items-table two-toned"
+              style={{
+                tableLayout: "fixed",
+                width: "100%",
+                borderTopLeftRadius: "0",
+                borderTopRightRadius: "0",
+              }}
+            >
+              <colgroup>
+                <col style={{ width: "50px" }} />
+                <col style={{ width: "120px" }} />
+                <col />
+                <col style={{ width: "130px" }} />
                 {canSeePrice && (
                   <>
-                    <th>RATE</th>
-                    <th>TOTAL PRICE</th>
+                    <col style={{ width: "150px" }} />
+                    <col style={{ width: "180px" }} />
                   </>
                 )}
-                <th>ATTACHMENTS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedItems.map((boq) => {
-                const attachmentUrls = parseAttachments(boq.attachments);
-                return (
-                  <tr
-                    key={boq.id}
-                    onClick={() => handleCheckboxToggle(boq.id)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type={singleSelect ? "radio" : "checkbox"}
-                        name={singleSelect ? "boq-select" : undefined}
-                        checked={tempSelectedBoqIDs.includes(boq.id)}
-                        onChange={() => handleCheckboxToggle(boq.id)}
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          cursor: "pointer",
-                          accentColor: "rgba(0,163,93,1)",
-                        }}
-                      />
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>{boq.item_number}</td>
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "10px",
-                        }}
-                      >
-                        <strong>{boq.item_name}</strong>
-                        {boq.item_description && (
-                          <p style={{ whiteSpace: "pre-wrap" }}>
-                            {boq.item_description}
-                          </p>
-                        )}
-                        {boq.location && (
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "10px",
-                              alignItems: "center",
-                            }}
-                          >
-                            <img
-                              src={locationIcon}
-                              style={{ width: "16px" }}
-                              alt="location"
-                            />
-                            <span
+                <col style={{ width: "275px" }} />
+                <col style={{ width: "200px" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>#</th>
+                  <th>ITEM</th>
+                  <th>QUANTITY</th>
+                  {canSeePrice && (
+                    <>
+                      <th>RATE</th>
+                      <th>TOTAL PRICE</th>
+                    </>
+                  )}
+                  <th>ALLOCATED QTY</th>
+                  <th>ATTACHMENTS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedItems.map((boq) => {
+                  const attachmentUrls = parseAttachments(boq.attachments);
+                  return (
+                    <tr
+                      key={boq.id}
+                      onClick={() => handleCheckboxToggle(boq.id)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type={singleSelect ? "radio" : "checkbox"}
+                          name={singleSelect ? "boq-select" : undefined}
+                          checked={tempSelectedBoqIDs.includes(boq.id)}
+                          onChange={() => handleCheckboxToggle(boq.id)}
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            cursor: "pointer",
+                            accentColor: "rgba(0,163,93,1)",
+                          }}
+                        />
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {boq.item_number}
+                      </td>
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "10px",
+                          }}
+                        >
+                          <strong>{boq.item_name}</strong>
+                          {boq.item_description && (
+                            <p style={{ whiteSpace: "pre-wrap" }}>
+                              {boq.item_description}
+                            </p>
+                          )}
+                          {boq.location && (
+                            <div
                               style={{
-                                fontWeight: 600,
-                                marginTop: "4px",
-                                color: "rgba(105,105,105,1)",
+                                display: "flex",
+                                gap: "10px",
+                                alignItems: "center",
                               }}
                             >
-                              {boq.location}
-                            </span>
+                              <img
+                                src={locationIcon}
+                                style={{ width: "16px" }}
+                                alt="location"
+                              />
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  marginTop: "4px",
+                                  color: "rgba(105,105,105,1)",
+                                }}
+                              >
+                                {boq.location}
+                              </span>
+                            </div>
+                          )}
+                          {boq.scope_of_work && (
+                            <div
+                              style={{
+                                backgroundColor: "rgba(225,225,225,1)",
+                                borderRadius: "50px",
+                                padding: "4px 10px",
+                                width: "fit-content",
+                              }}
+                            >
+                              <strong>{boq.scope_of_work}</strong>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {formatQty(boq.quantity)} {boq.unit}
+                      </td>
+                      {canSeePrice && (
+                        <>
+                          <td>{formatPrice(boq.rate_per_quantity)}</td>
+                          <td style={{ textWrap: "nowrap" }}>
+                            {formatPriceAED(boq.total_cost)}
+                          </td>
+                        </>
+                      )}
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {tempSelectedBoqIDs.includes(boq.id) ? (
+                          <div style={{ position: "relative" }}>
+                            <InputItem
+                              label=""
+                              type="text postfix"
+                              value={allocatedRaw[boq.id] ?? ""}
+                              postfixText={mrLineUnit}
+                              placeholder="ENTER ALLOCATED QTY"
+                              noOptionalLabel
+                              onChange={(e) => {
+                                const raw = (
+                                  e as React.ChangeEvent<HTMLInputElement>
+                                ).target.value;
+                                // Allow empty and in-progress decimals (e.g. "1.")
+                                if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
+                                  setAllocatedRaw((prev) => ({
+                                    ...prev,
+                                    [boq.id]: raw,
+                                  }));
+                                  const num = parseFloat(raw);
+                                  if (raw === "" || isNaN(num)) {
+                                    setAllocatedQtys((prev) => {
+                                      const next = { ...prev };
+                                      delete next[boq.id];
+                                      return next;
+                                    });
+                                  } else {
+                                    setAllocatedQtys((prev) => ({
+                                      ...prev,
+                                      [boq.id]: num,
+                                    }));
+                                  }
+                                }
+                              }}
+                              style={{ marginBottom: 0 }}
+                              required
+                            />
+                            {overAllocatedBoqIds.has(boq.id) && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: "100%",
+                                  left: 0,
+                                  display: "flex",
+                                  gap: "6px",
+                                  alignItems: "center",
+                                  marginTop: "3px",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                <img
+                                  src="/icons/warning.svg"
+                                  alt="warning"
+                                  style={{ width: "12px", flexShrink: 0 }}
+                                />
+                                <p
+                                  style={{
+                                    color: "red",
+                                    fontSize: "11px",
+                                    margin: 0,
+                                  }}
+                                >
+                                  Overallocated Quantity
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {boq.scope_of_work && (
-                          <div
-                            style={{
-                              backgroundColor: "rgba(225,225,225,1)",
-                              borderRadius: "50px",
-                              padding: "4px 10px",
-                              width: "fit-content",
-                            }}
-                          >
-                            <strong>{boq.scope_of_work}</strong>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      {formatQty(boq.quantity)} {boq.unit}
-                    </td>
-                    {canSeePrice && (
-                      <>
-                        <td>{formatPrice(boq.rate_per_quantity)}</td>
-                        <td style={{ textWrap: "nowrap" }}>
-                          {formatPriceAED(boq.total_cost)}
-                        </td>
-                      </>
-                    )}
-                    <td className="attachments">
-                      <div className="attachments-grid">
-                        {attachmentUrls.map((url, i) => (
-                          <img key={i} src={url} alt="attachment" />
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+                        ) : null}
+                      </td>
+                      <td className="attachments">
+                        <div className="attachments-grid">
+                          {attachmentUrls.map((url, i) => (
+                            <img key={i} src={url} alt="attachment" />
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ── Right panel — Allocation Summary ─────────────────────────────── */}
+        <div
+          style={{
+            width: "320px",
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            position: "sticky",
+            top: 0,
+            alignSelf: "flex-start",
+          }}
+        >
+          {/* Sub-container 1: Allocation Summary */}
+          <div
+            style={{
+              backgroundColor: "rgba(245,245,245,1)",
+              borderRadius: "12px",
+              padding: "16px",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "12px",
+                color: "black",
+                fontWeight: 600,
+                marginBottom: "10px",
+              }}
+            >
+              Allocation Summary
+            </p>
+
+            {/* Item name + qty block */}
+            <div style={{ marginBottom: "16px" }}>
+              {itemName && (
+                <p
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    marginBottom: "4px",
+                  }}
+                >
+                  {itemName}
+                </p>
+              )}
+              {mrLineQuantity !== undefined && (
+                <p style={{ fontSize: "11px", color: "rgba(120,120,120,1)" }}>
+                  {parseFloat(Number(mrLineQuantity).toFixed(10))}{" "}
+                  {mrLineUnit || ""}
+                </p>
+              )}
+            </div>
+
+            {/* Remaining */}
+            <div style={{ marginBottom: "10px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "13px",
+
+                    color: "black",
+                  }}
+                >
+                  Remaining
+                </span>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: "black",
+                  }}
+                >
+                  {formatQty(remaining)} {mrLineUnit || ""}
+                  {mrQty > 0 ? ` (${remainingPct}%)` : ""}
+                </span>
+              </div>
+            </div>
+
+            {/* Allocated */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "13px",
+                  color: allocatedColor,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                Allocated
+                {isFullyAllocated && (
+                  <span
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(0,125,71,1)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                      <path
+                        d="M1 3.5L3.5 6L8 1"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                )}
+                {isOverAllocated && (
+                  <span
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <img
+                      src="/icons/warning.svg"
+                      alt="warning"
+                      style={{ width: "16px", height: "16px" }}
+                    />
+                  </span>
+                )}
+              </span>
+              <span
+                style={{
+                  fontSize: "13px",
+                  color: allocatedColor,
+                }}
+              >
+                {formatQty(totalAllocated)} {mrLineUnit || ""}
+                {mrQty > 0 ? ` (${allocatedPct}%)` : ""}
+              </span>
+            </div>
+          </div>
+
+          {/* Sub-container 2: Top Allocations */}
+          <div
+            style={{
+              backgroundColor: "rgba(245,245,245,1)",
+              borderRadius: "12px",
+              padding: "16px",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                marginBottom: "10px",
+                color: "black",
+              }}
+            >
+              Top Allocations
+            </p>
+            {topAllocations.length > 0 ? (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                {topAllocations.map(({ boq, qty, pct, isBoqOverAllocated }) => (
+                  <div
+                    key={boq!.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: isBoqOverAllocated
+                          ? "rgba(248,77,77,1)"
+                          : "black",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px",
+                      }}
+                    >
+                      {boq!.item_number} {boq!.item_name}
+                      {isBoqOverAllocated && (
+                        <img
+                          src="/icons/warning.svg"
+                          alt="warning"
+                          style={{
+                            width: "14px",
+                            height: "14px",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        whiteSpace: "nowrap",
+                        color: isBoqOverAllocated
+                          ? "rgba(248,77,77,1)"
+                          : "black",
+                      }}
+                    >
+                      {formatQty(qty)} {mrLineUnit || ""}
+                      {mrQty > 0 ? ` (${pct}%)` : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(180,180,180,1)",
+                  textAlign: "center",
+                }}
+              >
+                Start by selecting a BOQ reference and enter the quantity you
+                would like to allocate
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </FormPopUp>
   );

@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 export type SupplierInfo = {
   supplierId: number;
@@ -35,6 +36,8 @@ export default function SubmitForPaymentButton({
   mode = "single",
 }: SubmitForPaymentButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -152,8 +155,8 @@ export default function SubmitForPaymentButton({
     // Show results
     if (results.failed.length === 0) {
       toast("Material request submitted", "success");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
       router.replace(`/mr/`);
     } else {
       toast(`${results.failed.length} supplier(s) failed`, "error");

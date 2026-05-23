@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import UploadFileBox from "@/app/components/SingleUploadFileBox";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import Button from "@/app/components/Button";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   onSuccess?: () => void;
@@ -17,6 +18,8 @@ type props = {
 
 export default function CreateSubcontractorButton({ onSuccess, full }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -196,7 +199,7 @@ export default function CreateSubcontractorButton({ onSuccess, full }: props) {
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         const errorData = await res.json();
         toast(errorData.error || "Failed to create subcontractor", "error");

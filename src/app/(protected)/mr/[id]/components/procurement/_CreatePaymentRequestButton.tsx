@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   mrHeader: MrHeader;
@@ -14,6 +15,8 @@ type Props = {
 
 export default function CreatePaymentRequestButton({ mrHeader }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -38,8 +41,8 @@ export default function CreatePaymentRequestButton({ mrHeader }: Props) {
 
     if (res.ok) {
       toast("Payment request created", "success");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
       router.replace(`/mr/${data.mrHeaderId}`);
     } else {
       toast("Failed to create payment request", "error");

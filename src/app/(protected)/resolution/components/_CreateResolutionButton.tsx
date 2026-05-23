@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import CreateCategoryButton from "@/app/(protected)/mr/[id]/components/department/_CreateCategoryButton";
 import CreateSubCategoryButton from "@/app/(protected)/mr/[id]/components/department/_CreateSubcategoryButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type FailedQCItem = {
   qc_id: number;
@@ -48,6 +49,8 @@ export default function CreateResolutionButton({
 
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -345,7 +348,7 @@ export default function CreateResolutionButton({
           setIsOpen(false);
           resetAllFields();
           setResolutionType("");
-          router.refresh();
+          await refresh();
         } else {
           const data = await res.json();
           toast(data.message || "Failed to create resolution", "error");
@@ -392,7 +395,7 @@ export default function CreateResolutionButton({
           setIsOpen(false);
           resetAllFields();
           setResolutionType("");
-          router.refresh();
+          await refresh();
         } else {
           const data = await res.json();
           toast(data.message || "Failed to create resolution", "error");
@@ -452,7 +455,7 @@ export default function CreateResolutionButton({
           setIsOpen(false);
           resetAllFields();
           setResolutionType("");
-          router.refresh();
+          await refresh();
         } else {
           const data = await res.json();
           toast(data.message || "Failed to create resolution", "error");
@@ -533,7 +536,7 @@ export default function CreateResolutionButton({
           setIsOpen(false);
           resetAllFields();
           setResolutionType("");
-          router.refresh();
+          await refresh();
         } else {
           const data = await res.json();
           toast(data.message || "Failed to create resolution", "error");

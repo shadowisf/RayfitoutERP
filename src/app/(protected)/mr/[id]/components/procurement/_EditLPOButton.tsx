@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { LpoHeader } from "../../types/lpoHeader";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type EditLPOButtonProps = {
   lpoId: number;
@@ -17,6 +18,8 @@ type EditLPOButtonProps = {
 export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
   const pencilIcon = "/icons/pencil.svg";
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
   const [lpoData, setLpoData] = useState<LpoHeader | null>(null);
@@ -222,7 +225,7 @@ export default function EditLPOButton({ lpoId }: EditLPOButtonProps) {
         toast("Local purchase order updated", "success");
         setIsOpen(false);
         setLpoData(null);
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to update local purchase order", "error");
       }

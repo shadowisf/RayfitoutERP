@@ -73,14 +73,16 @@ export async function POST(request: NextRequest) {
        FROM vw_inventory WHERE is_archived = 0`,
     );
 
+    type MatchResult = {
+      id: number;
+      description: string;
+      category_name: string;
+      subcategory_name: string;
+      score: number;
+    };
+
     const results: {
-      [description: string]: {
-        id: number;
-        description: string;
-        category_name: string;
-        subcategory_name: string;
-        score: number;
-      } | null;
+      [description: string]: MatchResult[] | null;
     } = {};
 
     for (const desc of descriptions) {
@@ -101,8 +103,8 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      let bestMatch: (typeof results)[string] = null;
-      let bestScore = 0;
+      const minMatches = keywords.length === 1 ? 1 : 2;
+      const candidates: MatchResult[] = [];
 
       for (const item of inventoryItems) {
         const itemDesc = (item.description || "").toLowerCase();
@@ -114,21 +116,25 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Only consider matches with at least 2 keywords matching (or 1 if only 1 keyword)
-        const minMatches = keywords.length === 1 ? 1 : 2;
-        if (matchCount >= minMatches && matchCount > bestScore) {
-          bestScore = matchCount;
-          bestMatch = {
+        if (matchCount >= minMatches) {
+          candidates.push({
             id: item.id,
             description: item.description,
             category_name: item.category_name,
             subcategory_name: item.subcategory_name,
             score: matchCount,
-          };
+          });
         }
       }
 
-      results[desc] = bestMatch;
+      if (candidates.length === 0) {
+        results[desc] = null;
+        continue;
+      }
+
+      // Sort by score desc, take top 5
+      candidates.sort((a, b) => b.score - a.score);
+      results[desc] = candidates.slice(0, 5);
     }
 
     return NextResponse.json({ success: true, data: results });

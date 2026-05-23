@@ -7,6 +7,7 @@ import Button from "@/app/components/Button";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import EditSubcontractorButton from "../../components/_EditSubcontractorButton";
 import DeleteSubcontractorButton from "../../components/_DeleteSubcontractorButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type JobOrderRow = {
   jo_id: number;
@@ -34,6 +35,8 @@ export default function SubcontractorDetailClient({
 }: SubcontractorDetailClientProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [jobOrders] = useState<JobOrderRow[]>(initialJobOrders);
 
@@ -75,7 +78,7 @@ export default function SubcontractorDetailClient({
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <EditSubcontractorButton
               subcontractor={subcontractor}
-              onSuccess={() => router.refresh()}
+              onSuccess={() => refresh()}
               iconOnly
             />
             <DeleteSubcontractorButton

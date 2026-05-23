@@ -3,6 +3,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   itemId: number;
@@ -10,6 +11,8 @@ type props = {
 
 export function DeleteJoItemButton({ itemId }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -27,7 +30,7 @@ export function DeleteJoItemButton({ itemId }: props) {
 
       if (res.ok) {
         toast("Job item deleted", "success");
-        router.refresh();
+        await refresh();
       }
     } catch (error) {
       toast("Failed to delete job item", "error");

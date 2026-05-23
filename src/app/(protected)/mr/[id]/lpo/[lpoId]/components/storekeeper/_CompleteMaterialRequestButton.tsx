@@ -8,6 +8,7 @@ import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../../../types/mrHeader";
 import { MrLine } from "../../../../types/mrLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -35,6 +36,8 @@ export default function CompleteMaterialRequestButton({
   label = "COMPLETE MATERIAL REQUEST",
 }: CompleteMaterialRequestButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -83,7 +86,7 @@ export default function CompleteMaterialRequestButton({
 
     if (res.ok) {
       toast("Material request completed", "success");
-      router.refresh();
+      await refresh();
       setIsOpen(false);
     } else {
       toast("Failed to complete material request", "error");

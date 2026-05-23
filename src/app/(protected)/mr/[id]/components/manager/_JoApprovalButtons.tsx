@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { JoLine } from "../../types/joLine";
 import { MrHeader } from "../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type JoApprovalButtonsProps = {
   item: JoLine;
@@ -23,6 +24,8 @@ export default function JoApprovalButtons({
   mrHeader,
 }: JoApprovalButtonsProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const checkIcon = "/icons/check.svg";
@@ -58,7 +61,7 @@ export default function JoApprovalButtons({
 
     if (res.ok) {
       toast("Item approved", "success");
-      router.refresh();
+      await refresh();
     } else {
       setStatus("pending");
       toast("Failed to approve item", "error");
@@ -84,7 +87,7 @@ export default function JoApprovalButtons({
       toast("Item rejected", "success");
       setIsRejectOpen(false);
       setRejectText("");
-      router.refresh();
+      await refresh();
     } else {
       setStatus("pending");
       toast("Failed to reject item", "error");
@@ -104,7 +107,7 @@ export default function JoApprovalButtons({
     });
 
     if (res.ok) {
-      router.refresh();
+      await refresh();
     }
   }
 

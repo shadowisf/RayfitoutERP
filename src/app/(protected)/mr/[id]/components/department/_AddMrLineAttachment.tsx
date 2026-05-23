@@ -6,6 +6,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import Button from "@/app/components/Button";
 import { MrLine } from "../../types/mrLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   item: MrLine;
@@ -13,6 +14,8 @@ type Props = {
 
 export default function AddMrLineAttachment({ item }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const externalLinkIcon = "/icons/external-link.svg";
   const attachmentIcon = "/icons/attachment.svg";
 
@@ -48,7 +51,7 @@ export default function AddMrLineAttachment({ item }: Props) {
 
     setIsOpen(false);
     setFile(null);
-    router.refresh();
+    await refresh();
   }
 
   return (

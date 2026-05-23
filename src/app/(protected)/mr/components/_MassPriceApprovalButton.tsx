@@ -8,6 +8,7 @@ import InputItem from "@/app/components/InputItem";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import { MrHeader } from "../[id]/types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   selectedMrIds: Set<number>;
@@ -23,6 +24,8 @@ export default function MassPriceApprovalButton({
   onRefresh,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -313,7 +316,7 @@ export default function MassPriceApprovalButton({
     }
 
     onRefresh && onRefresh();
-    router.refresh();
+    await refresh();
   }
 
   // ── REJECT ───────────────────────────────────────────────────────────────
@@ -454,7 +457,7 @@ export default function MassPriceApprovalButton({
     }
 
     onRefresh && onRefresh();
-    router.refresh();
+    await refresh();
   }
 
   // ── UI ────────────────────────────────────────────────────────────────────

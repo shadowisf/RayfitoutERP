@@ -16,6 +16,7 @@ import { MrHeader } from "@/app/(protected)/mr/[id]/types/mrHeader";
 import InputItem from "@/app/components/InputItem";
 import CommentsSection from "@/app/components/CommentsSection";
 import RecordPaymentForm from "@/app/(protected)/payment/components/_RecordPaymentForm";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,8 @@ export default function FinanceDetailClient({
 }: Props) {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const externalLinkIcon = "/icons/external-link.svg";
   const lpoIcon = "/icons/search-lpo.svg";
@@ -1020,7 +1023,7 @@ export default function FinanceDetailClient({
           setIsOpen={setIsRecordOpen}
           onSuccess={async () => {
             await fetchLpos();
-            router.refresh();
+            await refresh();
           }}
           recordedBy={userInfo?.name || userInfo?.email || "Finance"}
         />

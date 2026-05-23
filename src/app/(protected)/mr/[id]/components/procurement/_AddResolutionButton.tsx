@@ -10,6 +10,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { formatPriceAED } from "@/lib/formatPrice";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type ResolutionButtonProps = {
   mrHeader: MrHeader;
@@ -66,6 +67,8 @@ export default function ResolutionButton({
   item,
 }: ResolutionButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -306,7 +309,7 @@ export default function ResolutionButton({
         toast("Resolution deleted successfully", "success");
         setExistingResolution(null);
         setIsEditMode(false);
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to delete resolution", "error");
       }
@@ -871,8 +874,8 @@ export default function ResolutionButton({
           isEditMode ? "Resolution updated" : "Resolution created",
           "success",
         );
+        await refresh();
         setIsOpen(false);
-        router.refresh();
       } else {
         toast("Failed to create resolution", "error");
       }
@@ -913,8 +916,8 @@ export default function ResolutionButton({
           isEditMode ? "Resolution updated" : "Resolution created",
           "success",
         );
+        await refresh();
         setIsOpen(false);
-        router.refresh();
       } else {
         toast("Failed to save resolution", "error");
       }
@@ -997,8 +1000,8 @@ export default function ResolutionButton({
             : "Resolution created successfully",
           "success",
         );
+        await refresh();
         setIsOpen(false);
-        router.refresh();
       } else {
         toast("Failed to save resolution", "error");
       }
@@ -1083,8 +1086,8 @@ export default function ResolutionButton({
             : "Resolution created successfully",
           "success",
         );
+        await refresh();
         setIsOpen(false);
-        router.refresh();
       } else {
         toast("Failed to save resolution", "error");
       }

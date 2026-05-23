@@ -10,6 +10,7 @@ import { MrLine } from "../../types/mrLine";
 import { MrHeader } from "../../types/mrHeader";
 import { toast } from "@/app/components/Toast";
 import { MrPDF } from "../MrPDF";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   selectedItemIds: Set<number>;
@@ -41,6 +42,8 @@ export default function ManagerPriceActionsButton({
   mrLines,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const diamondIcon = "/icons/diamond.svg";
   const downloadIcon = "/icons/download.svg";
 
@@ -131,7 +134,7 @@ export default function ManagerPriceActionsButton({
 
       setSelectedItemIds(new Set());
       window.dispatchEvent(new CustomEvent("quotationsUpdated"));
-      router.refresh();
+      await refresh();
     } finally {
       setIsAutoSelecting(false);
     }
@@ -156,7 +159,7 @@ export default function ManagerPriceActionsButton({
     setConfirmRejectOpen(false);
     setRejectText("");
     window.dispatchEvent(new CustomEvent("quotationsUpdated"));
-    router.refresh();
+    await refresh();
   }
 
   async function handleBulkDelete() {
@@ -172,7 +175,7 @@ export default function ManagerPriceActionsButton({
     );
     setSelectedItemIds(new Set());
     setConfirmDeleteOpen(false);
-    router.refresh();
+    await refresh();
   }
 
   async function urlToBase64(url: string): Promise<string> {

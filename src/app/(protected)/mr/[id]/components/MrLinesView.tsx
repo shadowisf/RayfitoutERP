@@ -54,11 +54,13 @@ import InventoryStatusCell, {
   InventoryMatch,
 } from "./department/_InventoryStatusCell";
 import MultipleSelectBoqItemButton from "@/app/components/_MultipleSelectBoqItemButton";
+import MultipleSelectBoqItemButtonWithAllocation from "@/app/components/_MultipleSelectBoqItemButtonWithAllocation";
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
 import AddBrandAndSpecs from "./department/_AddBrandAndSpecs";
 import AddMrLineAttachment from "./department/_AddMrLineAttachment";
 import MobileBrandSpecsEditor from "./department/_MobileBrandSpecsEditor";
 import DepartmentActionsButton from "./department/_DepartmentActionsButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -83,6 +85,7 @@ export default function MrLinesView({
 }: MrLinesViewProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
 
   const pencilIcon = "/icons/rewind-two-arrows.svg";
   const trashIcon = "/icons/trash.svg";
@@ -174,10 +177,27 @@ export default function MrLinesView({
         stage_name: "INITIAL APPROVAL",
       }),
     });
-    router.refresh();
+    await refresh();
   };
 
-  const saveInlineBoq = async (item: MrLine, boqLineIDs: number[]) => {
+  const saveInlineUnit = async (item: MrLine, newUnit: string) => {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "updateMrLineUnit",
+        id: item.id,
+        unit: newUnit,
+      }),
+    });
+    await refresh();
+  };
+
+  const saveInlineBoq = async (
+    item: MrLine,
+    boqLineIDs: number[],
+    allocatedQtys?: Record<number, number>,
+  ) => {
     await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -185,9 +205,10 @@ export default function MrLinesView({
         action: "updateMrLineBoqRef",
         id: item.id,
         boq_line_ids: boqLineIDs,
+        allocated_qtys: allocatedQtys ?? {},
       }),
     });
-    router.refresh();
+    await refresh();
   };
 
   const [showBySupplier, setShowBySupplier] = useState<boolean>(
@@ -2867,14 +2888,17 @@ export default function MrLinesView({
                         inlineUnit[item.id] ??
                         (item.unit ? mapPredefinedUnit(item.unit) : "N/A")
                       }
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newUnit = e.target.value;
                         setInlineUnit((prev) => ({
                           ...prev,
-                          [item.id]: e.target.value,
-                        }))
-                      }
+                          [item.id]: newUnit,
+                        }));
+                        saveInlineUnit(item, newUnit);
+                      }}
                       onBlur={() => saveInlineQty(item)}
                       style={{
+                        width: "80px",
                         border: "none",
                         padding: "5px 4px",
                         background: "transparent",
@@ -2882,7 +2906,9 @@ export default function MrLinesView({
                         fontSize: "12px",
                       }}
                     >
-                      <option value="N/A">N/A</option>
+                      <option value="N/A" disabled>
+                        N/A
+                      </option>
                       {UNIT_OPTIONS.map((u) => (
                         <option key={u} value={u}>
                           {u}
@@ -2956,23 +2982,50 @@ export default function MrLinesView({
                         textTransform: "uppercase",
                       }}
                     >
-                      BOQ Ref <span style={{ color: "red" }}>*</span>
+                      BOQ REF <span style={{ color: "red" }}>*</span>
                     </div>
                     {isDeptEditable ? (
-                      <MultipleSelectBoqItemButton
-                        projectID={mrHeader.project_id}
-                        onSelectBoq={(ids) => saveInlineBoq(item, ids)}
-                        currentBoqLineIDs={
-                          item.boq_line_ids
-                            ? String(item.boq_line_ids)
-                                .split(",")
-                                .map(Number)
-                                .filter(Boolean)
-                            : []
-                        }
-                        itemName={item.material_description}
-                        compact
-                      />
+                      mrHeader.progress_id === 1 ? (
+                        <MultipleSelectBoqItemButtonWithAllocation
+                          projectID={mrHeader.project_id}
+                          onSelectBoq={(ids, _, __, allocatedQtys) => saveInlineBoq(item, ids, allocatedQtys)}
+                          currentBoqLineIDs={
+                            item.boq_line_ids
+                              ? String(item.boq_line_ids)
+                                  .split(",")
+                                  .map(Number)
+                                  .filter(Boolean)
+                              : []
+                          }
+                          itemName={item.material_description}
+                          mrLineQuantity={item.quantity}
+                          mrLineUnit={item.unit}
+                          mrLineId={item.id}
+                          disabled={
+                            !(inlineQty[item.id] !== undefined
+                              ? Number(inlineQty[item.id].replace(/,/g, ""))
+                              : Number(item.quantity)) ||
+                            !item.unit ||
+                            item.unit === "N/A"
+                          }
+                          compact
+                        />
+                      ) : (
+                        <MultipleSelectBoqItemButton
+                          projectID={mrHeader.project_id}
+                          onSelectBoq={(ids) => saveInlineBoq(item, ids)}
+                          currentBoqLineIDs={
+                            item.boq_line_ids
+                              ? String(item.boq_line_ids)
+                                  .split(",")
+                                  .map(Number)
+                                  .filter(Boolean)
+                              : []
+                          }
+                          itemName={item.material_description}
+                          compact
+                        />
+                      )
                     ) : item.boq_line_ids ? (
                       <BoqReferencePopUp item={item} mrHeader={mrHeader} />
                     ) : (
@@ -3576,7 +3629,9 @@ export default function MrLinesView({
                                         </th>
                                       )}
                                       <th style={{ width: "40px" }}>#</th>
-                                      <th style={{ width: "130px" }}>MATERIAL</th>
+                                      <th style={{ width: "130px" }}>
+                                        MATERIAL
+                                      </th>
                                       {mrHeader.progress_id === 1 && (
                                         <th style={{ width: "150px" }}>
                                           INVENTORY STATUS
@@ -3605,7 +3660,7 @@ export default function MrLinesView({
                                             <span
                                               style={{
                                                 color: "red",
-                                                marginLeft: "8px",
+                                                marginLeft: "4px",
                                                 fontWeight: "normal",
                                               }}
                                             >
@@ -3620,7 +3675,7 @@ export default function MrLinesView({
                                           <span
                                             style={{
                                               color: "red",
-                                              marginLeft: "8px",
+                                              marginLeft: "4px",
                                               fontWeight: "normal",
                                             }}
                                           >
@@ -4069,13 +4124,18 @@ export default function MrLinesView({
                                                           )
                                                         : "N/A")
                                                     }
-                                                    onChange={(e) =>
+                                                    onChange={(e) => {
+                                                      const newUnit =
+                                                        e.target.value;
                                                       setInlineUnit((prev) => ({
                                                         ...prev,
-                                                        [item.id]:
-                                                          e.target.value,
-                                                      }))
-                                                    }
+                                                        [item.id]: newUnit,
+                                                      }));
+                                                      saveInlineUnit(
+                                                        item,
+                                                        newUnit,
+                                                      );
+                                                    }}
                                                     onBlur={() =>
                                                       saveInlineQty(item)
                                                     }
@@ -4087,7 +4147,10 @@ export default function MrLinesView({
                                                       cursor: "pointer",
                                                     }}
                                                   >
-                                                    <option value="N/A">
+                                                    <option
+                                                      value="N/A"
+                                                      disabled
+                                                    >
                                                       N/A
                                                     </option>
                                                     {UNIT_OPTIONS.map((u) => (
@@ -4106,25 +4169,62 @@ export default function MrLinesView({
                                             )}
                                             <td>
                                               {isDeptEditable ? (
-                                                <MultipleSelectBoqItemButton
-                                                  projectID={
-                                                    mrHeader.project_id
-                                                  }
-                                                  onSelectBoq={(ids) =>
-                                                    saveInlineBoq(item, ids)
-                                                  }
-                                                  currentBoqLineIDs={
-                                                    item.boq_line_ids
-                                                      ? String(
-                                                          item.boq_line_ids,
-                                                        )
-                                                          .split(",")
-                                                          .map(Number)
-                                                          .filter(Boolean)
-                                                      : []
-                                                  }
-                                                  compact
-                                                />
+                                                mrHeader.progress_id === 1 ? (
+                                                  <MultipleSelectBoqItemButtonWithAllocation
+                                                    projectID={
+                                                      mrHeader.project_id
+                                                    }
+                                                    onSelectBoq={(ids, _, __, allocatedQtys) =>
+                                                      saveInlineBoq(item, ids, allocatedQtys)
+                                                    }
+                                                    currentBoqLineIDs={
+                                                      item.boq_line_ids
+                                                        ? String(
+                                                            item.boq_line_ids,
+                                                          )
+                                                            .split(",")
+                                                            .map(Number)
+                                                            .filter(Boolean)
+                                                        : []
+                                                    }
+                                                    itemName={
+                                                      item.material_description
+                                                    }
+                                                    mrLineQuantity={
+                                                      item.quantity
+                                                    }
+                                                    mrLineUnit={item.unit}
+                                                    mrLineId={item.id}
+                                                    disabled={
+                                                      !(inlineQty[item.id] !== undefined
+                                                        ? Number(inlineQty[item.id].replace(/,/g, ""))
+                                                        : Number(item.quantity)) ||
+                                                      !item.unit ||
+                                                      item.unit === "N/A"
+                                                    }
+                                                    compact
+                                                  />
+                                                ) : (
+                                                  <MultipleSelectBoqItemButton
+                                                    projectID={
+                                                      mrHeader.project_id
+                                                    }
+                                                    onSelectBoq={(ids) =>
+                                                      saveInlineBoq(item, ids)
+                                                    }
+                                                    currentBoqLineIDs={
+                                                      item.boq_line_ids
+                                                        ? String(
+                                                            item.boq_line_ids,
+                                                          )
+                                                            .split(",")
+                                                            .map(Number)
+                                                            .filter(Boolean)
+                                                        : []
+                                                    }
+                                                    compact
+                                                  />
+                                                )
                                               ) : item.boq_line_ids ? (
                                                 <BoqReferencePopUp
                                                   item={item}
@@ -5114,13 +5214,18 @@ export default function MrLinesView({
                                                           )
                                                         : "N/A")
                                                     }
-                                                    onChange={(e) =>
+                                                    onChange={(e) => {
+                                                      const newUnit =
+                                                        e.target.value;
                                                       setInlineUnit((prev) => ({
                                                         ...prev,
-                                                        [item.id]:
-                                                          e.target.value,
-                                                      }))
-                                                    }
+                                                        [item.id]: newUnit,
+                                                      }));
+                                                      saveInlineUnit(
+                                                        item,
+                                                        newUnit,
+                                                      );
+                                                    }}
                                                     onBlur={() =>
                                                       saveInlineQty(item)
                                                     }
@@ -5132,7 +5237,10 @@ export default function MrLinesView({
                                                       fontSize: "12px",
                                                     }}
                                                   >
-                                                    <option value="N/A">
+                                                    <option
+                                                      value="N/A"
+                                                      disabled
+                                                    >
                                                       N/A
                                                     </option>
                                                     {UNIT_OPTIONS.map((u) => (
@@ -5229,28 +5337,66 @@ export default function MrLinesView({
                                                     </span>
                                                   </div>
                                                   {isDeptEditable ? (
-                                                    <MultipleSelectBoqItemButton
-                                                      projectID={
-                                                        mrHeader.project_id
-                                                      }
-                                                      onSelectBoq={(ids) =>
-                                                        saveInlineBoq(item, ids)
-                                                      }
-                                                      currentBoqLineIDs={
-                                                        item.boq_line_ids
-                                                          ? String(
-                                                              item.boq_line_ids,
-                                                            )
-                                                              .split(",")
-                                                              .map(Number)
-                                                              .filter(Boolean)
-                                                          : []
-                                                      }
-                                                      itemName={
-                                                        item.material_description
-                                                      }
-                                                      compact
-                                                    />
+                                                    mrHeader.progress_id ===
+                                                    1 ? (
+                                                      <MultipleSelectBoqItemButtonWithAllocation
+                                                        projectID={
+                                                          mrHeader.project_id
+                                                        }
+                                                        onSelectBoq={(ids, _, __, allocatedQtys) =>
+                                                          saveInlineBoq(item, ids, allocatedQtys)
+                                                        }
+                                                        currentBoqLineIDs={
+                                                          item.boq_line_ids
+                                                            ? String(
+                                                                item.boq_line_ids,
+                                                              )
+                                                                .split(",")
+                                                                .map(Number)
+                                                                .filter(Boolean)
+                                                            : []
+                                                        }
+                                                        itemName={
+                                                          item.material_description
+                                                        }
+                                                        mrLineQuantity={
+                                                          item.quantity
+                                                        }
+                                                        mrLineUnit={item.unit}
+                                                        mrLineId={item.id}
+                                                        disabled={
+                                                          !(inlineQty[item.id] !== undefined
+                                                            ? Number(inlineQty[item.id].replace(/,/g, ""))
+                                                            : Number(item.quantity)) ||
+                                                          !item.unit ||
+                                                          item.unit === "N/A"
+                                                        }
+                                                        compact
+                                                      />
+                                                    ) : (
+                                                      <MultipleSelectBoqItemButton
+                                                        projectID={
+                                                          mrHeader.project_id
+                                                        }
+                                                        onSelectBoq={(ids) =>
+                                                          saveInlineBoq(item, ids)
+                                                        }
+                                                        currentBoqLineIDs={
+                                                          item.boq_line_ids
+                                                            ? String(
+                                                                item.boq_line_ids,
+                                                              )
+                                                                .split(",")
+                                                                .map(Number)
+                                                                .filter(Boolean)
+                                                            : []
+                                                        }
+                                                        itemName={
+                                                          item.material_description
+                                                        }
+                                                        compact
+                                                      />
+                                                    )
                                                   ) : item.boq_line_ids ? (
                                                     <BoqReferencePopUp
                                                       item={item}
@@ -5653,7 +5799,7 @@ export default function MrLinesView({
                                         <span
                                           style={{
                                             color: "red",
-                                            marginLeft: "8px",
+                                            marginLeft: "4px",
                                             fontWeight: "normal",
                                           }}
                                         >
@@ -5668,7 +5814,7 @@ export default function MrLinesView({
                                       <span
                                         style={{
                                           color: "red",
-                                          marginLeft: "8px",
+                                          marginLeft: "4px",
                                           fontWeight: "normal",
                                         }}
                                       >
@@ -6106,12 +6252,15 @@ export default function MrLinesView({
                                                       )
                                                     : "N/A")
                                                 }
-                                                onChange={(e) =>
+                                                onChange={(e) => {
+                                                  const newUnit =
+                                                    e.target.value;
                                                   setInlineUnit((prev) => ({
                                                     ...prev,
-                                                    [item.id]: e.target.value,
-                                                  }))
-                                                }
+                                                    [item.id]: newUnit,
+                                                  }));
+                                                  saveInlineUnit(item, newUnit);
+                                                }}
                                                 onBlur={() =>
                                                   saveInlineQty(item)
                                                 }
@@ -6123,7 +6272,9 @@ export default function MrLinesView({
                                                   cursor: "pointer",
                                                 }}
                                               >
-                                                <option value="N/A">N/A</option>
+                                                <option value="N/A" disabled>
+                                                  N/A
+                                                </option>
                                                 {UNIT_OPTIONS.map((u) => (
                                                   <option key={u} value={u}>
                                                     {u}
@@ -6151,21 +6302,52 @@ export default function MrLinesView({
                                         )}
                                         <td>
                                           {isDeptEditable ? (
-                                            <MultipleSelectBoqItemButton
-                                              projectID={mrHeader.project_id}
-                                              onSelectBoq={(ids) =>
-                                                saveInlineBoq(item, ids)
-                                              }
-                                              currentBoqLineIDs={
-                                                item.boq_line_ids
-                                                  ? String(item.boq_line_ids)
-                                                      .split(",")
-                                                      .map(Number)
-                                                      .filter(Boolean)
-                                                  : []
-                                              }
-                                              compact
-                                            />
+                                            mrHeader.progress_id === 1 ? (
+                                              <MultipleSelectBoqItemButtonWithAllocation
+                                                projectID={mrHeader.project_id}
+                                                onSelectBoq={(ids, _, __, allocatedQtys) =>
+                                                  saveInlineBoq(item, ids, allocatedQtys)
+                                                }
+                                                currentBoqLineIDs={
+                                                  item.boq_line_ids
+                                                    ? String(item.boq_line_ids)
+                                                        .split(",")
+                                                        .map(Number)
+                                                        .filter(Boolean)
+                                                    : []
+                                                }
+                                                itemName={
+                                                  item.material_description
+                                                }
+                                                mrLineQuantity={item.quantity}
+                                                mrLineUnit={item.unit}
+                                                mrLineId={item.id}
+                                                disabled={
+                                                  !(inlineQty[item.id] !== undefined
+                                                    ? Number(inlineQty[item.id].replace(/,/g, ""))
+                                                    : Number(item.quantity)) ||
+                                                  !item.unit ||
+                                                  item.unit === "N/A"
+                                                }
+                                                compact
+                                              />
+                                            ) : (
+                                              <MultipleSelectBoqItemButton
+                                                projectID={mrHeader.project_id}
+                                                onSelectBoq={(ids) =>
+                                                  saveInlineBoq(item, ids)
+                                                }
+                                                currentBoqLineIDs={
+                                                  item.boq_line_ids
+                                                    ? String(item.boq_line_ids)
+                                                        .split(",")
+                                                        .map(Number)
+                                                        .filter(Boolean)
+                                                    : []
+                                                }
+                                                compact
+                                              />
+                                            )
                                           ) : item.boq_line_ids ? (
                                             <BoqReferencePopUp
                                               item={item}
@@ -7208,7 +7390,7 @@ export default function MrLinesView({
                             <span
                               style={{
                                 color: "red",
-                                marginLeft: "8px",
+                                marginLeft: "4px",
                                 fontWeight: "normal",
                               }}
                             >
@@ -7223,7 +7405,7 @@ export default function MrLinesView({
                           <span
                             style={{
                               color: "red",
-                              marginLeft: "8px",
+                              marginLeft: "4px",
                               fontWeight: "normal",
                             }}
                           >

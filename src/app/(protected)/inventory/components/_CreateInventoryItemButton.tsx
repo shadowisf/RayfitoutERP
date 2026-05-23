@@ -10,6 +10,7 @@ import { toast } from "@/app/components/Toast";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useRouter } from "next/navigation";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type CreateInventoryItemButtonProps = {
   style?: React.CSSProperties;
@@ -23,6 +24,8 @@ export default function CreateInventoryItemButton({
   const { userInfo } = useAuth();
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -214,7 +217,7 @@ export default function CreateInventoryItemButton({
         onSuccess();
       }
 
-      router.refresh();
+      await refresh();
 
       // Reset form
       // setSelectedPredefinedItem("");

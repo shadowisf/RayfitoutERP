@@ -9,6 +9,7 @@ import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import CreateInventoryItemButton from "@/app/(protected)/inventory/components/_CreateInventoryItemButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type ReplaceDetail = {
   id: number;
@@ -50,6 +51,8 @@ export default function AddReplaceStockButton({
 }: AddReplaceStockButtonProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const plusIcon = "/icons/plus.svg";
   const pencilIcon = "/icons/pencil.svg";
@@ -179,7 +182,7 @@ export default function AddReplaceStockButton({
         onRefresh?.();
         setIsOpen(false);
         await checkExistingStock();
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to update stock", "error");
       }
@@ -215,7 +218,7 @@ export default function AddReplaceStockButton({
       setInventoryItemID("");
       onRefresh?.();
       await checkExistingStock();
-      router.refresh();
+      await refresh();
       setIsOpen(false);
     }
   }

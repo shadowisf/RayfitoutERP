@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "@/app/components/Toast";
 import { BoqHeader } from "../../types/boqHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   boqHeader: BoqHeader | null;
@@ -25,6 +26,8 @@ export function DeleteBoqHeaderButton({
   onClose,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -51,7 +54,7 @@ export function DeleteBoqHeaderButton({
     if (res.ok) {
       toast("Bill of quantity deleted", "success");
 
-      router.refresh();
+      await refresh();
       router.replace(`/project/${boqHeader?.project_id}`);
 
       onSuccess && onSuccess();

@@ -12,6 +12,7 @@ import CreateNewMaterialButton from "@/app/components/_CreateNewMaterialButton";
 import { UNIT_OPTIONS, mapPredefinedUnit } from "@/constants/units";
 import { MrLine } from "../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type PredefinedItem = {
   id: number;
@@ -47,6 +48,8 @@ export default function ReplaceMaterialButton({
   directSubmit = false,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const arrowRight = "/icons/arrow-right.svg";
@@ -431,7 +434,7 @@ export default function ReplaceMaterialButton({
       toast(`Replaced with ${tempSelected.material_description}`, "success");
       setIsPickerOpen(false);
       setReplaceReason("");
-      router.refresh();
+      await refresh();
       return;
     }
 
@@ -511,7 +514,7 @@ export default function ReplaceMaterialButton({
     toast(`Replaced with ${previewDescription}`, "success");
     setIsMainOpen(false);
     setReplaceReason("");
-    router.refresh();
+    await refresh();
   }
 
   // ── Render picker items table ─────────────────────────────────────────

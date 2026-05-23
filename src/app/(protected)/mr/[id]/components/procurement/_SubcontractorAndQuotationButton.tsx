@@ -13,6 +13,7 @@ import { JoLine } from "../../types/joLine";
 import { useAuth } from "@/app/context/AuthContext";
 import CreateSubcontractorButton from "../../../../vendor/components/_CreateSubcontractorButton";
 import { formatPriceAED } from "@/lib/formatPrice";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubcontractorQuotation = {
   id?: number;
@@ -56,6 +57,8 @@ export default function SubcontractorAndQuotationButton({
   onSubcontractorLocked,
 }: SubcontractorAndQuotationButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -549,7 +552,7 @@ export default function SubcontractorAndQuotationButton({
         // Dispatch event so JoPriceApprovalButton can refresh
         window.dispatchEvent(new CustomEvent("joQuotationsUpdated"));
 
-        router.refresh();
+        await refresh();
       } else {
         const errorData = await res.json();
         throw new Error(

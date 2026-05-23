@@ -7,6 +7,7 @@ import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
 import { MrLine } from "../../types/mrLine";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type Props = {
   item: MrLine;
@@ -15,6 +16,8 @@ type Props = {
 
 export default function AddBrandAndSpecs({ item, stageName }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
   const pencilIcon = "/icons/pencil.svg";
 
@@ -42,8 +45,8 @@ export default function AddBrandAndSpecs({ item, stageName }: Props) {
         stage_name: stageName || "INITIAL APPROVAL",
       }),
     });
+    await refresh();
     setIsOpen(false);
-    router.refresh();
   }
 
   return (

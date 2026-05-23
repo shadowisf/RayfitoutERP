@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import { Project } from "../types/project";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   project: Project | null;
@@ -16,6 +17,8 @@ type props = {
 
 export function EditProjectButton({ project, onSuccess }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -119,7 +122,7 @@ export function EditProjectButton({ project, onSuccess }: props) {
     if (res.ok) {
       toast("Project updated", "success");
 
-      router.refresh();
+      await refresh();
 
       onSuccess && onSuccess();
 

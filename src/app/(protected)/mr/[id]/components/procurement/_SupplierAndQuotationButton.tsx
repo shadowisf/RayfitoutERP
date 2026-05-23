@@ -12,6 +12,7 @@ import { MrLine } from "../../types/mrLine";
 import CreateSupplierButton from "../../../../vendor/components/_CreateSupplierButton";
 import { useAuth } from "@/app/context/AuthContext";
 import InputItem from "@/app/components/InputItem";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SupplierQuotation = {
   id?: number;
@@ -45,6 +46,8 @@ export default function SupplierAndQuotationButton({
   noTrigger = false,
 }: SupplierAndQuotationButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -642,7 +645,7 @@ export default function SupplierAndQuotationButton({
 
         await checkExistingQuotations();
 
-        router.refresh();
+        await refresh();
       } else {
         const errorData = await res.json();
         throw new Error(

@@ -12,6 +12,7 @@ import { toast } from "@/app/components/Toast";
 import Link from "next/link";
 import InputItem from "@/app/components/InputItem";
 import FormPopUp from "@/app/components/FormPopup";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type ResolutionDetail = {
   id: number;
@@ -85,6 +86,8 @@ const STATUS_BADGES: {
 export default function ReturnRefundDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
   const resolutionId = params.id as string;
 
@@ -167,7 +170,7 @@ export default function ReturnRefundDetailPage() {
     if (res.ok) {
       toast("Resolution submitted", "success");
       setIsConfirmOpen(false);
-      router.refresh();
+      await refresh();
       router.replace("/resolution?tab=tracker");
     } else {
       const data = await res.json();

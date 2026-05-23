@@ -658,6 +658,22 @@ export async function PUT(req: Request) {
         ],
       );
 
+      // MR only: back-fill predefined item unit if it's currently null/empty/N/A
+      if (body.type !== "payment" && body.type !== "job") {
+        await db.query(
+          `UPDATE lut_predefined_items pi
+           JOIN mr_lines ml ON ml.predefined_item_id = pi.id
+           SET pi.unit = ml.unit
+           WHERE ml.mr_header_id = ?
+             AND ml.predefined_item_id IS NOT NULL
+             AND (pi.unit IS NULL OR pi.unit = '' OR pi.unit = 'N/A')
+             AND ml.unit IS NOT NULL
+             AND ml.unit != ''
+             AND ml.unit != 'N/A'`,
+          [body.id],
+        );
+      }
+
       return NextResponse.json({ status: 200 });
     }
 
@@ -690,6 +706,22 @@ export async function PUT(req: Request) {
           `Your ${formattedId} is awaiting QS approval`,
         ],
       );
+
+      // MR only: back-fill predefined item unit if it's currently null/empty/N/A
+      if (body.type !== "payment" && body.type !== "job") {
+        await db.query(
+          `UPDATE lut_predefined_items pi
+           JOIN mr_lines ml ON ml.predefined_item_id = pi.id
+           SET pi.unit = ml.unit
+           WHERE ml.mr_header_id = ?
+             AND ml.predefined_item_id IS NOT NULL
+             AND (pi.unit IS NULL OR pi.unit = '' OR pi.unit = 'N/A')
+             AND ml.unit IS NOT NULL
+             AND ml.unit != ''
+             AND ml.unit != 'N/A'`,
+          [body.id],
+        );
+      }
 
       return NextResponse.json({ status: 200 });
     }
@@ -938,9 +970,10 @@ export async function PUT(req: Request) {
            SET pi.unit = ml.unit
            WHERE ml.mr_header_id = ?
              AND ml.predefined_item_id IS NOT NULL
-             AND (pi.unit IS NULL OR pi.unit = '')
+             AND (pi.unit IS NULL OR pi.unit = '' OR pi.unit = 'N/A')
              AND ml.unit IS NOT NULL
-             AND ml.unit != ''`,
+             AND ml.unit != ''
+             AND ml.unit != 'N/A'`,
           [body.id],
         );
       }
@@ -2180,6 +2213,27 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "updateMrLineUnit") {
+      // Always update the unit on the mr_line
+      await db.query(
+        `UPDATE mr_lines SET unit = ? WHERE id = ?`,
+        [body.unit, Number(body.id)],
+      );
+
+      // Only back-fill the predefined item's unit if it is currently null or empty
+      await db.query(
+        `UPDATE lut_predefined_items pi
+         JOIN mr_lines ml ON ml.predefined_item_id = pi.id
+         SET pi.unit = ?
+         WHERE ml.id = ?
+           AND ml.predefined_item_id IS NOT NULL
+           AND (pi.unit IS NULL OR pi.unit = '')`,
+        [body.unit, Number(body.id)],
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateMrLineQuantity") {
       // Fetch old values before updating
       const [oldQtyRows]: any = await db.query(
@@ -2192,6 +2246,19 @@ export async function PUT(req: Request) {
         `UPDATE mr_lines SET quantity = ?, unit = ? WHERE id = ?`,
         [Number(body.quantity), body.unit || null, Number(body.id)],
       );
+
+      // ── Back-fill predefined item unit when switching away from N/A / null ─
+      if (body.unit && body.unit !== "N/A") {
+        await db.query(
+          `UPDATE lut_predefined_items pi
+           JOIN mr_lines ml ON ml.predefined_item_id = pi.id
+           SET pi.unit = ?
+           WHERE ml.id = ?
+             AND ml.predefined_item_id IS NOT NULL
+             AND (pi.unit IS NULL OR pi.unit = '' OR pi.unit = 'N/A')`,
+          [body.unit, Number(body.id)],
+        );
+      }
 
       // ── Recalculate quotation total prices based on new quantity ──────────
       await db.query(
@@ -2222,6 +2289,14 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "getMrLineBoqAllocations") {
+      const [rows]: any = await db.query(
+        `SELECT boq_line_id, allocated_qty FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`,
+        [Number(body.mr_line_id)],
+      );
+      return NextResponse.json(rows, { status: 200 });
+    }
+
     if (body.action === "updateMrLineBoqRef") {
       await db.query(
         `DELETE FROM jt_mr_lines_boq_lines WHERE mr_line_id = ?`,
@@ -2235,10 +2310,17 @@ export async function PUT(req: Request) {
       const validBoqLineIds = (boqLineIds as any[]).filter(
         (id) => id && !isNaN(Number(id)),
       );
+      const allocatedQtys: Record<number, number> = body.allocated_qtys ?? {};
       if (validBoqLineIds.length > 0) {
         await db.query(
-          `INSERT INTO jt_mr_lines_boq_lines (mr_line_id, boq_line_id) VALUES ?`,
-          [validBoqLineIds.map((boqId: any) => [Number(body.id), Number(boqId)])],
+          `INSERT INTO jt_mr_lines_boq_lines (mr_line_id, boq_line_id, allocated_qty) VALUES ?`,
+          [
+            validBoqLineIds.map((boqId: any) => [
+              Number(body.id),
+              Number(boqId),
+              allocatedQtys[Number(boqId)] ?? null,
+            ]),
+          ],
         );
       }
       return NextResponse.json({ success: true });

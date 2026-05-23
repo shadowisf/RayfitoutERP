@@ -10,6 +10,7 @@ import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { useRouter } from "next/navigation";
 import { InventoryItem } from "../types/inventoryItem";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type EditInventoryItemButtonProps = {
   inventoryItem: InventoryItem;
@@ -19,6 +20,8 @@ export default function EditInventoryItemButton({
   inventoryItem,
 }: EditInventoryItemButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -309,7 +312,7 @@ export default function EditInventoryItemButton({
       // Reset states
       setImageToDelete(null);
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to update inventory item", "error");
     }

@@ -12,6 +12,7 @@ import { LpoHeader } from "../../../../types/lpoHeader";
 import { MrHeader } from "../../../../types/mrHeader";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import DownloadGRNButton from "../_DownloadGRNButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type CreateGRNButtonProps = {
   mrHeader: MrHeader;
@@ -45,6 +46,8 @@ export default function CreateGRNButton({
   progress_id,
 }: CreateGRNButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -553,10 +556,10 @@ export default function CreateGRNButton({
             : `Good received note created for ${mrLines[0].approved_supplier_name}`,
           "success",
         );
-        setIsOpen(false);
         if (!isEditMode) resetForm();
         await checkExistingGrn();
-        setTimeout(() => router.refresh(), 100);
+        await refresh();
+        setIsOpen(false);
       } else {
         toast(
           isEditMode ? "Failed to update GRN" : "Failed to create GRN",

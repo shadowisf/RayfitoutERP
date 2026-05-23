@@ -6,6 +6,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,8 @@ export default function BulkRejectPaymentButton({
   setIsOpenControlled,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const [isOpenInternal, setIsOpenInternal] = useState(false);
   const isOpen =
     isOpenControlled !== undefined ? isOpenControlled : isOpenInternal;
@@ -74,8 +77,8 @@ export default function BulkRejectPaymentButton({
           "success",
         );
         reset();
+        await refresh();
         setIsOpen(false);
-        router.refresh();
         onSuccess();
       } else {
         toast(`${failed.length} rejection(s) failed`, "error");

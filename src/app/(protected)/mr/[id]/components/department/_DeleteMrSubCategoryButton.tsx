@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { MrLine } from "../../types/mrLine";
 import { toast } from "@/app/components/Toast";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type DeleteMrSubCategoryButtonProps = {
   items: MrLine[];
@@ -17,6 +18,8 @@ export default function DeleteMrSubCategoryButton({
   subCategory,
 }: DeleteMrSubCategoryButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -39,7 +42,7 @@ export default function DeleteMrSubCategoryButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
     } else {
       toast(
         "Failed to delete material request subcategory. Something went wrong"

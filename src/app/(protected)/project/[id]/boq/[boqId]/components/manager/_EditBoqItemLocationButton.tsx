@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { BoqLine } from "../../types/boqLine";
 import { toast } from "@/app/components/Toast";
 import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type EditBoqItemLocationButtonProps = {
   item: BoqLine;
@@ -18,6 +19,8 @@ export default function EditBoqItemLocationButton({
   onSuccess,
 }: EditBoqItemLocationButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -90,7 +93,7 @@ export default function EditBoqItemLocationButton({
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         toast(
           "Failed to update bill of quantity item. Something went wrong",

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import DownloadGRNButton from "../../mr/[id]/lpo/[lpoId]/components/_DownloadGRNButton";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type ReplaceDetail = {
   id: number;
@@ -42,6 +43,8 @@ export default function CreateReplaceGRNButton({
   progressId = 1,
 }: CreateReplaceGRNButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
   const { userInfo } = useAuth();
 
   const pencilIcon = "/icons/pencil.svg";
@@ -175,7 +178,7 @@ export default function CreateReplaceGRNButton({
           toast("Good received note updated", "success");
           setIsOpen(false);
           onRefresh?.();
-          setTimeout(() => router.refresh(), 100);
+          setTimeout(() => refresh(), 100);
         } else {
           toast("Failed to update GRN", "error");
         }
@@ -216,7 +219,7 @@ export default function CreateReplaceGRNButton({
           toast("Good received note created", "success");
           setIsOpen(false);
           onRefresh?.();
-          setTimeout(() => router.refresh(), 100);
+          setTimeout(() => refresh(), 100);
         } else {
           toast("Failed to create GRN", "error");
         }

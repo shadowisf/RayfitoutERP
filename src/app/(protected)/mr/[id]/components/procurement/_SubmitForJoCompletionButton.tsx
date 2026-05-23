@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubmitForJoFinalCompletionButtonProps = {
   mrHeader: MrHeader;
@@ -20,6 +21,8 @@ export default function SubmitForJoCompletionButton({
   style,
 }: SubmitForJoFinalCompletionButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -44,7 +47,7 @@ export default function SubmitForJoCompletionButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       toast("Failed to submit job order", "error");

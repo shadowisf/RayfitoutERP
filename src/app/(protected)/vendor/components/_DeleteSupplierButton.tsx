@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { Supplier } from "../types/supplier";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   supplier: Supplier;
@@ -15,6 +16,8 @@ type props = {
 
 export default function DeleteSupplierButton({ supplier, onSuccess, iconOnly }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const trashIcon = "/icons/trash.svg";
 
@@ -43,7 +46,7 @@ export default function DeleteSupplierButton({ supplier, onSuccess, iconOnly }: 
 
         onSuccess && onSuccess();
 
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to delete vendor. Something went wrong", "error");
       }

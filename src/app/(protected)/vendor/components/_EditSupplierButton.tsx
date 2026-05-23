@@ -10,6 +10,7 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import FormContextHeader from "@/app/components/FormContextHeader";
 import SingleUploadFileBox from "@/app/components/SingleUploadFileBox";
 import { Supplier } from "../types/supplier";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   supplier: Supplier;
@@ -23,6 +24,8 @@ export default function EditSupplierButton({
   iconOnly,
 }: props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const pencilIcon = "/icons/pencil.svg";
 
@@ -270,7 +273,7 @@ export default function EditSupplierButton({
         toast("Vendor updated", "success");
         setIsOpen(false);
         onSuccess && onSuccess();
-        router.refresh();
+        await refresh();
       } else {
         toast("Failed to update vendor", "error");
       }

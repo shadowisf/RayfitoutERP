@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { MrHeader } from "../../types/mrHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type EditMrHeaderButtonProps = {
   mrHeader: MrHeader;
@@ -18,6 +19,8 @@ export default function EditMrHeaderButton({
   mrHeader,
 }: EditMrHeaderButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -89,8 +92,8 @@ export default function EditMrHeaderButton({
 
     if (res.ok) {
       toast("Material request header updated", "success");
+      await refresh();
       setIsOpen(false);
-      router.refresh();
     } else {
       toast("Failed to update material request header", "error");
     }

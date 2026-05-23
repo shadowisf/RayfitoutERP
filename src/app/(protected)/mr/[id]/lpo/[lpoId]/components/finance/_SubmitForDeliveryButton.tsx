@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrHeader } from "../../../../types/mrHeader";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubitForDeliveryButtonProps = {
   mrHeader: MrHeader;
@@ -26,6 +27,8 @@ export default function SubmitForDeliveryButton({
   paymentValue,
 }: SubitForDeliveryButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -68,7 +71,7 @@ export default function SubmitForDeliveryButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       toast("Failed to submit material request", "error");

@@ -7,10 +7,13 @@ import InputItem from "@/app/components/InputItem";
 import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "@/app/components/Toast";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 export default function DashboardNewRequestButton() {
   const { userInfo } = useAuth();
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const jobIcon = "/icons/job-req.svg";
   const mrIcon = "/icons/material-req.svg";
@@ -125,7 +128,7 @@ export default function DashboardNewRequestButton() {
       setDeliveryLocation("");
       setMode("");
       setSkipApprovals(false);
-      router.refresh();
+      await refresh();
       router.replace(`/mr/${data.mrHeaderId}`);
     } else {
       toast("Failed to create material request", "error");
@@ -228,8 +231,8 @@ export default function DashboardNewRequestButton() {
       {/* Banner trigger button — hidden on mobile */}
       <button
         className="banner-new-request mobile-hide"
-        onClick={() => {
-          router.refresh();
+        onClick={async () => {
+          await refresh();
           setIsOpen(true);
         }}
       >
@@ -239,8 +242,8 @@ export default function DashboardNewRequestButton() {
       {/* Mobile floating action button */}
       <button
         className="mobile-show"
-        onClick={() => {
-          router.refresh();
+        onClick={async () => {
+          await refresh();
           setIsOpen(true);
         }}
         style={{

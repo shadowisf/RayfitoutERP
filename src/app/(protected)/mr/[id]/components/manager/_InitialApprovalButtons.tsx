@@ -9,6 +9,7 @@ import RejectCommentPopUp from "./RejectCommentPopUp";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { MrLine } from "../../types/mrLine";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type InitialApprovalButtonsProps = {
   item: MrLine;
@@ -22,6 +23,8 @@ export default function InitialApprovalButtons({
   progressID,
 }: InitialApprovalButtonsProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const { userInfo } = useAuth();
 
@@ -62,7 +65,7 @@ export default function InitialApprovalButtons({
     if (res.ok) {
       toast(`${item.material_description} approved`, "success");
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to approve material request item", "error");
       setStatus("pending");
@@ -87,7 +90,7 @@ export default function InitialApprovalButtons({
 
       setRejectText("");
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reject material request item", "error");
       setStatus("pending");
@@ -111,7 +114,7 @@ export default function InitialApprovalButtons({
     if (res.ok) {
       /* toast("Material request item approval reset", "success"); */
 
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reset approval for material request item", "error");
       setStatus("pending");

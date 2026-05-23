@@ -6,6 +6,7 @@ import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type SubitForLPOResubmissionGRNFailButtonProps = {
   mrHeaderID: number;
@@ -21,6 +22,8 @@ export default function SubmitForLPOResubmissionGRNFailButton({
   disabled,
 }: SubitForLPOResubmissionGRNFailButtonProps) {
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -57,7 +60,7 @@ export default function SubmitForLPOResubmissionGRNFailButton({
 
       setIsOpen(false);
 
-      router.refresh();
+      await refresh();
       router.replace(`/mr/`);
     } else {
       toast("Failed to submit material request", "error");

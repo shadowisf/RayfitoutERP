@@ -10,6 +10,7 @@ import InputItem from "@/app/components/InputItem";
 import { MrLine } from "../../types/mrLine";
 import SupplierDetailsPopUp from "../../../components/SupplierDetailsPopUp";
 import RejectCommentPopUp from "./RejectPopUp";
+import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   progressID: number;
@@ -34,6 +35,8 @@ export default function CheckPricesButton({
   const crossIcon = "/icons/cross-small.svg";
 
   const router = useRouter();
+  const { refresh } = useRefresh();
+
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -130,7 +133,7 @@ export default function CheckPricesButton({
       setIsRejectOpen(false);
       setIsOpen(false);
       fetchQuotations();
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reject vendor and quotation", "error");
     }
@@ -152,7 +155,7 @@ export default function CheckPricesButton({
     if (res.ok) {
       setRejectText("");
       fetchQuotations();
-      router.refresh();
+      await refresh();
     } else {
       toast("Failed to reset vendor selection", "error");
     }
@@ -233,7 +236,7 @@ export default function CheckPricesButton({
 
       if (res.ok) {
         toast("All vendors and quotations approved", "success");
-        router.refresh();
+        await refresh();
         fetchQuotations();
         setIsOpen(false);
       } else {
