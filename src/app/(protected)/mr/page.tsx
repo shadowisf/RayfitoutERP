@@ -96,6 +96,18 @@ export default function MR() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileActiveTab, setMobileActiveTab] = useState(0);
+  const [mobileSearchQuery, setMobileSearchQuery] = useState("");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
   const [tableItems, setTableItems] = useState<{
     material: TableItem[];
     lpo: TableItem[];
@@ -111,24 +123,31 @@ export default function MR() {
     Record<string, boolean>
   >({});
   const defaultFilters = {
-    itemsRequestedIn: "all",
-    selectedDepartments: [] as number[],
-    selectedProjects: [] as number[],
-    requestType: "all",
+    selectedTypes: [] as string[],
     selectedStages: [] as number[],
+    selectedProjects: [] as number[],
+    selectedShow: [] as string[],
+    selectedRequesters: [] as string[],
   };
 
   const [filters, setFilters] = useState<{
-    itemsRequestedIn: string;
-    selectedDepartments: number[];
-    selectedProjects: number[];
-    requestType: string;
+    selectedTypes: string[];
     selectedStages: number[];
+    selectedProjects: number[];
+    selectedShow: string[];
+    selectedRequesters: string[];
   }>(() => {
     if (typeof window === "undefined") return defaultFilters;
     try {
       const saved = localStorage.getItem("pt_filters");
-      return saved ? JSON.parse(saved) : defaultFilters;
+      const parsed = saved ? JSON.parse(saved) : defaultFilters;
+      return {
+        selectedTypes: Array.isArray(parsed.selectedTypes) ? parsed.selectedTypes : [],
+        selectedStages: Array.isArray(parsed.selectedStages) ? parsed.selectedStages : [],
+        selectedProjects: Array.isArray(parsed.selectedProjects) ? parsed.selectedProjects : [],
+        selectedShow: Array.isArray(parsed.selectedShow) ? parsed.selectedShow : [],
+        selectedRequesters: Array.isArray(parsed.selectedRequesters) ? parsed.selectedRequesters : [],
+      };
     } catch {
       return defaultFilters;
     }
@@ -616,7 +635,7 @@ export default function MR() {
       statuses: [
         { name: "Awaiting Delivery", progress_id: 17 },
         // TEMPORARILY DISABLED QC: { name: "QC Check", progress_id: 21 },
-        { name: "Stock Entry", progress_id: 24 },
+        // { name: "Stock Entry", progress_id: 24 }, // Merged into Awaiting Delivery (17)
       ],
     },
     {
@@ -724,7 +743,10 @@ export default function MR() {
     let filtered = lpoCards;
 
     // Apply request type filter - LPOs are always material requests
-    if (filters.requestType === "job" || filters.requestType === "payment") {
+    if (
+      filters.selectedTypes.length > 0 &&
+      !filters.selectedTypes.includes("material")
+    ) {
       return [];
     }
 
@@ -733,37 +755,28 @@ export default function MR() {
       filtered = filtered.filter((lpoCard) => canViewLPO(lpoCard, true));
     }
 
-    if (filters.itemsRequestedIn !== "all") {
-      const now = new Date();
-      const timeframes: { [key: string]: number } = {
-        "24h": 1,
-        "3d": 3,
-        "7d": 7,
-        "14d": 14,
-        "30d": 30,
-      };
-      const daysAgo = timeframes[filters.itemsRequestedIn];
-      if (daysAgo) {
-        const cutoffDate = new Date(
-          now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
-        );
-        filtered = filtered.filter(
-          (lpoCard) => new Date(lpoCard.created_at) >= cutoffDate,
-        );
-      }
-    }
-
-    if (filters.selectedDepartments.length > 0) {
-      filtered = filtered.filter((lpoCard) =>
-        filters.selectedDepartments.includes(lpoCard.department_id),
-      );
-    }
-
     if (filters.selectedProjects.length > 0) {
       filtered = filtered.filter((lpoCard) =>
         filters.selectedProjects.includes(
           lpoCard.project_id || lpoCard.mr_project_id,
         ),
+      );
+    }
+
+    if (filters.selectedShow.length > 0) {
+      filtered = filtered.filter((lpoCard) => {
+        const isRejected = [5, 11, 13, 16].includes(lpoCard.progress_id);
+        const isIncomplete = lpoCard.progress_id !== 25 && lpoCard.progress_id !== 26;
+        return (
+          (filters.selectedShow.includes("rejected") && isRejected) ||
+          (filters.selectedShow.includes("incomplete") && isIncomplete)
+        );
+      });
+    }
+
+    if (filters.selectedRequesters.length > 0) {
+      filtered = filtered.filter((lpoCard) =>
+        filters.selectedRequesters.includes(lpoCard.requested_by ?? ""),
       );
     }
 
@@ -793,8 +806,8 @@ export default function MR() {
     let filtered = mrHeaders;
 
     // Apply request type filter
-    if (filters.requestType !== "all") {
-      filtered = filtered.filter((mr) => mr.type === filters.requestType);
+    if (filters.selectedTypes.length > 0) {
+      filtered = filtered.filter((mr) => filters.selectedTypes.includes(mr.type));
     }
 
     filtered = filtered.filter((mr) => {
@@ -810,35 +823,26 @@ export default function MR() {
       });
     }
 
-    if (filters.itemsRequestedIn !== "all") {
-      const now = new Date();
-      const timeframes: { [key: string]: number } = {
-        "24h": 1,
-        "3d": 3,
-        "7d": 7,
-        "14d": 14,
-        "30d": 30,
-      };
-      const daysAgo = timeframes[filters.itemsRequestedIn];
-      if (daysAgo) {
-        const cutoffDate = new Date(
-          now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
-        );
-        filtered = filtered.filter(
-          (mr) => new Date(mr.date_requested) >= cutoffDate,
-        );
-      }
-    }
-
-    if (filters.selectedDepartments.length > 0) {
-      filtered = filtered.filter((mr) =>
-        filters.selectedDepartments.includes(mr.department_id),
-      );
-    }
-
     if (filters.selectedProjects.length > 0) {
       filtered = filtered.filter((mr) =>
         filters.selectedProjects.includes(mr.project_id),
+      );
+    }
+
+    if (filters.selectedShow.length > 0) {
+      filtered = filtered.filter((mr) => {
+        const isRejected = [5, 11, 13, 16].includes(mr.progress_id);
+        const isIncomplete = mr.progress_id !== 25 && mr.progress_id !== 26;
+        return (
+          (filters.selectedShow.includes("rejected") && isRejected) ||
+          (filters.selectedShow.includes("incomplete") && isIncomplete)
+        );
+      });
+    }
+
+    if (filters.selectedRequesters.length > 0) {
+      filtered = filtered.filter((mr) =>
+        filters.selectedRequesters.includes(mr.requested_by ?? ""),
       );
     }
 
@@ -1027,11 +1031,11 @@ export default function MR() {
 
   const resetAllFilters = () => {
     setFilters({
-      itemsRequestedIn: "all",
-      selectedDepartments: [],
-      selectedProjects: [],
-      requestType: "all",
+      selectedTypes: [],
       selectedStages: [],
+      selectedProjects: [],
+      selectedShow: [],
+      selectedRequesters: [],
     });
   };
 
@@ -1058,11 +1062,724 @@ export default function MR() {
   };
 
   const hasActiveFilters =
-    filters.itemsRequestedIn !== "all" ||
-    filters.selectedDepartments.length > 0 ||
+    filters.selectedTypes.length > 0 ||
+    filters.selectedStages.length > 0 ||
     filters.selectedProjects.length > 0 ||
-    filters.requestType !== "all" ||
-    filters.selectedStages.length > 0;
+    filters.selectedShow.length > 0 ||
+    filters.selectedRequesters.length > 0;
+
+  // ── Mobile view ──────────────────────────────────────────────────────────────
+  if (isMobile) {
+    const getInitials = (name?: string) => {
+      if (!name) return "?";
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return parts[0][0].toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    };
+
+    const mobileTabs = stageGroups.flatMap((g) => g.statuses);
+
+    // Mobile-filtered MRs and LPOs (by mobile search query)
+    const mq = mobileSearchQuery.toLowerCase().trim();
+    const mobileFilteredMRs = filteredMRs.filter((mr) => {
+      if (!mq) return true;
+      const prefix =
+        mr.type === "job" ? "jo" : mr.type === "payment" ? "pr" : "mr";
+      const formattedId = `${prefix}-${mr.id.toString().padStart(5, "0")}`;
+      return (
+        formattedId.includes(mq) ||
+        mr.id.toString().includes(mq) ||
+        mr.project_name?.toLowerCase().includes(mq) ||
+        mr.requested_by?.toLowerCase().includes(mq)
+      );
+    });
+    const mobileFilteredLPOs = filteredLPOs.filter((lpo) => {
+      if (!mq) return true;
+      return (
+        `lpo-${lpo.id.toString().padStart(5, "0")}`.includes(mq) ||
+        `mr-${lpo.mr_header_id.toString().padStart(5, "0")}`.includes(mq) ||
+        lpo.project_name?.toLowerCase().includes(mq) ||
+        lpo.supplier_name?.toLowerCase().includes(mq) ||
+        lpo.requested_by?.toLowerCase().includes(mq)
+      );
+    });
+
+    const mobileGroupedMRs = mobileFilteredMRs.reduce(
+      (acc: Record<string, MrHeader[]>, mr) => {
+        const key = mr.progress_name || "Unknown";
+        acc[key] = acc[key] || [];
+        acc[key].push(mr);
+        return acc;
+      },
+      {},
+    );
+    const mobileGroupedLPOs = mobileFilteredLPOs.reduce(
+      (acc: Record<number, LpoCard[]>, lpo) => {
+        acc[lpo.progress_id] = acc[lpo.progress_id] || [];
+        acc[lpo.progress_id].push(lpo);
+        return acc;
+      },
+      {},
+    );
+
+    const getTabCount = (status: {
+      name: string;
+      progress_id: number;
+    }): number => {
+      const useLpo = LPO_STAGE_IDS.includes(status.progress_id);
+      if (status.progress_id === 25) {
+        const mrCount = (mobileGroupedMRs[status.name] || []).filter(
+          (mr) => mr.type === "job" || mr.type === "payment",
+        ).length;
+        return (mobileGroupedLPOs[status.progress_id]?.length || 0) + mrCount;
+      }
+      if (status.progress_id === 14) {
+        const prCount = (mobileGroupedMRs[status.name] || []).filter(
+          (mr) => mr.type === "payment",
+        ).length;
+        return (mobileGroupedLPOs[status.progress_id]?.length || 0) + prCount;
+      }
+      return useLpo
+        ? mobileGroupedLPOs[status.progress_id]?.length || 0
+        : mobileGroupedMRs[status.name]?.length || 0;
+    };
+
+    const safeTab = mobileActiveTab < mobileTabs.length ? mobileActiveTab : 0;
+    const activeStatus = mobileTabs[safeTab];
+    const useLpoCards = LPO_STAGE_IDS.includes(activeStatus.progress_id);
+    const isCompletedStage = activeStatus.progress_id === 25;
+    const isPendingPayments = activeStatus.progress_id === 14;
+
+    const activeMrs = isCompletedStage
+      ? (mobileGroupedMRs[activeStatus.name] || []).filter(
+          (mr) => mr.type === "job" || mr.type === "payment",
+        )
+      : isPendingPayments
+        ? (mobileGroupedMRs[activeStatus.name] || []).filter(
+            (mr) => mr.type === "payment",
+          )
+        : useLpoCards
+          ? []
+          : mobileGroupedMRs[activeStatus.name] || [];
+
+    const activeLpos =
+      useLpoCards || isCompletedStage || isPendingPayments
+        ? mobileGroupedLPOs[activeStatus.progress_id] || []
+        : [];
+
+    const clockSvg = (
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 11 11"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M5.5 2.5V5.5H8.5"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M5.5 10.5C8.2615 10.5 10.5 8.2615 10.5 5.5C10.5 2.7385 8.2615 0.5 5.5 0.5C2.7385 0.5 0.5 2.7385 0.5 5.5C0.5 8.2615 2.7385 10.5 5.5 10.5Z"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+
+    const flagSvg = (color: string) => (
+      <svg
+        width="12"
+        height="14"
+        viewBox="0 0 15 17"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ flexShrink: 0 }}
+      >
+        <path
+          d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+          fill={color}
+        />
+      </svg>
+    );
+
+    const renderMrCard = (mr: MrHeader) => {
+      const durKey = `${mr.id}-${mr.progress_id}`;
+      const dur = mrDurations[durKey] || {
+        duration: "0m",
+        hoursDecimal: 0,
+        style: { color: "black", backgroundColor: "rgba(231,231,231,1)" },
+      };
+
+      return (
+        <div
+          key={mr.id}
+          style={{
+            backgroundColor:
+              mr.type === "job"
+                ? "rgba(255, 253, 227, 1)"
+                : mr.type === "payment"
+                  ? "rgba(189, 242, 217, 1)"
+                  : "white",
+            borderRadius: "15px",
+            padding: "15px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            border: "1px solid rgba(231, 231, 231, 1)",
+          }}
+        >
+          {/* Type badge row + flag */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+            }}
+          >
+            <div
+              style={{ display: "flex", alignItems: "flex-end", gap: "10px", flexWrap: "wrap" }}
+            >
+              <div
+                style={{
+                  backgroundColor:
+                    mr.type === "job"
+                      ? "rgba(209, 182, 34, 1)"
+                      : mr.type === "payment"
+                        ? "rgba(0, 163, 93, 1)"
+                        : "black",
+                  color: "white",
+                  padding: "4px 10px",
+                  borderRadius: "50px",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                {mr.type === "job"
+                  ? "JOB ORDER"
+                  : mr.type === "payment"
+                    ? "PAYMENT REQUEST"
+                    : "MATERIAL REQUEST"}
+              </div>
+
+              {mr.progress_id !== 25 && (
+                <div
+                  style={{
+                    ...getDaysLeftStyle(mr.required_date),
+                    padding: "4px 10px",
+                    borderRadius: "50px",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {getDaysLeftText(mr.required_date)}
+                </div>
+              )}
+
+              {mr.progress_id !== 1 && mr.progress_id !== 25 && (
+                <div
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: "50px",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    backgroundColor: "rgba(234, 234, 234, 1)",
+                    color: "rgba(89, 89, 89, 1)",
+                  }}
+                >
+                  {clockSvg}
+                  {dur.duration}
+                </div>
+              )}
+            </div>
+
+            {mr.progress_id !== 1 && mr.progress_id !== 25 && (
+              <div style={{ alignSelf: "flex-end" }}>
+                <svg width="15" height="17" viewBox="0 0 15 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z" fill={getFlagColor(dur.hoursDecimal, mr.progress_id)} />
+                </svg>
+              </div>
+            )}
+          </div>
+
+          {/* Number */}
+          <div>
+            <small>
+              {mr.type === "job" ? "JO NUMBER" : mr.type === "payment" ? "PR NUMBER" : "MR NUMBER"}
+            </small>
+            <h3>
+              {mr.type === "job" ? "JO" : mr.type === "payment" ? "PR" : "MR"}
+              -{String(mr.id).padStart(5, "0")}
+            </h3>
+          </div>
+
+          {/* JO ref (payment only) */}
+          {mr.type === "payment" && mr.payment_jo_reference_id && (
+            <div>
+              <small>JO NUMBER</small>
+              <h3>JO-{String(mr.payment_jo_reference_id).padStart(5, "0")}</h3>
+            </div>
+          )}
+
+          <div>
+            <small>PROJECT</small>
+            <h3>{mr.project_name || "-"}</h3>
+          </div>
+
+          <div>
+            <small>IDENTIFIER</small>
+            <h3>{(mr as any).identifier ?? "N/A"}</h3>
+          </div>
+
+          <div>
+            <small>REQUESTER</small>
+            <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+              <h3
+                style={{
+                  backgroundColor: "black",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "24px",
+                  height: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                }}
+              >
+                {mr.requested_by
+                  ? mr.requested_by.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+                  : "?"}
+              </h3>
+              <h3>
+                {mr.requested_by || "-"}, {(mr as any).department_name || "-"}
+              </h3>
+            </div>
+          </div>
+
+          {/* Delivery ETA (awaiting delivery stage) */}
+          {mr.progress_id === 17 && mrDeliveryDates[mr.id]?.length > 0 && (
+            <div>
+              {mrDeliveryDates[mr.id].map((d, i) => (
+                <div key={i}>
+                  <small>{d.supplier_name.toUpperCase()} DELIVERY ETA</small>
+                  <h3>{new Date(d.delivery_date).toLocaleDateString("en-GB")}</h3>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <a
+            href={`/mr/${mr.id}`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              padding: "10px",
+              backgroundColor:
+                mr.type === "job" || mr.type === "payment"
+                  ? "white"
+                  : "rgba(239, 239, 239, 1)",
+              border: "1px solid rgba(239, 239, 239, 1)",
+              borderRadius: "50px",
+              fontWeight: "600",
+              fontSize: "13px",
+              color: "black",
+              textDecoration: "none",
+              boxSizing: "border-box",
+            }}
+          >
+            VIEW &gt;
+          </a>
+        </div>
+      );
+    };
+
+    const renderLpoCard = (lpoCard: LpoCard) => {
+      const durKey = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
+      const dur = lpoDurations[durKey] || {
+        duration: "0m",
+        hoursDecimal: 0,
+        style: { color: "black", backgroundColor: "rgba(231,231,231,1)" },
+      };
+
+      return (
+        <div
+          key={`lpo-${lpoCard.id}`}
+          style={{
+            backgroundColor: "white",
+            borderRadius: "15px",
+            padding: "15px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            border: "1px solid rgba(231, 231, 231, 1)",
+          }}
+        >
+          {/* Badges + flag */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  backgroundColor: "black",
+                  color: "white",
+                  padding: "4px 10px",
+                  borderRadius: "50px",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                MATERIAL REQUEST
+              </div>
+
+              <div style={{ display: "flex", alignItems: "flex-end", gap: "10px" }}>
+                {lpoCard.progress_id !== 25 && lpoCard.required_date && (
+                  <div
+                    style={{
+                      ...getDaysLeftStyle(lpoCard.required_date),
+                      padding: "4px 10px",
+                      borderRadius: "50px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {getDaysLeftText(lpoCard.required_date)}
+                  </div>
+                )}
+
+                {lpoCard.progress_id !== 25 && (
+                  <div
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "50px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      backgroundColor: "rgba(234, 234, 234, 1)",
+                      color: "rgba(89, 89, 89, 1)",
+                    }}
+                  >
+                    {clockSvg}
+                    {dur.duration}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {lpoCard.progress_id !== 25 && (
+              <div style={{ alignSelf: "flex-end" }}>
+                <svg width="15" height="17" viewBox="0 0 15 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z" fill={getFlagColor(dur.hoursDecimal, lpoCard.progress_id)} />
+                </svg>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <small>MR NUMBER</small>
+            <h3>MR-{String(lpoCard.mr_header_id).padStart(5, "0")}</h3>
+          </div>
+
+          <div>
+            <small>LPO NUMBER</small>
+            <h3>LPO-{String(lpoCard.id).padStart(5, "0")}</h3>
+          </div>
+
+          <div>
+            <small>VENDOR</small>
+            <h3>{lpoCard.supplier_name || "-"}</h3>
+          </div>
+
+          <div>
+            <small>PROJECT</small>
+            <h3>{lpoCard.project_name || "-"}</h3>
+          </div>
+
+          <div>
+            <small>IDENTIFIER</small>
+            <h3>{(lpoCard as any).identifier ?? "N/A"}</h3>
+          </div>
+
+          <div>
+            <small>REQUESTER</small>
+            <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+              <h3
+                style={{
+                  backgroundColor: "black",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "24px",
+                  height: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "11px",
+                  fontWeight: "600",
+                }}
+              >
+                {lpoCard.requested_by
+                  ? lpoCard.requested_by.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+                  : "?"}
+              </h3>
+              <h3>
+                {lpoCard.requested_by || "-"}, {lpoCard.department_name || "-"}
+              </h3>
+            </div>
+          </div>
+
+          {lpoCard.progress_id === 17 && lpoCard.delivery_date && (
+            <div>
+              <small>DELIVERY ETA</small>
+              <h3>{new Date(lpoCard.delivery_date).toLocaleDateString("en-GB")}</h3>
+            </div>
+          )}
+
+          <a
+            href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              padding: "10px",
+              backgroundColor: "rgba(239, 239, 239, 1)",
+              border: "1px solid rgba(239, 239, 239, 1)",
+              borderRadius: "50px",
+              fontWeight: "600",
+              fontSize: "13px",
+              color: "black",
+              textDecoration: "none",
+              boxSizing: "border-box",
+            }}
+          >
+            VIEW &gt;
+          </a>
+        </div>
+      );
+    };
+
+    return (
+      <div
+        style={{
+          marginLeft: "-20px",
+          marginRight: "-20px",
+          marginTop: "-100px",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+        }}
+      >
+        {/* Sticky header */}
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            backgroundColor: "rgba(248,249,251,1)",
+            zIndex: 10,
+            paddingTop: "80px",
+            paddingLeft: 20,
+            paddingRight: 20,
+            paddingBottom: 16,
+          }}
+        >
+          {/* Title row */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 14,
+            }}
+          >
+            <h1 style={{ margin: 0, fontSize: 20 }}>Procurement Tracker</h1>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileSearchOpen((v) => !v);
+                if (mobileSearchOpen) setMobileSearchQuery("");
+              }}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                border: "1px solid rgba(217,217,217,1)",
+                background: mobileSearchOpen ? "#000" : "#fff",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <img
+                src="/icons/search.svg"
+                alt="Search"
+                style={{
+                  width: 16,
+                  height: 16,
+                  filter: mobileSearchOpen ? "invert(1)" : "none",
+                }}
+              />
+            </button>
+          </div>
+
+          {/* Search bar */}
+          {mobileSearchOpen && (
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <img
+                src="/icons/search.svg"
+                alt=""
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 14,
+                  height: 14,
+                  opacity: 0.4,
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={mobileSearchQuery}
+                onChange={(e) => setMobileSearchQuery(e.target.value)}
+                autoFocus
+                style={{
+                  width: "100%",
+                  padding: "10px 12px 10px 34px",
+                  borderRadius: 50,
+                  border: "1px solid rgba(217,217,217,1)",
+                  fontSize: 13,
+                  outline: "none",
+                  background: "rgba(239,239,239,1)",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Scrollable tabs */}
+          <div
+            style={{
+              display: "flex",
+              overflowX: "auto",
+              borderBottom: "1px solid rgba(217,217,217,1)",
+              WebkitOverflowScrolling: "touch" as any,
+              msOverflowStyle: "none" as any,
+              scrollbarWidth: "none" as any,
+            }}
+          >
+            {mobileTabs.map((status, idx) => {
+              const count = getTabCount(status);
+              const isActive = idx === safeTab;
+              return (
+                <button
+                  key={status.name}
+                  type="button"
+                  onClick={() => setMobileActiveTab(idx)}
+                  style={{
+                    flexShrink: 0,
+                    background: "none",
+                    border: "none",
+                    borderBottom: isActive
+                      ? "2px solid #000"
+                      : "2px solid transparent",
+                    marginBottom: -1,
+                    padding: "10px 14px",
+                    fontSize: 12,
+                    fontWeight: isActive ? 700 : 500,
+                    color: "#000",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {status.name}
+                  <span
+                    style={{
+                      backgroundColor:
+                        count === 0
+                          ? "rgba(220,220,220,1)"
+                          : isActive
+                            ? "#000"
+                            : "rgba(220,220,220,1)",
+                      color:
+                        count === 0
+                          ? "rgba(120,120,120,1)"
+                          : isActive
+                            ? "#fff"
+                            : "#000",
+                      borderRadius: 50,
+                      padding: "1px 7px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Card list */}
+        <div
+          style={{
+            padding: "16px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            paddingBottom: 100,
+          }}
+        >
+          {activeLpos.length === 0 && activeMrs.length === 0 ? (
+            <div
+              style={{
+                padding: "48px 24px",
+                textAlign: "center",
+                color: "rgba(150,150,150,1)",
+                fontSize: 13,
+              }}
+            >
+              No items in this stage
+            </div>
+          ) : (
+            <>
+              {activeLpos.map((lpo) => renderLpoCard(lpo))}
+              {activeMrs.map((mr) => renderMrCard(mr))}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard">
@@ -1276,6 +1993,13 @@ export default function MR() {
             {viewMode === "kanban" && (
               <MrFilterButton
                 availableProjects={availableProjects}
+                availableRequesters={Array.from(
+                  new Set(
+                    mrHeaders
+                      .map((mr) => mr.requested_by)
+                      .filter((r): r is string => !!r),
+                  ),
+                ).sort()}
                 onApplyFilters={setFilters}
                 currentFilters={filters}
               />
@@ -1290,91 +2014,97 @@ export default function MR() {
                   flexWrap: "wrap",
                 }}
               >
-                {filters.requestType !== "all" && (
+                {filters.selectedTypes.length > 0 && (
                   <Button
-                    style={{ borderRadius: "50px", fontWeight: "600" }}
-                    componentType="none"
+                    style={{ borderRadius: "50px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+                    componentType="button"
                     bgColor="rgba(239, 239, 239, 1)"
                     borderColor="transparent"
                     textColor="black"
+                    onClick={() => setFilters((prev) => ({ ...prev, selectedTypes: [] }))}
                   >
                     TYPE:{" "}
-                    <span
-                      style={{
-                        color: "rgba(16, 185, 129, 1)",
-                        textWrap: "nowrap",
-                      }}
-                    >
-                      {filters.requestType === "material"
+                    <span style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}>
+                      {filters.selectedTypes[0] === "material"
                         ? "MATERIAL REQUEST"
-                        : filters.requestType === "payment"
+                        : filters.selectedTypes[0] === "payment"
                           ? "PAYMENT REQUEST"
                           : "JOB ORDER"}
+                      {filters.selectedTypes.length > 1 &&
+                        `, +${filters.selectedTypes.length - 1} MORE`}
                     </span>
+                    <img src="/icons/cross-small.svg" alt="remove" style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }} />
                   </Button>
                 )}
 
-                {filters.itemsRequestedIn !== "all" && (
+                {filters.selectedShow.length > 0 && (
                   <Button
-                    style={{ borderRadius: "50px", fontWeight: "600" }}
-                    componentType="none"
+                    style={{ borderRadius: "50px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+                    componentType="button"
                     bgColor="rgba(239, 239, 239, 1)"
                     borderColor="transparent"
                     textColor="black"
+                    onClick={() => setFilters((prev) => ({ ...prev, selectedShow: [] }))}
                   >
-                    ITEMS REQUESTED IN:{" "}
-                    <span
-                      style={{
-                        color: "rgba(16, 185, 129, 1)",
-                        textWrap: "nowrap",
-                      }}
-                    >
-                      {getItemsRequestedLabel(
-                        filters.itemsRequestedIn,
-                      ).toUpperCase()}
+                    SHOW:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}>
+                      {filters.selectedShow[0] === "rejected" ? "REJECTED ONLY" : "INCOMPLETE"}
+                      {filters.selectedShow.length > 1 &&
+                        `, +${filters.selectedShow.length - 1} MORE`}
                     </span>
+                    <img src="/icons/cross-small.svg" alt="remove" style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }} />
                   </Button>
                 )}
 
-                {filters.selectedDepartments.length > 0 && (
+                {filters.selectedStages.length > 0 && (
                   <Button
-                    style={{ borderRadius: "50px", fontWeight: "600" }}
-                    componentType="none"
+                    style={{ borderRadius: "50px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+                    componentType="button"
                     bgColor="rgba(239, 239, 239, 1)"
                     borderColor="transparent"
                     textColor="black"
+                    onClick={() => setFilters((prev) => ({ ...prev, selectedStages: [] }))}
                   >
-                    DEPARTMENT:{" "}
-                    <span
-                      style={{
-                        color: "rgba(16, 185, 129, 1)",
-                        textWrap: "nowrap",
-                      }}
-                    >
-                      {getDepartmentName(
-                        filters.selectedDepartments[0],
-                      ).toUpperCase()}
-                      {filters.selectedDepartments.length > 1 &&
-                        `, +${filters.selectedDepartments.length - 1} MORE`}
+                    STAGE:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}>
+                      {getStageName(filters.selectedStages[0]).toUpperCase()}
+                      {filters.selectedStages.length > 1 &&
+                        `, +${filters.selectedStages.length - 1} MORE`}
                     </span>
+                    <img src="/icons/cross-small.svg" alt="remove" style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }} />
+                  </Button>
+                )}
+
+                {filters.selectedRequesters.length > 0 && (
+                  <Button
+                    style={{ borderRadius: "50px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+                    componentType="button"
+                    bgColor="rgba(239, 239, 239, 1)"
+                    borderColor="transparent"
+                    textColor="black"
+                    onClick={() => setFilters((prev) => ({ ...prev, selectedRequesters: [] }))}
+                  >
+                    REQUESTER:{" "}
+                    <span style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}>
+                      {filters.selectedRequesters[0].toUpperCase()}
+                      {filters.selectedRequesters.length > 1 &&
+                        `, +${filters.selectedRequesters.length - 1} MORE`}
+                    </span>
+                    <img src="/icons/cross-small.svg" alt="remove" style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }} />
                   </Button>
                 )}
 
                 {filters.selectedProjects.length > 0 && (
                   <Button
-                    style={{ borderRadius: "50px", fontWeight: "600" }}
-                    componentType="none"
+                    style={{ borderRadius: "50px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}
+                    componentType="button"
                     bgColor="rgba(239, 239, 239, 1)"
                     borderColor="transparent"
                     textColor="black"
+                    onClick={() => setFilters((prev) => ({ ...prev, selectedProjects: [] }))}
                   >
                     PROJECT:{" "}
-                    <span
-                      style={{
-                        color: "rgba(16, 185, 129, 1)",
-                        textWrap: "nowrap",
-                      }}
-                    >
+                    <span style={{ color: "rgba(16, 185, 129, 1)", textWrap: "nowrap" }}>
                       {(() => {
                         const first = availableProjects.find(
                           (p) => p.id === filters.selectedProjects[0],
@@ -1384,28 +2114,7 @@ export default function MR() {
                       {filters.selectedProjects.length > 1 &&
                         `, +${filters.selectedProjects.length - 1} MORE`}
                     </span>
-                  </Button>
-                )}
-
-                {filters.selectedStages.length > 0 && (
-                  <Button
-                    style={{ borderRadius: "50px", fontWeight: "600" }}
-                    componentType="none"
-                    bgColor="rgba(239, 239, 239, 1)"
-                    borderColor="transparent"
-                    textColor="black"
-                  >
-                    STAGE:{" "}
-                    <span
-                      style={{
-                        color: "rgba(16, 185, 129, 1)",
-                        textWrap: "nowrap",
-                      }}
-                    >
-                      {getStageName(filters.selectedStages[0]).toUpperCase()}
-                      {filters.selectedStages.length > 1 &&
-                        `, +${filters.selectedStages.length - 1} MORE`}
-                    </span>
+                    <img src="/icons/cross-small.svg" alt="remove" style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }} />
                   </Button>
                 )}
 
@@ -2780,11 +3489,11 @@ type TableViewProps = {
   tableLoading: boolean;
   searchQuery: string;
   filters: {
-    itemsRequestedIn: string;
-    selectedDepartments: number[];
-    selectedProjects: number[];
-    requestType: string;
+    selectedTypes: string[];
     selectedStages: number[];
+    selectedProjects: number[];
+    selectedShow: string[];
+    selectedRequesters: string[];
   };
   collapsedCategories: Record<string, boolean>;
   setCollapsedCategories: React.Dispatch<
@@ -2902,12 +3611,6 @@ function TableView({
           item.project_name?.toLowerCase().includes(q) ||
           item.requested_by?.toLowerCase().includes(q) ||
           item.mr_header_id.toString().includes(q),
-      );
-    }
-
-    if (filters.selectedDepartments.length > 0) {
-      filtered = filtered.filter((item) =>
-        filters.selectedDepartments.includes(item.department_id),
       );
     }
 
@@ -3034,14 +3737,14 @@ function TableView({
     items: TableItem[];
   }[] = [];
 
-  if (filters.requestType === "all" || filters.requestType === "material") {
+  if (filters.selectedTypes.length === 0 || filters.selectedTypes.includes("material")) {
     sections.push({
       type: "material",
       label: "MATERIAL REQUESTS",
       items: filterItems(tableItems.material),
     });
   }
-  if (filters.requestType === "all" || filters.requestType === "job") {
+  if (filters.selectedTypes.length === 0 || filters.selectedTypes.includes("job")) {
     sections.push({
       type: "job",
       label: "JOB ORDERS",

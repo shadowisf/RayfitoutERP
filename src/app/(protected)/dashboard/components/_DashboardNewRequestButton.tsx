@@ -394,6 +394,7 @@ export default function DashboardNewRequestButton() {
                 "Umm Al Quwain Warehouse",
                 ...projects.map((p: any) => p.name),
               ]}
+              required
             />
           </div>
 

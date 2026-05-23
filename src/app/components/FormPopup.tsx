@@ -12,6 +12,7 @@ type FormPopUpProps = {
   style?: React.CSSProperties;
   secondButton?: React.ReactNode;
   stickyFooter?: React.ReactNode;
+  haveLoadingState?: boolean;
 };
 
 export default function FormPopUp({
@@ -23,6 +24,7 @@ export default function FormPopUp({
   style,
   secondButton,
   stickyFooter,
+  haveLoadingState = false,
 }: FormPopUpProps) {
   const cross_icon = "/icons/cross.svg";
 
@@ -171,12 +173,12 @@ export default function FormPopUp({
   const footerBlock = (
     <div className="form-footer-block" style={{ marginTop: "auto", flexShrink: 0 }}>
       {stickyFooter && (
-        <div style={{ paddingTop: "15px" }}>{stickyFooter}</div>
+        <div style={{ paddingTop: "25px" }}>{stickyFooter}</div>
       )}
       {addButtonLabel && (
         <>
-          <br />
-          <br />
+          {/* <br />
+          <br /> */}
           <div className="button-container">
             {secondButton}
             <Button
@@ -266,7 +268,9 @@ export default function FormPopUp({
         <br />
         <br />
 
-        {isOpening ? (
+        {isOpening && haveLoadingState ? (
+          <div style={{ flex: 1 }} />
+        ) : isOpening ? (
           <div
             style={{
               flex: 1,

@@ -585,8 +585,7 @@ export default function CreateGRNButton({
           style={{ padding: "7px 20px", borderRadius: "25px" }}
         >
           GRN
-          {(userInfo?.departmentID === 11 ||
-            userInfo?.departmentID === 8) &&
+          {(userInfo?.departmentID === 11 || userInfo?.departmentID === 8) &&
             mrHeader.progress_id === 17 && (
               <img
                 src={pencilIcon}
@@ -683,7 +682,7 @@ export default function CreateGRNButton({
             <thead>
               <tr>
                 <th>#</th>
-                <th>DESCRIPTION</th>
+                <th>MATERIAL</th>
                 <th>TOTAL QTY</th>
                 <th>RECEIVED QTY</th>
                 {progress_id >= 21 && <th>ACCEPTED QTY</th>}
@@ -701,7 +700,6 @@ export default function CreateGRNButton({
                 const acceptedQty = qcAcceptedQuantities[index];
                 const hasAttachment = grnLines[index]?.attachment;
                 const hasAttachmentFile = grnLines[index]?.attachmentFile;
-
                 return (
                   <tr key={mrLine.id || index}>
                     <td>{index + 1}</td>
@@ -716,70 +714,91 @@ export default function CreateGRNButton({
                       ) : (
                         <div
                           style={{
-                            display: "flex",
-                            flexDirection: "column",
+                            position: "relative",
+                            display: "inline-flex",
+                            alignItems: "center",
                             gap: "10px",
                           }}
                         >
-                          <div
+                          <InputItem
+                            label={""}
+                            value={grnLines[index]?.received_quantity || ""}
+                            type={"text"}
+                            placeholder={"ENTER RECEIVED QTY"}
+                            required
+                            onChange={(e) =>
+                              handleReceivedQuantityChange(
+                                index,
+                                e.target.value,
+                              )
+                            }
                             style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
+                              minWidth: "200px",
+                              marginBottom: "0px",
+                              ...(quantityMatch === false
+                                ? { borderColor: "red" }
+                                : {}),
                             }}
-                          >
-                            <InputItem
-                              label={""}
-                              value={grnLines[index]?.received_quantity || ""}
-                              type={"text"}
-                              placeholder={"ENTER RECEIVED QUANTITY"}
-                              required
-                              onChange={(e) =>
-                                handleReceivedQuantityChange(
-                                  index,
-                                  e.target.value,
-                                )
-                              }
-                              style={{ minWidth: "200px", marginBottom: "0px" }}
-                              disabled={isViewMode}
-                            />
-                            {quantityMatch !== null && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {quantityMatch ? (
-                                  <img
-                                    src={checkGreenIcon}
-                                    alt="match"
-                                    style={{ width: "32px" }}
-                                  />
-                                ) : (
-                                  <img
-                                    src={warningIcon}
-                                    alt="warning"
-                                    style={{ width: "32px" }}
-                                  />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          {quantityMatch === false && (
-                            <span
+                            disabled={isViewMode}
+                          />
+                          {quantityMatch !== null && (
+                            <div
                               style={{
-                                fontWeight: "500",
-                                color: "rgba(248, 77, 77, 1)",
-                                fontStyle: "italic",
-                                paddingLeft: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                flexShrink: 0,
                               }}
                             >
-                              {receivedQty > orderedQty
-                                ? "Excess quantity beyond the request"
-                                : "Quantity is less than the request"}
-                            </span>
+                              {quantityMatch ? (
+                                <img
+                                  src={checkGreenIcon}
+                                  alt="match"
+                                  style={{ width: "32px" }}
+                                />
+                              ) : (
+                                <img
+                                  src={warningIcon}
+                                  alt="warning"
+                                  style={{ width: "32px" }}
+                                />
+                              )}
+                            </div>
+                          )}
+                          {quantityMatch === false && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: "100%",
+                                left: 0,
+                                display: "flex",
+                                gap: "4px",
+                                alignItems: "center",
+                                whiteSpace: "nowrap",
+                                paddingTop: "4px",
+                              }}
+                            >
+                              <img
+                                src={warningIcon}
+                                alt="warning"
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  flexShrink: 0,
+                                  marginBottom: "1px",
+                                }}
+                              />
+                              <p
+                                style={{
+                                  color: "rgba(175, 61, 61, 1)",
+                                  fontSize: 10,
+                                  margin: 0,
+                                }}
+                              >
+                                {receivedQty > orderedQty
+                                  ? "Excess quantity beyond the request"
+                                  : "Quantity is less than the request"}
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
@@ -803,7 +822,10 @@ export default function CreateGRNButton({
                             bgColor={"rgba(239, 239, 239, 1)"}
                             borderColor={"rgba(223, 223, 223, 1)"}
                             textColor={"black"}
-                            style={{ borderRadius: "5px", padding: "7px 7px" }}
+                            style={{
+                              borderRadius: "5px",
+                              padding: "7px 7px",
+                            }}
                             onClick={(e) => {
                               e.preventDefault();
                               openNotesModal(index);
@@ -929,26 +951,26 @@ export default function CreateGRNButton({
             <div
               style={{
                 display: "flex",
+                gap: "6px",
                 alignItems: "center",
-                gap: "12px",
-                marginTop: "20px",
-                padding: "12px 16px",
-                backgroundColor: "rgba(248, 77, 77, 0.08)",
-                borderRadius: "8px",
-                border: "1px solid rgba(248, 77, 77, 0.2)",
+                marginTop: "16px",
               }}
             >
               <img
                 src={warningIcon}
                 alt="warning"
-                style={{ width: "28px", height: "28px", flexShrink: 0 }}
+                style={{ width: 14, height: 14, flexShrink: 0 }}
               />
-              <span
-                style={{ color: "rgba(248, 77, 77, 1)", fontStyle: "italic" }}
+              <p
+                style={{
+                  color: "rgba(175, 61, 61, 1)",
+                  fontSize: 12,
+                  margin: 0,
+                }}
               >
                 Items that do not match the request will be returned to
                 procurement
-              </span>
+              </p>
             </div>
           )}
         </FormPopUp>

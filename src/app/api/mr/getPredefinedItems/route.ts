@@ -21,8 +21,15 @@ export async function GET(req: NextRequest) {
         pi.material_description,
         pi.brand,
         pi.unit,
+        pi.added_by,
         mc.value AS category_name,
-        msc.value AS subcategory_name
+        msc.value AS subcategory_name,
+        (
+          SELECT MAX(mh.date_requested)
+          FROM mr_lines ml
+          JOIN mr_headers mh ON mh.id = ml.mr_header_id
+          WHERE ml.predefined_item_id = pi.id
+        ) AS last_purchase
       FROM lut_predefined_items pi
       LEFT JOIN lut_material_categories mc ON mc.id = pi.category_id
       LEFT JOIN lut_material_subcategories msc ON msc.id = pi.subcategory_id
@@ -39,7 +46,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { item_code, category_id, subcategory_id, unit, brand } = body;
+    const { item_code, category_id, subcategory_id, unit, brand, added_by } = body;
     const material_description = body.material_description
       ? toTitleCase(body.material_description)
       : body.material_description;
@@ -62,8 +69,8 @@ export async function POST(req: NextRequest) {
     }
 
     const [result] = await db.query<ResultSetHeader>(
-      `INSERT INTO lut_predefined_items (item_code, category_id, subcategory_id, material_description, brand, unit)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO lut_predefined_items (item_code, category_id, subcategory_id, material_description, brand, unit, added_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         itemCode,
         Number(category_id),
@@ -71,6 +78,7 @@ export async function POST(req: NextRequest) {
         material_description,
         brand || null,
         unit || null,
+        added_by || null,
       ],
     );
 
@@ -78,9 +86,10 @@ export async function POST(req: NextRequest) {
     const [rows]: any = await db.query(
       `SELECT
         pi.id, pi.item_code, pi.category_id, pi.subcategory_id,
-        pi.material_description, pi.brand, pi.unit,
+        pi.material_description, pi.brand, pi.unit, pi.added_by,
         mc.value AS category_name,
-        msc.value AS subcategory_name
+        msc.value AS subcategory_name,
+        NULL AS last_purchase
       FROM lut_predefined_items pi
       LEFT JOIN lut_material_categories mc ON mc.id = pi.category_id
       LEFT JOIN lut_material_subcategories msc ON msc.id = pi.subcategory_id

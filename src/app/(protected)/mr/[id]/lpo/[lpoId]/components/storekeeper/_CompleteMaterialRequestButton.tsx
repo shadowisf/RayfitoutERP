@@ -19,18 +19,20 @@ type GroupedMrLines = {
 
 type CompleteMaterialRequestButtonProps = {
   mrHeader: MrHeader;
-  mrLineItems: GroupedMrLines; // ✅ Add this prop to pass MR line items
+  mrLineItems: GroupedMrLines;
   lpoId?: number;
   style?: React.CSSProperties;
   disabled?: boolean;
+  label?: string;
 };
 
 export default function CompleteMaterialRequestButton({
   mrHeader,
-  mrLineItems, // ✅ Add this
+  mrLineItems,
   lpoId,
   style,
   disabled,
+  label = "COMPLETE MATERIAL REQUEST",
 }: CompleteMaterialRequestButtonProps) {
   const router = useRouter();
 
@@ -100,7 +102,7 @@ export default function CompleteMaterialRequestButton({
         style={{ padding: "7px 20px", ...style }}
         disabled={disabled}
       >
-        COMPLETE MATERIAL REQUEST
+        {label}
       </Button>
 
       {isOpen && (

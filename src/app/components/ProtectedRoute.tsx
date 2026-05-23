@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import LoadingSpinner from "./LoadingSpinner";
 
 export default function ProtectedRoute({
   children,
@@ -19,18 +20,7 @@ export default function ProtectedRoute({
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <p>Loading...</p>
-      </div>
-    );
+    return <LoadingSpinner size={32} style={{ minHeight: "100vh" }} />;
   }
 
   if (!isAuthenticated) {

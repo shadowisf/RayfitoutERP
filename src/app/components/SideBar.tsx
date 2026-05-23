@@ -225,7 +225,7 @@ export default function SideBar({ isOpen, setIsOpen }: SideBarProps) {
   ];
 
   const visibleMenuItems = menuItems.filter((item) => {
-    if (isMobile) return item.path === "/dashboard";
+    if (isMobile) return item.path === "/dashboard" || item.path === "/mr";
     return (
       !item.visibleTo || item.visibleTo.includes(Number(userInfo?.departmentID))
     );

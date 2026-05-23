@@ -558,16 +558,46 @@ export default function NewMrButton() {
               disabled
             />
 
-            <InputItem
-              label={"REQUIRED DATE"}
-              value={neededBy}
-              type={"date"}
-              placeholder={"ENTER DATE"}
-              min={new Date().toISOString().split("T")[0]}
-              onChange={(e) => setNeededBy(e.target.value)}
-              required
-              style={dateWarning ? { borderColor: "red" } : undefined}
-            />
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              <InputItem
+                label={"REQUIRED DATE"}
+                value={neededBy}
+                type={"date"}
+                placeholder={"ENTER DATE"}
+                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setNeededBy(e.target.value)}
+                required
+                style={dateWarning ? { borderColor: "red" } : undefined}
+              />
+              {dateWarning && (
+                <div
+                  style={{ display: "flex", gap: "6px", alignItems: "center" }}
+                >
+                  <img
+                    src={warningIcon}
+                    alt="warning"
+                    style={{ width: 14, height: 14, flexShrink: 0 }}
+                  />
+                  <p
+                    style={{
+                      color: "rgba(175,61,61,1)",
+                      fontSize: 12,
+                      margin: 0,
+                    }}
+                  >
+                    {dateWarning}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {mode === "material" &&
@@ -597,6 +627,7 @@ export default function NewMrButton() {
                   "Umm Al Quwain Warehouse",
                   ...(projects as any[]).map((p: any) => p.name),
                 ]}
+                required
               />
             </div>
           )}
@@ -636,22 +667,6 @@ export default function NewMrButton() {
                 </label>
               </div>
             )}
-
-          <br />
-
-          {/* Date validation warning - shows when date is less than 3 days */}
-          {dateWarning && (
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <img src={warningIcon} alt="warning" />
-              <p
-                style={{
-                  color: "rgba(175, 61, 61, 1)",
-                }}
-              >
-                {dateWarning}
-              </p>
-            </div>
-          )}
         </FormPopUp>
       )}
     </>

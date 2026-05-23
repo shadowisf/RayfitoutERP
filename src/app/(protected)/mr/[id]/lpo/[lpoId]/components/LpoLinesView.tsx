@@ -21,8 +21,8 @@ import DownloadCRButton from "@/app/(protected)/resolution/components/_DownloadC
 */
 import CompleteMaterialRequestButton from "./storekeeper/_CompleteMaterialRequestButton";
 import CreateGRNButton from "./storekeeper/_CreateGRNButton";
-import SubmitForQCButton from "./storekeeper/_SubmitForQCButton";
 import AddToInventoryButton from "./storekeeper/_AddStockButton";
+import StorekeeperActionsButton from "./storekeeper/_StorekeeperActionsButton";
 import CommentsSection from "@/app/components/CommentsSection";
 import { formatPriceAED } from "@/lib/formatPrice";
 import DocumentsPopup from "./storekeeper/_DocumentPopUpButton";
@@ -88,6 +88,9 @@ export default function LpoLinesView({
   }>({});
   const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(true);
 
+  // Checkbox selection (awaiting delivery stage only)
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+
   // LPO invoice status
   const [lpoInvoiceStatus, setLpoInvoiceStatus] = useState<{
     hasLpo: boolean;
@@ -132,9 +135,7 @@ export default function LpoLinesView({
 
   // Conditionally hide columns when all rows have no value
   const hasAnyAttachment = allItems.some((item) => !!item.attachment);
-  const hasAnyBrandSpecs = allItems.some(
-    (item) => !!item.specification,
-  );
+  const hasAnyBrandSpecs = progressId === 17 || allItems.some((item) => !!item.specification);
   const hasAnyQtyStocks = allItems.some((item) => {
     const proposedQty = Number(item.approved_proposed_quantity) || 0;
     const requestedQty = Number(item.quantity) || 0;
@@ -161,19 +162,22 @@ export default function LpoLinesView({
   // TEMPORARILY DISABLED QC/CR columns
   const hasQcColumn = false; // was: userInfo?.departmentID === 12 && progressId === 21;
   const hasCrColumn = false; // was: progressId >= 21;
-  const hasStocksColumn = progressId === 24 && userInfo?.departmentID === 11;
+  const hasStocksColumn = (progressId === 17 || progressId === 24) && userInfo?.departmentID === 11;
   const actionColumnCount = [hasQcColumn, hasCrColumn, hasStocksColumn].filter(
     Boolean,
   ).length;
 
+  // Checkbox column (awaiting delivery, dept 11 only)
+  const hasCheckboxColumn = progressId === 17 && userInfo?.departmentID === 11;
+
   // Total visible columns in the table
   const totalVisibleColumns =
-    BASE_COLUMN_COUNT + priceColumnCount + actionColumnCount;
+    BASE_COLUMN_COUNT + priceColumnCount + actionColumnCount + (hasCheckboxColumn ? 1 : 0);
 
   // For summary rows: we need to span across the base columns to align with price columns
   // If prices are visible, SUBTOTAL label aligns with UNIT PRICE (column 11)
   // If prices are hidden, we span everything
-  const summaryLabelColSpan = BASE_COLUMN_COUNT;
+  const summaryLabelColSpan = BASE_COLUMN_COUNT + (hasCheckboxColumn ? 1 : 0);
   const summaryValueColSpan = 1;
   const summaryTrailingColSpan = actionColumnCount > 0 ? actionColumnCount : 0;
 
@@ -524,7 +528,7 @@ export default function LpoLinesView({
   // Check inventory/stock statuses
   useEffect(() => {
     async function checkStockStatuses() {
-      if (progressId !== 24) {
+      if (progressId !== 24 && progressId !== 17) {
         setIsCheckingInventory(false);
         return;
       }
@@ -716,9 +720,25 @@ export default function LpoLinesView({
             </div>
 
             <div className="right">
-              {/* At Stock Entry stage (24) show the unified Documents popup */}
-              {progressId === 24 ? (
-                <DocumentsPopup lpoId={lpoId} />
+              {/* At Awaiting Delivery (17) and Stock Entry stage (24) show Documents popup + GRN button */}
+              {progressId === 17 || progressId === 24 ? (
+                <>
+                  {progressId === 17 && userInfo?.departmentID === 11 && (
+                    <>
+                      <StorekeeperActionsButton
+                        selectedItemIds={selectedItemIds}
+                        setSelectedItemIds={setSelectedItemIds}
+                        allItems={displayItems}
+                      />
+                      <CreateGRNButton
+                        mrHeader={lpoAsMrHeader}
+                        mrLines={allItems}
+                        progress_id={progressId}
+                      />
+                    </>
+                  )}
+                  <DocumentsPopup lpoId={lpoId} />
+                </>
               ) : (
                 <>
                   {progressId >= 12 && (
@@ -756,14 +776,13 @@ export default function LpoLinesView({
                     />
                   )}
 
-                  {(progressId === 16 || progressId === 17) &&
-                    userInfo?.departmentID === 11 && (
-                      <CreateGRNButton
-                        mrHeader={lpoAsMrHeader}
-                        mrLines={allItems}
-                        progress_id={progressId}
-                      />
-                    )}
+                  {progressId === 16 && userInfo?.departmentID === 11 && (
+                    <CreateGRNButton
+                      mrHeader={lpoAsMrHeader}
+                      mrLines={allItems}
+                      progress_id={progressId}
+                    />
+                  )}
 
                   {progressId >= 18 && (
                     <CreateGRNButton
@@ -784,6 +803,7 @@ export default function LpoLinesView({
             style={{ tableLayout: "fixed", width: "100%" }}
           >
             <colgroup>
+              {hasCheckboxColumn && <col style={{ width: "45px" }} />}
               <col style={{ width: "75px" }} />
               <col style={{ width: "175px" }} />
               <col style={{ width: "175px" }} />
@@ -796,16 +816,35 @@ export default function LpoLinesView({
               {hasAnyAttachment && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
-              {progressId === 24 && userInfo?.departmentID === 11 && (
+              {(progressId === 17 || progressId === 24) && userInfo?.departmentID === 11 && (
                 <col style={{ width: "150px" }} />
               )}
             </colgroup>
             <thead>
               <tr>
+                {hasCheckboxColumn && (
+                  <th style={{ textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      className="filter-checkbox"
+                      checked={
+                        displayItems.length > 0 &&
+                        displayItems.every((i) => selectedItemIds.has(i.id))
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedItemIds(new Set(displayItems.map((i) => i.id)));
+                        } else {
+                          setSelectedItemIds(new Set());
+                        }
+                      }}
+                    />
+                  </th>
+                )}
                 <th>#</th>
                 <th>CATEGORY</th>
                 <th>SUBCATEGORY</th>
-                <th>ITEM</th>
+                <th>MATERIAL</th>
                 <th>QTY USE</th>
                 {hasAnyQtyStocks && <th>QTY STOCKS</th>}
                 <th>TOTAL QTY</th>
@@ -820,7 +859,7 @@ export default function LpoLinesView({
               )}
               {hasCrColumn && <th>CR</th>}
               */}
-                {progressId === 24 && userInfo?.departmentID === 11 && (
+                {(progressId === 17 || progressId === 24) && userInfo?.departmentID === 11 && (
                   <th>STOCKS</th>
                 )}
               </tr>
@@ -841,6 +880,21 @@ export default function LpoLinesView({
 
                 return (
                   <tr key={item.id}>
+                    {hasCheckboxColumn && (
+                      <td style={{ textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          className="filter-checkbox"
+                          checked={selectedItemIds.has(item.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedItemIds);
+                            if (e.target.checked) next.add(item.id);
+                            else next.delete(item.id);
+                            setSelectedItemIds(next);
+                          }}
+                        />
+                      </td>
+                    )}
                     <td>{itemIndex + 1}</td>
                     <td>{item.material_category}</td>
                     <td>{item.material_subcategory}</td>
@@ -960,7 +1014,7 @@ export default function LpoLinesView({
                   )}
                   */}
 
-                    {userInfo?.departmentID === 11 && progressId === 24 && (
+                    {userInfo?.departmentID === 11 && (progressId === 17 || progressId === 24) && (
                       <td>
                         <AddToInventoryButton mrLine={item} />
                       </td>
@@ -1101,7 +1155,7 @@ export default function LpoLinesView({
               {hasAnyAttachment && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
               {canSeePrice && <col style={{ width: "150px" }} />}
-              {progressId === 24 && userInfo?.departmentID === 11 && (
+              {(progressId === 17 || progressId === 24) && userInfo?.departmentID === 11 && (
                 <col style={{ width: "150px" }} />
               )}
             </colgroup>
@@ -1190,28 +1244,26 @@ export default function LpoLinesView({
         </div>
       )} */}
 
-      {/* Awaiting Delivery (Progress 17) - Storekeeper: GRN then Submit for QC or GRN Fail Resubmission */}
+      {/* Awaiting Delivery (Progress 17) - Storekeeper: GRN + Stock Entry + Submit for Completion (merged with old Stock Entry stage) */}
       {userInfo?.departmentID === 11 && progressId === 17 && (
         <div className="bottom-nav">
           <div></div>
-          {!isCheckingGrnQuantity && hasGrn ? (
-            hasGrnQuantityMismatch ? (
-              <SubmitForLPOResubmissionGRNFailButton
-                mrHeaderID={mrHeader.id}
-                lpoId={lpoId}
-              />
-            ) : (
-              <SubmitForQCButton mrHeaderID={mrHeader.id} lpoId={lpoId} />
-            )
-          ) : (
-            <SubmitForQCButton
+          {!isCheckingGrnQuantity && hasGrn && hasGrnQuantityMismatch ? (
+            <SubmitForLPOResubmissionGRNFailButton
               mrHeaderID={mrHeader.id}
               lpoId={lpoId}
-              disabled={true}
+            />
+          ) : (
+            <CompleteMaterialRequestButton
+              mrHeader={lpoAsMrHeader}
+              mrLineItems={lpoLines}
+              lpoId={lpoId}
+              label="SUBMIT FOR COMPLETION"
+              disabled={!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()}
               style={{
-                opacity: "0.5",
-                cursor: "not-allowed",
-                pointerEvents: "none",
+                opacity: (!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()) ? "0.5" : "1",
+                cursor: (!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()) ? "not-allowed" : "pointer",
+                pointerEvents: (!hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()) ? "none" : "auto",
               }}
             />
           )}

@@ -1568,22 +1568,33 @@ export default function Inventory() {
                             borderRadius: "50px",
                             fontWeight: 600,
                             textWrap: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
                           }}
-                          componentType={"none"}
+                          componentType={"button"}
                           bgColor={"rgba(239, 239, 239, 1)"}
                           borderColor={"transparent"}
                           textColor={"black"}
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              selectedParentCategories: [],
+                              selectedCategories: [],
+                            }))
+                          }
                         >
                           CATEGORY:{" "}
-                          <span
-                            style={{
-                              color: "rgba(16, 185, 129, 1)",
-                            }}
-                          >
+                          <span style={{ color: "rgba(16, 185, 129, 1)" }}>
                             {filters.selectedParentCategories[0].toUpperCase()}
                             {filters.selectedParentCategories.length > 1 &&
                               `, +${filters.selectedParentCategories.length - 1} MORE`}
                           </span>
+                          <img
+                            src="/icons/cross-small.svg"
+                            alt="remove"
+                            style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                          />
                         </Button>
                       )}
 
@@ -1593,22 +1604,32 @@ export default function Inventory() {
                             borderRadius: "50px",
                             fontWeight: 600,
                             textWrap: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
                           }}
-                          componentType={"none"}
+                          componentType={"button"}
                           bgColor={"rgba(239, 239, 239, 1)"}
                           borderColor={"transparent"}
                           textColor={"black"}
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              selectedCategories: [],
+                            }))
+                          }
                         >
                           SUBCATEGORY:{" "}
-                          <span
-                            style={{
-                              color: "rgba(16, 185, 129, 1)",
-                            }}
-                          >
+                          <span style={{ color: "rgba(16, 185, 129, 1)" }}>
                             {filters.selectedCategories[0].toUpperCase()}
                             {filters.selectedCategories.length > 1 &&
                               `, +${filters.selectedCategories.length - 1} MORE`}
                           </span>
+                          <img
+                            src="/icons/cross-small.svg"
+                            alt="remove"
+                            style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                          />
                         </Button>
                       )}
 
@@ -1618,22 +1639,32 @@ export default function Inventory() {
                             borderRadius: "50px",
                             fontWeight: "600",
                             textWrap: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
                           }}
-                          componentType={"none"}
+                          componentType={"button"}
                           bgColor={"rgba(239, 239, 239, 1)"}
                           borderColor={"transparent"}
                           textColor={"black"}
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              stockAddedIn: "all",
+                            }))
+                          }
                         >
                           STOCK ADDED IN:{" "}
-                          <span
-                            style={{
-                              color: "rgba(16, 185, 129, 1)",
-                            }}
-                          >
+                          <span style={{ color: "rgba(16, 185, 129, 1)" }}>
                             {getStockAddedLabel(
                               filters.stockAddedIn,
                             ).toUpperCase()}
                           </span>
+                          <img
+                            src="/icons/cross-small.svg"
+                            alt="remove"
+                            style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                          />
                         </Button>
                       )}
 
@@ -1643,22 +1674,32 @@ export default function Inventory() {
                             borderRadius: "50px",
                             fontWeight: "600",
                             textWrap: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
                           }}
-                          componentType={"none"}
+                          componentType={"button"}
                           bgColor={"rgba(239, 239, 239, 1)"}
                           borderColor={"transparent"}
                           textColor={"black"}
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              selectedStockStatuses: [],
+                            }))
+                          }
                         >
                           STATUS:{" "}
-                          <span
-                            style={{
-                              color: "rgba(16, 185, 129, 1)",
-                            }}
-                          >
+                          <span style={{ color: "rgba(16, 185, 129, 1)" }}>
                             {filters.selectedStockStatuses[0]}
                             {filters.selectedStockStatuses.length > 1 &&
                               `, +${filters.selectedStockStatuses.length - 1} MORE`}
                           </span>
+                          <img
+                            src="/icons/cross-small.svg"
+                            alt="remove"
+                            style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                          />
                         </Button>
                       )}
 
@@ -1668,18 +1709,23 @@ export default function Inventory() {
                             borderRadius: "50px",
                             fontWeight: "600",
                             textWrap: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
                           }}
-                          componentType={"none"}
+                          componentType={"button"}
                           bgColor={"rgba(239, 239, 239, 1)"}
                           borderColor={"transparent"}
                           textColor={"black"}
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              selectedProjects: [],
+                            }))
+                          }
                         >
                           PROJECT:{" "}
-                          <span
-                            style={{
-                              color: "rgba(16, 185, 129, 1)",
-                            }}
-                          >
+                          <span style={{ color: "rgba(16, 185, 129, 1)" }}>
                             {(() => {
                               const firstProject = availableProjects.find(
                                 (p) => p.id === filters.selectedProjects[0],
@@ -1691,6 +1737,11 @@ export default function Inventory() {
                             {filters.selectedProjects.length > 1 &&
                               `, +${filters.selectedProjects.length - 1} MORE`}
                           </span>
+                          <img
+                            src="/icons/cross-small.svg"
+                            alt="remove"
+                            style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                          />
                         </Button>
                       )}
 
@@ -1700,22 +1751,32 @@ export default function Inventory() {
                             borderRadius: "50px",
                             fontWeight: "600",
                             textWrap: "nowrap",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
                           }}
-                          componentType={"none"}
+                          componentType={"button"}
                           bgColor={"rgba(239, 239, 239, 1)"}
                           borderColor={"transparent"}
                           textColor={"black"}
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              selectedLocations: [],
+                            }))
+                          }
                         >
                           LOCATION:{" "}
-                          <span
-                            style={{
-                              color: "rgba(16, 185, 129, 1)",
-                            }}
-                          >
+                          <span style={{ color: "rgba(16, 185, 129, 1)" }}>
                             {filters.selectedLocations[0].toUpperCase()}
                             {filters.selectedLocations.length > 1 &&
                               `, +${filters.selectedLocations.length - 1} MORE`}
                           </span>
+                          <img
+                            src="/icons/cross-small.svg"
+                            alt="remove"
+                            style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                          />
                         </Button>
                       )}
 
@@ -2070,11 +2131,20 @@ export default function Inventory() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType={"none"}
+                    componentType={"button"}
                     bgColor={"rgba(239, 239, 239, 1)"}
                     borderColor={"transparent"}
                     textColor={"black"}
+                    onClick={() =>
+                      setTransferLogFilters((prev) => ({
+                        ...prev,
+                        timeRange: "all",
+                      }))
+                    }
                   >
                     TIME:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -2090,6 +2160,11 @@ export default function Inventory() {
                                 ? "LAST 30 DAYS"
                                 : transferLogFilters.timeRange.toUpperCase()}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 
@@ -2099,11 +2174,20 @@ export default function Inventory() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType={"none"}
+                    componentType={"button"}
                     bgColor={"rgba(239, 239, 239, 1)"}
                     borderColor={"transparent"}
                     textColor={"black"}
+                    onClick={() =>
+                      setTransferLogFilters((prev) => ({
+                        ...prev,
+                        selectedTypes: [],
+                      }))
+                    }
                   >
                     TYPE:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -2111,6 +2195,11 @@ export default function Inventory() {
                       {transferLogFilters.selectedTypes.length > 1 &&
                         `, +${transferLogFilters.selectedTypes.length - 1} MORE`}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 
@@ -2120,11 +2209,20 @@ export default function Inventory() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType={"none"}
+                    componentType={"button"}
                     bgColor={"rgba(239, 239, 239, 1)"}
                     borderColor={"transparent"}
                     textColor={"black"}
+                    onClick={() =>
+                      setTransferLogFilters((prev) => ({
+                        ...prev,
+                        selectedStatuses: [],
+                      }))
+                    }
                   >
                     STATUS:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -2132,6 +2230,11 @@ export default function Inventory() {
                       {transferLogFilters.selectedStatuses.length > 1 &&
                         `, +${transferLogFilters.selectedStatuses.length - 1} MORE`}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 
@@ -2141,11 +2244,20 @@ export default function Inventory() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType={"none"}
+                    componentType={"button"}
                     bgColor={"rgba(239, 239, 239, 1)"}
                     borderColor={"transparent"}
                     textColor={"black"}
+                    onClick={() =>
+                      setTransferLogFilters((prev) => ({
+                        ...prev,
+                        selectedLocations: [],
+                      }))
+                    }
                   >
                     LOCATION:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -2153,6 +2265,11 @@ export default function Inventory() {
                       {transferLogFilters.selectedLocations.length > 1 &&
                         `, +${transferLogFilters.selectedLocations.length - 1} MORE`}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 
@@ -2162,11 +2279,20 @@ export default function Inventory() {
                       borderRadius: "50px",
                       fontWeight: 600,
                       textWrap: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
-                    componentType={"none"}
+                    componentType={"button"}
                     bgColor={"rgba(239, 239, 239, 1)"}
                     borderColor={"transparent"}
                     textColor={"black"}
+                    onClick={() =>
+                      setTransferLogFilters((prev) => ({
+                        ...prev,
+                        selectedProjects: [],
+                      }))
+                    }
                   >
                     PROJECT:{" "}
                     <span style={{ color: "rgba(16, 185, 129, 1)" }}>
@@ -2174,6 +2300,11 @@ export default function Inventory() {
                       {transferLogFilters.selectedProjects.length > 1 &&
                         `, +${transferLogFilters.selectedProjects.length - 1} MORE`}
                     </span>
+                    <img
+                      src="/icons/cross-small.svg"
+                      alt="remove"
+                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                    />
                   </Button>
                 )}
 

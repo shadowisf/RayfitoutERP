@@ -759,6 +759,10 @@ export default function MrLinesView({
     if (mrHeader.progress_id !== 1) return;
 
     const descriptions: string[] = [];
+    // Parallel array: predefined_item_id (or 0 for aliases/no-id) matching each description
+    const predefinedIds: number[] = [];
+    // Map from description → predefined_item_id (first seen wins)
+    const descToId = new Map<string, number | null>();
     // Map from db_material_description (alias) → material_description (display/primary key)
     const aliasToDisplay = new Map<string, string>();
 
@@ -771,6 +775,7 @@ export default function MrLinesView({
               !descriptions.includes(item.material_description)
             ) {
               descriptions.push(item.material_description);
+              descToId.set(item.material_description, item.predefined_item_id ?? null);
             }
             // Also send the original stored description (before predefined-item
             // name resolution) so the similarity check can leverage the richer
@@ -782,6 +787,8 @@ export default function MrLinesView({
               !descriptions.includes(item.db_material_description)
             ) {
               descriptions.push(item.db_material_description);
+              // Aliases don't carry a predefined ID (they are the raw stored desc)
+              descToId.set(item.db_material_description, null);
               aliasToDisplay.set(
                 item.db_material_description,
                 item.material_description,
@@ -794,9 +801,15 @@ export default function MrLinesView({
 
     if (descriptions.length === 0) return;
 
+    // Build parallel predefined_ids array (0 = no predefined ID)
+    for (const desc of descriptions) {
+      predefinedIds.push(descToId.get(desc) ?? 0);
+    }
+
     const encoded = encodeURIComponent(descriptions.join("||"));
+    const encodedIds = encodeURIComponent(predefinedIds.join("||"));
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getInventoryStatus?materials=${encoded}`,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getInventoryStatus?materials=${encoded}&predefined_ids=${encodedIds}`,
     )
       .then((res) => res.json())
       .then((data: Record<string, InventoryMatch[]>) => {
@@ -6869,7 +6882,7 @@ export default function MrLinesView({
                       <th>#</th>
                       <th>CATEGORY</th>
                       <th>SUBCATEGORY</th>
-                      <th>ITEM</th>
+                      <th>MATERIAL</th>
                       {mrHeader.progress_id >= 9 ? (
                         <>
                           <th>QTY USE</th>
