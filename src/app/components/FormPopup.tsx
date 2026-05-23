@@ -53,7 +53,7 @@ export default function FormPopUp({
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsOpening(false), 500);
+    const timer = setTimeout(() => setIsOpening(false), haveLoadingState ? 25 : 1000);
     return () => clearTimeout(timer);
   }, []);
 

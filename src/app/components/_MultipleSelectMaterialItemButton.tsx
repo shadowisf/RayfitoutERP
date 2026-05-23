@@ -1010,7 +1010,7 @@ export default function MultipleSelectMaterialItemButton({
       <div
         style={{
           display: "flex",
-          height: "calc(100dvh - 250px)",
+          height: "100%",
           overflow: "hidden",
           gap: "16px",
           ...(isFetchingItems && { display: "none" }),

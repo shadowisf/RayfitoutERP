@@ -11,6 +11,136 @@ import FormPopUp from "@/app/components/FormPopup";
 import CreateCategoryButton from "@/app/(protected)/mr/[id]/components/department/_CreateCategoryButton";
 import CreateSubCategoryButton from "@/app/(protected)/mr/[id]/components/department/_CreateSubcategoryButton";
 
+// ─── Skeleton shimmer ─────────────────────────────────────────────────────────
+
+const SHIMMER: React.CSSProperties = {
+  background:
+    "linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.10) 37%, rgba(0,0,0,0.06) 63%)",
+  backgroundSize: "600px 100%",
+  animation: "shimmer 1.4s ease infinite",
+  borderRadius: "6px",
+};
+
+function SkeletonBlock({
+  w = "100%",
+  h = 12,
+  style,
+}: {
+  w?: string | number;
+  h?: number;
+  style?: React.CSSProperties;
+}) {
+  return <div style={{ width: w, height: h, ...SHIMMER, ...style }} />;
+}
+
+function MobileMaterialSkeletonLayout() {
+  const BORDER_COLOR = "rgba(217,217,217,1)";
+  const GREY_TEXT = "rgba(150,150,150,1)";
+
+  const rows: [string, string, string][] = [
+    ["75%", "55%", "45%"],
+    ["60%", "40%", "50%"],
+    ["80%", "65%", "42%"],
+    ["55%", "48%", "38%"],
+    ["70%", "52%", "46%"],
+    ["65%", "44%", "40%"],
+  ];
+
+  return (
+    <div>
+      {/* Tab bar skeleton */}
+      <div
+        style={{
+          display: "flex",
+          borderBottom: `1px solid ${BORDER_COLOR}`,
+          marginBottom: 4,
+        }}
+      >
+        {[{ w: "52px" }, { w: "68px" }].map(({ w }, i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              marginBottom: -1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <SkeletonBlock w={14} h={14} style={{ borderRadius: "3px", flexShrink: 0 }} />
+            <SkeletonBlock w={w} h={10} />
+          </div>
+        ))}
+      </div>
+
+      {/* "Recently Requested" section header */}
+      <div
+        style={{
+          padding: "14px 0 8px",
+          borderBottom: `1px solid ${BORDER_COLOR}`,
+        }}
+      >
+        <SkeletonBlock w="130px" h={13} />
+      </div>
+
+      {/* Item rows */}
+      {rows.map(([nameW, metaW, unitW], i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "16px 0",
+            borderBottom: `1px solid ${BORDER_COLOR}`,
+            gap: 12,
+          }}
+        >
+          {/* Text block */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* "Description" label */}
+            <SkeletonBlock w="54px" h={8} style={{ marginBottom: 6 }} />
+            {/* Item name */}
+            <SkeletonBlock
+              w={nameW}
+              h={13}
+              style={{ marginBottom: i % 2 === 0 ? 4 : 0 }}
+            />
+            {i % 2 === 0 && (
+              <SkeletonBlock w={metaW} h={13} style={{ marginBottom: 4 }} />
+            )}
+            {/* Category / subcategory · unit row */}
+            <div
+              style={{
+                display: "flex",
+                gap: 4,
+                alignItems: "center",
+                marginTop: 4,
+              }}
+            >
+              <SkeletonBlock w={unitW} h={9} />
+              <span style={{ fontSize: 10, color: GREY_TEXT }}>·</span>
+              <SkeletonBlock w="28px" h={9} />
+            </div>
+          </div>
+
+          {/* + button shell */}
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: "rgba(237,237,237,1)",
+              flexShrink: 0,
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type MobileMaterialSelectProps = {
@@ -323,7 +453,8 @@ export default function MobileMaterialSelect({
             marginBottom: 8,
           }}
         >
-          {selectedItems.length} ITEM{selectedItems.length !== 1 ? "S" : ""} SELECTED
+          {selectedItems.length} ITEM{selectedItems.length !== 1 ? "S" : ""}{" "}
+          SELECTED
         </div>
       )}
       {/* Search + filter row */}
@@ -424,6 +555,7 @@ export default function MobileMaterialSelect({
         handleSubmit={tab === "quickadd" ? handleQuickAddSubmit : handleConfirm}
         addButtonLabel={"CONFIRM"}
         stickyFooter={tab === "library" ? searchAndFilterFooter : undefined}
+        haveLoadingState
       >
         {/* Hidden validity gate */}
         <input
@@ -449,6 +581,10 @@ export default function MobileMaterialSelect({
           }}
         />
 
+        {allItems.length === 0 ? (
+          <MobileMaterialSkeletonLayout />
+        ) : (
+        <>
         {/* Tab bar */}
         <div
           style={{
@@ -548,6 +684,8 @@ export default function MobileMaterialSelect({
             BORDER_COLOR={BORDER_COLOR}
           />
         )}
+        </>
+        )}
       </FormPopUp>
 
       {/* Filter sheet — rendered outside FormPopUp so it layers on top */}
@@ -641,21 +779,6 @@ function LibraryTab({
   }, []);
 
   const visibleItems = sortedItems.slice(0, visibleCount);
-
-  if (allItems.length === 0 && !search && !hasActiveFilter) {
-    return (
-      <div
-        style={{
-          padding: 32,
-          textAlign: "center",
-          color: "rgba(150,150,150,1)",
-          fontSize: 13,
-        }}
-      >
-        Loading materials…
-      </div>
-    );
-  }
 
   if (allItems.length === 0) {
     return (
@@ -1074,7 +1197,6 @@ function QuickAddTab({
           selectOptions={[...UNIT_OPTIONS]}
         />
       </div>
-
     </div>
   );
 }
@@ -1174,7 +1296,9 @@ function FilterSheet({
       }}
       handleSubmit={handleConfirm}
       addButtonLabel={
-        tempIDs.size > 0 ? `SHOW ${tempFilteredCount} ITEMS` : "SHOW ALL RESULTS"
+        tempIDs.size > 0
+          ? `SHOW ${tempFilteredCount} ITEMS`
+          : "SHOW ALL RESULTS"
       }
       secondButton={resetButton}
     >
