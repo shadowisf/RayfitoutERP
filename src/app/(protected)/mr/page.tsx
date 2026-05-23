@@ -83,6 +83,16 @@ export default function MR() {
       return false;
     }
   });
+
+  const [filterMyDept, setFilterMyDept] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const saved = localStorage.getItem("pt_filterMyDept");
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
   const [mrDurations, setMrDurations] = useState<{
     [key: string]: { duration: string; hoursDecimal: number; style: any };
   }>({});
@@ -157,6 +167,10 @@ export default function MR() {
   useEffect(() => {
     localStorage.setItem("pt_filterRelevant", JSON.stringify(filterRelevant));
   }, [filterRelevant]);
+
+  useEffect(() => {
+    localStorage.setItem("pt_filterMyDept", JSON.stringify(filterMyDept));
+  }, [filterMyDept]);
 
   // When "Only Related Cards" is on, collapse Draft, Rejected & Completed by default;
   // restore them to expanded when it's turned off
@@ -755,6 +769,12 @@ export default function MR() {
       filtered = filtered.filter((lpoCard) => canViewLPO(lpoCard, true));
     }
 
+    if (filterMyDept) {
+      filtered = filtered.filter(
+        (lpoCard) => lpoCard.department_id === userInfo?.departmentID,
+      );
+    }
+
     if (filters.selectedProjects.length > 0) {
       filtered = filtered.filter((lpoCard) =>
         filters.selectedProjects.includes(
@@ -821,6 +841,12 @@ export default function MR() {
         if (mr.progress_id === 1) return true;
         return canViewMR(mr, filterRelevant);
       });
+    }
+
+    if (filterMyDept) {
+      filtered = filtered.filter(
+        (mr) => mr.department_id === userInfo?.departmentID,
+      );
     }
 
     if (filters.selectedProjects.length > 0) {
@@ -1970,6 +1996,41 @@ export default function MR() {
                         position: "absolute",
                         top: "0px",
                         left: filterRelevant ? "15px" : "0px",
+                        width: "17px",
+                        border: "1px solid rgba(217, 217, 217, 1)",
+                        height: "17px",
+                        backgroundColor: "white",
+                        borderRadius: "50%",
+                      }}
+                    />
+                  </div>
+                </Button>
+
+                <Button
+                  componentType="button"
+                  bgColor="white"
+                  borderColor="rgba(241, 244, 246, 1)"
+                  textColor="black"
+                  onClick={() => setFilterMyDept(!filterMyDept)}
+                  style={{ padding: "7px 20px", borderRadius: "50px" }}
+                >
+                  ONLY MY DEPARTMENT'S CARDS{" "}
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "30px",
+                      height: "17px",
+                      backgroundColor: filterMyDept
+                        ? "rgb(34, 197, 94)"
+                        : "rgba(200, 200, 200, 1)",
+                      borderRadius: "34px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "0px",
+                        left: filterMyDept ? "15px" : "0px",
                         width: "17px",
                         border: "1px solid rgba(217, 217, 217, 1)",
                         height: "17px",
