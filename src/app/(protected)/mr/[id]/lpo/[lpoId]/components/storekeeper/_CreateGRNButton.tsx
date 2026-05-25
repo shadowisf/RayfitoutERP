@@ -57,6 +57,9 @@ export default function CreateGRNButton({
   const plusIcon = "/icons/plus.svg";
   const uploadIcon = "/icons/upload.svg";
   const crossIcon = "/icons/cross-small.svg";
+  const trashIcon = "/icons/trash.svg";
+
+  const [isDeletingGrn, setIsDeletingGrn] = useState(false);
 
   const [isOpen, setIsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -170,10 +173,16 @@ export default function CreateGRNButton({
           setLpo(data.data);
           if (data.data.lpo_mr_lines) {
             setLpoMrLines(data.data.lpo_mr_lines);
+            // Build lookup: mr_line_id → lpo_mr_line_id
+            // This ensures grnLines[i] maps to the correct lpo_mr_line for mrLines[i],
+            // regardless of the order lpo_mr_lines come back from the DB.
+            const lpoMrLineIdByMrLineId = new Map<number, number>(
+              data.data.lpo_mr_lines.map((l: any) => [l.mr_line_id, l.id])
+            );
             const initialGrnLines: { [key: number]: GRNLineItem } = {};
-            data.data.lpo_mr_lines.forEach((line: any, index: number) => {
+            mrLines.forEach((mrLine, index) => {
               initialGrnLines[index] = {
-                lpo_mr_line_id: line.id,
+                lpo_mr_line_id: lpoMrLineIdByMrLineId.get(mrLine.id) ?? 0,
                 received_quantity: "",
                 notes: "",
                 attachment: "",
@@ -193,9 +202,17 @@ export default function CreateGRNButton({
     async function fetchQcAcceptedQuantities() {
       if (!existingLpoId || lpoMrLines.length === 0) return;
       try {
+        // Build lookup: mr_line_id → lpo_mr_line_id (so we index by mrLines position)
+        const lpoMrLineIdByMrLineId = new Map<number, number>(
+          lpoMrLines.map((l: any) => [l.mr_line_id, l.id])
+        );
         const qcQuantities: { [key: number]: number | null } = {};
-        for (let index = 0; index < lpoMrLines.length; index++) {
-          const lpoMrLineId = lpoMrLines[index].id;
+        for (let index = 0; index < mrLines.length; index++) {
+          const lpoMrLineId = lpoMrLineIdByMrLineId.get(mrLines[index].id);
+          if (!lpoMrLineId) {
+            qcQuantities[index] = null;
+            continue;
+          }
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL}/api/qc/getQCByLPOMrLineID`,
             {
@@ -262,10 +279,17 @@ export default function CreateGRNButton({
       }
 
       const mappedGrnLines: { [key: number]: GRNLineItem } = {};
-      lpoMrLines.forEach((lpoLine: any, index: number) => {
-        const grnLine = existingGrn.grn_lines?.find(
-          (gl: any) => gl.lpo_mr_line_id === lpoLine.id,
-        );
+      // Build lookups keyed by mr_line_id so grnLines[i] always aligns with mrLines[i]
+      const lpoMrLineByMrLineId = new Map<number, any>(
+        lpoMrLines.map((l: any) => [l.mr_line_id, l])
+      );
+      const grnLineByLpoMrLineId = new Map<number, any>(
+        (existingGrn.grn_lines ?? []).map((gl: any) => [gl.lpo_mr_line_id, gl])
+      );
+      mrLines.forEach((mrLine, index) => {
+        const lpoMrLine = lpoMrLineByMrLineId.get(mrLine.id);
+        const lpo_mr_line_id = lpoMrLine?.id ?? 0;
+        const grnLine = grnLineByLpoMrLineId.get(lpo_mr_line_id);
         if (grnLine) {
           let attachmentUrl = "";
           if (grnLine.attachment) {
@@ -279,20 +303,20 @@ export default function CreateGRNButton({
             }
           }
 
-          // ✅ FORMAT the received_quantity immediately when loading existing data
+          // Format the received_quantity immediately when loading existing data
           const rawQuantity = grnLine.received_quantity?.toString() || "";
           const formattedQuantity = formatQuantity(rawQuantity);
 
           mappedGrnLines[index] = {
-            lpo_mr_line_id: lpoLine.id,
-            received_quantity: formattedQuantity, // Use formatted value
+            lpo_mr_line_id,
+            received_quantity: formattedQuantity,
             notes: grnLine.notes || "",
             attachment: attachmentUrl || "",
             attachmentFile: null,
           };
         } else {
           mappedGrnLines[index] = {
-            lpo_mr_line_id: lpoLine.id,
+            lpo_mr_line_id,
             received_quantity: "",
             notes: "",
             attachment: "",
@@ -439,16 +463,19 @@ export default function CreateGRNButton({
     if (!response.ok) throw new Error("Failed to delete file from S3");
   }
 
-  // FIXED: Updated epsilon to match decimal(10,3) precision
+  // Check if entered quantity matches the ordered quantity for the given row index.
+  // Uses the same approved_proposed_quantity → quantity fallback as LpoLinesView
+  // and epsilon matching decimal(10,3) precision.
   const checkQuantityMatch = (index: number) => {
-    const receivedQty = parseQuantity(grnLines[index]?.received_quantity);
-    const orderedQty = parseQuantity(
-      mrLines[index]?.approved_proposed_quantity,
-    );
-
     if (!grnLines[index]?.received_quantity) return null;
 
-    // Use epsilon that matches database decimal(10,3) precision
+    const receivedQty = parseQuantity(grnLines[index]?.received_quantity);
+    const proposedQty = parseQuantity(mrLines[index]?.approved_proposed_quantity);
+    const orderedQty =
+      !isNaN(proposedQty) && proposedQty > 0
+        ? proposedQty
+        : parseQuantity(mrLines[index]?.quantity);
+
     return Math.abs(receivedQty - orderedQty) < QUANTITY_EPSILON;
   };
 
@@ -577,6 +604,31 @@ export default function CreateGRNButton({
     }
   }
 
+  async function handleDeleteGrn() {
+    if (!existingGrn?.id) return;
+    setIsDeletingGrn(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/grn`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grn_id: existingGrn.id }),
+      });
+      if (res.ok) {
+        toast("GRN deleted successfully", "success");
+        setExistingGrn(null);
+        setIsEditMode(false);
+        await refresh();
+      } else {
+        toast("Failed to delete GRN", "error");
+      }
+    } catch (error) {
+      console.error("Error deleting GRN:", error);
+      toast("Failed to delete GRN", "error");
+    } finally {
+      setIsDeletingGrn(false);
+    }
+  }
+
   return (
     <>
       {existingGrn ? (
@@ -588,20 +640,31 @@ export default function CreateGRNButton({
           style={{ padding: "7px 20px", borderRadius: "25px" }}
         >
           GRN
-          {(userInfo?.departmentID === 11 || userInfo?.departmentID === 8) &&
-            mrHeader.progress_id === 17 && (
-              <img
-                src={pencilIcon}
-                alt="edit"
-                style={{ cursor: "pointer" }}
-                onClick={() => setIsOpen(true)}
-              />
-            )}
           <DownloadGRNButton
             grnId={existingGrn.id}
             bgColor="transparent"
             style={{ padding: "0", border: "none" }}
           />
+          {(userInfo?.departmentID === 11 || userInfo?.departmentID === 8) &&
+            mrHeader.progress_id === 17 && (
+              <>
+                <img
+                  src={pencilIcon}
+                  alt="edit"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setIsOpen(true)}
+                />
+                <img
+                  src={crossIcon}
+                  alt="delete"
+                  style={{
+                    cursor: isDeletingGrn ? "not-allowed" : "pointer",
+                    opacity: isDeletingGrn ? 0.5 : 1,
+                  }}
+                  onClick={() => !isDeletingGrn && handleDeleteGrn()}
+                />
+              </>
+            )}
         </Button>
       ) : (
         <Button
@@ -1025,6 +1088,7 @@ export default function CreateGRNButton({
           </div>
         </FormPopUp>
       )}
+
     </>
   );
 }

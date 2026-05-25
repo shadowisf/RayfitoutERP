@@ -2,6 +2,7 @@ import Button from "@/app/components/Button";
 import LpoLinesView from "./components/LpoLinesView";
 import { MrHeader } from "../../types/mrHeader";
 import DeleteLpoHeaderButton from "./components/_DeleteLpoHeaderButton";
+import EditMrHeaderButton from "../../components/department/_EditMrHeaderButton";
 import CancelMaterialRequestButton from "../../components/_CancelMaterialRequest";
 import RequisitionTimeline from "../../components/RequisitionTimeline";
 import DownloadCompletedMrLpoPDFButton from "./components/_DownloadCompletedMrLpoPDFButton";
@@ -185,6 +186,9 @@ export default async function LpoWithID({
     lpo.progress_name?.toLowerCase().includes(word),
   );
 
+  // Keep skeleton visible for an extra 1000ms after data is loaded
+  await new Promise((r) => setTimeout(r, 1000));
+
   const progressStyle = isRejected
     ? {
         backgroundColor: "rgba(255, 181, 181, 1)",
@@ -322,6 +326,19 @@ export default async function LpoWithID({
               DOWNLOAD LPO
             </DownloadLPOButton>
           )}
+          {!isCompleted && (
+            <CancelMaterialRequestButton
+              mrHeader={mrHeader}
+              currentProgressId={lpo.progress_id}
+              lpoId={lpo.id}
+              bgColor="rgba(248, 77, 77, 1)"
+              borderColor="rgba(248, 77, 77, 1)"
+              textColor="white"
+            >
+              ROLL BACK MATERIAL REQUEST{" "}
+              <img src={uTurnIcon} alt="u-turn" />
+            </CancelMaterialRequestButton>
+          )}
         </div>
       </div>
 
@@ -333,85 +350,61 @@ export default async function LpoWithID({
             style={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "flex-start",
+              alignItems: "center",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                width: "100%",
-              }}
-            >
-              <div
-                style={{ display: "flex", gap: "25px", alignItems: "center" }}
-              >
-                <div>
-                  <small>MR NUMBER</small>
-                  <h2>MR-{String(id).padStart(5, "0")}</h2>
-                </div>
-
-                <div>
-                  <small>LPO NUMBER</small>
-                  <h2>LPO-{String(lpoId).padStart(5, "0")}</h2>
-                </div>
-
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <p
-                    className="approval-pill normal-text"
-                    style={{ ...progressStyle, textTransform: "uppercase" }}
-                  >
-                    {lpo.progress_name}
-                  </p>
-                </div>
-
-                {!isCompleted && (
-                  <div
-                    className="approval-pill normal-text centered"
-                    style={{
-                      backgroundColor: "white",
-                      color: darkerTextColor,
-                      border: "1px solid rgba(207, 207, 207, 1)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <svg
-                      width="13"
-                      height="15"
-                      viewBox="0 0 15 17"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
-                        fill={priorityColor}
-                      />
-                    </svg>
-                    <span>PRIORITY: {priorityLabel}</span>
-                  </div>
-                )}
+            <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
+              <div>
+                <small>MR NUMBER</small>
+                <h2>MR-{String(id).padStart(5, "0")}</h2>
               </div>
-              <div
-                style={{ display: "flex", gap: "5px", alignItems: "center" }}
-              >
-                {!isCompleted && (
-                  <CancelMaterialRequestButton
-                    mrHeader={mrHeader}
-                    currentProgressId={lpo.progress_id}
-                    lpoId={lpo.id}
-                    bgColor="rgba(248, 77, 77, 1)"
-                    borderColor="rgba(248, 77, 77, 1)"
-                    textColor="white"
-                  >
-                    ROLL BACK MATERIAL REQUEST{" "}
-                    <img src={uTurnIcon} alt="u-turn" />
-                  </CancelMaterialRequestButton>
-                )}
-                <DeleteLpoHeaderButton mrHeader={mrHeader} LpoHeader={lpo} />
+
+              <div>
+                <small>LPO NUMBER</small>
+                <h2>LPO-{String(lpoId).padStart(5, "0")}</h2>
               </div>
+
+              <div style={{ display: "flex", gap: "10px" }}>
+                <p
+                  className="approval-pill normal-text"
+                  style={{ ...progressStyle, textTransform: "uppercase" }}
+                >
+                  {lpo.progress_name}
+                </p>
+              </div>
+
+              {!isCompleted && (
+                <div
+                  className="approval-pill normal-text centered"
+                  style={{
+                    backgroundColor: "white",
+                    color: darkerTextColor,
+                    border: "1px solid rgba(207, 207, 207, 1)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <svg
+                    width="13"
+                    height="15"
+                    viewBox="0 0 15 17"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z"
+                      fill={priorityColor}
+                    />
+                  </svg>
+                  <span>PRIORITY: {priorityLabel}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <EditMrHeaderButton mrHeader={mrHeader} />
+              <DeleteLpoHeaderButton mrHeader={mrHeader} LpoHeader={lpo} />
             </div>
           </div>
         </div>

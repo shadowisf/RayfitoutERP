@@ -373,8 +373,12 @@ export default function Payments() {
   const [lpoRows, setLpoRows] = useState<LpoRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [mrFilters, setMrFilters] = useState<PaymentFilters>(defaultPaymentFilters);
-  const [prFilters, setPrFilters] = useState<PaymentFilters>(defaultPaymentFilters);
+  const [mrFilters, setMrFilters] = useState<PaymentFilters>(
+    defaultPaymentFilters,
+  );
+  const [prFilters, setPrFilters] = useState<PaymentFilters>(
+    defaultPaymentFilters,
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -391,14 +395,26 @@ export default function Payments() {
   >({});
 
   // ── Date range filters (creation date, per tab) ─────────────────────────
-  const [mrDateRange, setMrDateRange] = useState<DateRange>({ start: null, end: null, preset: null });
-  const [prDateRange, setPrDateRange] = useState<DateRange>({ start: null, end: null, preset: null });
+  const [mrDateRange, setMrDateRange] = useState<DateRange>({
+    start: null,
+    end: null,
+    preset: null,
+  });
+  const [prDateRange, setPrDateRange] = useState<DateRange>({
+    start: null,
+    end: null,
+    preset: null,
+  });
 
   // ── Active filter helpers (derived from current tab) ─────────────────────
-  const activeFilters = activeTab === "material-requests" ? mrFilters : prFilters;
-  const setActiveFilters = activeTab === "material-requests" ? setMrFilters : setPrFilters;
-  const activeDateRange = activeTab === "material-requests" ? mrDateRange : prDateRange;
-  const setActiveDateRange = activeTab === "material-requests" ? setMrDateRange : setPrDateRange;
+  const activeFilters =
+    activeTab === "material-requests" ? mrFilters : prFilters;
+  const setActiveFilters =
+    activeTab === "material-requests" ? setMrFilters : setPrFilters;
+  const activeDateRange =
+    activeTab === "material-requests" ? mrDateRange : prDateRange;
+  const setActiveDateRange =
+    activeTab === "material-requests" ? setMrDateRange : setPrDateRange;
 
   // ── Row selection (group-by-vendor mode) ─────────────────────────────────
   const [selectedRowIds, setSelectedRowIds] = useState<Set<number>>(new Set());
@@ -1168,7 +1184,11 @@ export default function Payments() {
                     borderColor="transparent"
                     textColor="black"
                     onClick={() =>
-                      setActiveDateRange({ start: null, end: null, preset: null })
+                      setActiveDateRange({
+                        start: null,
+                        end: null,
+                        preset: null,
+                      })
                     }
                   >
                     CREATION DATE:{" "}
@@ -1192,7 +1212,11 @@ export default function Payments() {
                     <img
                       src="/icons/cross-small.svg"
                       alt="remove"
-                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                      style={{
+                        width: "10px",
+                        opacity: 0.6,
+                        marginBottom: "2px",
+                      }}
                     />
                   </Button>
                 )}
@@ -1229,7 +1253,11 @@ export default function Payments() {
                       <img
                         src="/icons/cross-small.svg"
                         alt="remove"
-                        style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                        style={{
+                          width: "10px",
+                          opacity: 0.6,
+                          marginBottom: "2px",
+                        }}
                       />
                     </Button>
                   )}
@@ -1266,7 +1294,11 @@ export default function Payments() {
                       <img
                         src="/icons/cross-small.svg"
                         alt="remove"
-                        style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                        style={{
+                          width: "10px",
+                          opacity: 0.6,
+                          marginBottom: "2px",
+                        }}
                       />
                     </Button>
                   )}
@@ -1302,7 +1334,11 @@ export default function Payments() {
                     <img
                       src="/icons/cross-small.svg"
                       alt="remove"
-                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                      style={{
+                        width: "10px",
+                        opacity: 0.6,
+                        marginBottom: "2px",
+                      }}
                     />
                   </Button>
                 )}
@@ -1338,7 +1374,11 @@ export default function Payments() {
                     <img
                       src="/icons/cross-small.svg"
                       alt="remove"
-                      style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                      style={{
+                        width: "10px",
+                        opacity: 0.6,
+                        marginBottom: "2px",
+                      }}
                     />
                   </Button>
                 )}
@@ -1375,7 +1415,11 @@ export default function Payments() {
                       <img
                         src="/icons/cross-small.svg"
                         alt="remove"
-                        style={{ width: "10px", opacity: 0.6, marginBottom: "2px" }}
+                        style={{
+                          width: "10px",
+                          opacity: 0.6,
+                          marginBottom: "2px",
+                        }}
                       />
                     </Button>
                   )}

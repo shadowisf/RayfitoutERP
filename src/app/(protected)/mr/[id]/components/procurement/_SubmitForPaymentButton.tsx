@@ -166,14 +166,10 @@ export default function SubmitForPaymentButton({
 
   // Determine button text
   const getButtonText = () => {
-    if (isLoading && progress) {
-      return `PROCESSING ${progress.current}/${progress.total}...`;
-    }
-
     if (mode === "multi") {
       if (hasMixedSuppliers) return "SUBMIT FOR PAYMENT & DELIVERY";
       if (creditSuppliers.length > 0) return "SUBMIT FOR DELIVERY";
-      return "SUBMIT FOR PAYMENT";
+      return "SUBMIT FOR DELIVERY";
     }
 
     // Single mode - check supplier type from suppliersToProcess or suppliers array
@@ -184,7 +180,7 @@ export default function SubmitForPaymentButton({
       return isCredit ? "SUBMIT FOR DELIVERY" : "SUBMIT FOR PAYMENT";
     }
 
-    return "SUBMIT FOR PAYMENT";
+    return "SUBMIT FOR DELIVERY";
   };
 
   const isDisabled =

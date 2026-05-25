@@ -23,7 +23,7 @@ import SubmitForPricingResubmissionButton from "./manager/_SubmitForPriceResubmi
 import SubmitForLPO from "./manager/_SubmitForLPOButton";
 import Button from "@/app/components/Button";
 import SupplierDetailsPopUp from "../../components/SupplierDetailsPopUp";
-import IssueLPOButton from "./procurement/_IssueLPOButton";
+import IssueLPOButton, { lpoCheckCache } from "./procurement/_IssueLPOButton";
 import SubmitForPaymentButton, {
   SupplierInfo,
 } from "./procurement/_SubmitForPaymentButton";
@@ -414,6 +414,67 @@ export default function MrLinesView({
   }>({});
   const [isCheckingGrnQuantity, setIsCheckingGrnQuantity] =
     useState<boolean>(true);
+
+  // ── LPO-button readiness tracking ────────────────────────────────────────
+  // Count unique suppliers whose LPO data isn't cached yet (first-load only).
+  // When all of them call back via onCheckDone, isCheckingLpoButtons flips false.
+  const lpoButtonsTotalCount = useMemo(() => {
+    if (mrHeader.progress_id < 12) return 0;
+    const seen = new Set<number>();
+    for (const cats of Object.values(mrLines)) {
+      for (const subs of Object.values(cats)) {
+        for (const supps of Object.values(subs)) {
+          for (const item of ([] as any[]).concat(...Object.values(supps))) {
+            if (item.approved_supplier_id) seen.add(item.approved_supplier_id);
+          }
+        }
+      }
+    }
+    return [...seen].filter(
+      (id) => !lpoCheckCache.has(`${mrHeader.id}-${id}`),
+    ).length;
+  // Computed once on mount — mrLines and mrHeader.id don't change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [lpoButtonsDoneCount, setLpoButtonsDoneCount] = useState(0);
+  const isCheckingLpoButtons =
+    lpoButtonsTotalCount > 0 && lpoButtonsDoneCount < lpoButtonsTotalCount;
+
+  const handleLpoCheckDone = useCallback(() => {
+    setLpoButtonsDoneCount((n) => n + 1);
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Signal NavigationLoader once all client-side checks are done
+  useEffect(() => {
+    if (
+      !isCheckingQuotations &&
+      !isCheckingSupplierApprovals &&
+      !isCheckingSupplierQSApprovals &&
+      !isCheckingLpoInvoices &&
+      !isCheckingPaymentStatus &&
+      !isCheckingGrn &&
+      !isCheckingQc &&
+      !isCheckingInventory &&
+      !isCheckingGrnQuantity &&
+      !isCheckingLpoButtons
+    ) {
+      window.dispatchEvent(new Event("page-client-ready"));
+    }
+  }, [
+    isCheckingQuotations,
+    isCheckingSupplierApprovals,
+    isCheckingSupplierQSApprovals,
+    isCheckingLpoInvoices,
+    isCheckingPaymentStatus,
+    isCheckingGrn,
+    isCheckingQc,
+    isCheckingInventory,
+    isCheckingGrnQuantity,
+    isCheckingLpoButtons,
+  ]);
+
   const [totalInvoiceAmount, setTotalInvoiceAmount] = useState(0);
   const [mrLinePrices, setMrLinePrices] = useState<{ [key: number]: number }>(
     {},
@@ -658,6 +719,20 @@ export default function MrLinesView({
     if (pid === 11 && dept === 9) count += 1; // ACTIONS
     // VENDOR & QUOTATION (progress >= 10 except pid 11; at pid 11 only dept 8)
     if (pid >= 10 && (pid !== 11 || dept === 8)) count += 1;
+    return count;
+  })();
+
+  // For the "by vendor" table: #, CATEGORY, SUBCATEGORY, MATERIAL, QTY cols, BOQ REF, BRAND & SPECS, ATTACHMENT
+  // No VENDOR & QUOTATION in this view
+  const subtotalLabelColSpanByVendor = (() => {
+    const pid = mrHeader.progress_id;
+    let count = 0;
+    // #, CATEGORY, SUBCATEGORY, MATERIAL
+    count += 4;
+    // QTY columns: same logic as the by-vendor table
+    count += pid >= 9 ? (hasAnyQtyStocks ? 3 : 1) : 1;
+    // BOQ REF (always) + BRAND & SPECS (conditional) + ATTACHMENT (conditional)
+    count += 1 + (hasAnyBrandSpecs ? 1 : 0) + (hasAnyAttachment ? 1 : 0);
     return count;
   })();
 
@@ -7165,7 +7240,7 @@ export default function MrLinesView({
         {showBySupplier &&
           Object.entries(mrLinesBySupplier).map(
             ([supplier, items], index, allSuppliers) => (
-              <div key={supplier} className="subcategory-section">
+              <div key={supplier} className="subcategory-section" style={{ marginBottom: "2rem" }}>
                 <div className="subcategory-header">
                   <div
                     style={{
@@ -7266,7 +7341,11 @@ export default function MrLinesView({
                       )}
 
                     {mrHeader.progress_id >= 12 && (
-                      <IssueLPOButton mrHeader={mrHeader} mrLines={items} />
+                      <IssueLPOButton
+                        mrHeader={mrHeader}
+                        mrLines={items}
+                        onCheckDone={handleLpoCheckDone}
+                      />
                     )}
 
                     {(userInfo?.departmentID === 10 ||
@@ -7703,12 +7782,53 @@ export default function MrLinesView({
           style={{ minHeight: 0 }}
         >
           <colgroup>
-            {isQSReview && <col style={{ width: "24px" }} />}
-            {isProcurementQuotations && <col style={{ width: "24px" }} />}
-            {isManagerPriceApproval && <col style={{ width: "24px" }} />}
-            <col style={{ width: "40px" }} />
-            <col style={{ width: "130px" }} />
-            {mrHeader.progress_id === 1 && <col style={{ width: "150px" }} />}
+            {showBySupplier ? (
+              /* ── By-vendor colgroup — mirrors the per-vendor tables above ── */
+              <>
+                <col style={{ width: "40px" }} />
+                <col style={{ width: "120px" }} />
+                <col style={{ width: "120px" }} />
+                <col style={{ width: "120px" }} />
+                {mrHeader.progress_id >= 9 ? (
+                  <>
+                    <col style={{ width: "80px" }} />
+                    {hasAnyQtyStocks && <col style={{ width: "90px" }} />}
+                    {hasAnyQtyStocks && <col style={{ width: "80px" }} />}
+                  </>
+                ) : (
+                  <col style={{ width: "120px" }} />
+                )}
+                <col style={{ width: "90px" }} />
+                {hasAnyBrandSpecs && <col style={{ width: "110px" }} />}
+                {hasAnyAttachment && <col style={{ width: "90px" }} />}
+                {mrHeader.progress_id >= 10 && canSeePrice && (
+                  <col style={{ width: "100px" }} />
+                )}
+                {mrHeader.progress_id >= 10 && canSeePrice && (
+                  <col style={{ width: "100px" }} />
+                )}
+                {userInfo?.departmentID === 12 &&
+                  mrHeader.progress_id === 21 && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {mrHeader.progress_id === 24 &&
+                  userInfo?.departmentID === 11 && (
+                    <col style={{ width: "120px" }} />
+                  )}
+                {mrHeader.progress_id === 23 &&
+                  userInfo?.departmentID === 9 && (
+                    <col style={{ width: "140px" }} />
+                  )}
+              </>
+            ) : (
+              /* ── By-item colgroup — mirrors the by-item / by-subcategory tables ── */
+              <>
+                {isQSReview && <col style={{ width: "24px" }} />}
+                {isProcurementQuotations && <col style={{ width: "24px" }} />}
+                {isManagerPriceApproval && <col style={{ width: "24px" }} />}
+                <col style={{ width: "40px" }} />
+                <col style={{ width: "130px" }} />
+                {mrHeader.progress_id === 1 && <col style={{ width: "150px" }} />}
             {mrHeader.progress_id >= 9 ? (
               <>
                 <col style={{ width: "80px" }} />
@@ -7797,6 +7917,8 @@ export default function MrLinesView({
             {userInfo?.departmentID === 9 && mrHeader.progress_id === 23 && (
               <col style={{ width: "140px" }} />
             )}
+              </>
+            )}
           </colgroup>
           <tbody />
           {mrHeader.progress_id >= 10 && canSeePrice && (
@@ -7804,9 +7926,11 @@ export default function MrLinesView({
               <tr>
                 <td
                   colSpan={
-                    isManagerPriceApproval
-                      ? subtotalLabelColSpan + 4
-                      : subtotalLabelColSpan
+                    showBySupplier
+                      ? subtotalLabelColSpanByVendor
+                      : isManagerPriceApproval
+                        ? subtotalLabelColSpan + 4
+                        : subtotalLabelColSpan
                   }
                 />
                 <td style={{ fontWeight: "600" }}>MR VALUE</td>

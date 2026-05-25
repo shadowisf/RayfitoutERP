@@ -310,6 +310,9 @@ export default async function MrWithID({
   const darkerTextColor = getDarkerPriorityColor(priorityColor);
   const priorityLabel = getPriorityLabel(hoursDecimal);
 
+  // Keep skeleton visible for an extra 1000ms after data is loaded
+  await new Promise((r) => setTimeout(r, 1000));
+
   return (
     <div className="dashboard">
       <div

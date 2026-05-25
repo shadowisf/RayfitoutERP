@@ -16,32 +16,59 @@ import UploadSignedLPOButton from "./_UploadSignedLPOButton";
 import { formatPrice, formatPriceAED } from "@/lib/formatPrice";
 import { useRefresh } from "@/app/context/RefreshContext";
 
+// Module-level cache so switching between "Show by Item" / "Show by Vendor"
+// (which unmounts + remounts these buttons) never triggers a re-fetch.
+// Keyed by `${mrHeaderId}-${supplierId}`. Cleared on explicit refresh (see below).
+// Exported so MrLinesView can check which suppliers are already cached.
+export type LpoCacheEntry = {
+  id: number | null;
+  data: any | null;
+  invoiceFiles: string[];
+  signedLpoFiles: string[];
+};
+export const lpoCheckCache = new Map<string, LpoCacheEntry>();
+
 type IssueLPOButtonProps = {
   mrHeader: MrHeader;
   mrLines: MrLine[];
+  /** Called once when the initial LPO check (fresh fetch) finishes. Used by
+   *  MrLinesView to hold the skeleton until all buttons are ready. */
+  onCheckDone?: () => void;
 };
 
 export default function IssueLPOButton({
   mrHeader,
   mrLines,
+  onCheckDone,
 }: IssueLPOButtonProps) {
   const router = useRouter();
   const { refresh } = useRefresh();
-
 
   const { userInfo } = useAuth();
 
   const warningIcon = "/icons/warning.svg";
 
+  // Seed state from cache so remounts (e.g. view-toggle) show instantly
+  const cacheKey = `${mrHeader.id}-${mrLines[0]?.approved_supplier_id}`;
+  const cached = lpoCheckCache.get(cacheKey);
+
   const [isOpen, setIsOpen] = useState(false);
-  const [existingLpoId, setExistingLpoId] = useState<number | null>(null);
-  const [existingLpoData, setExistingLpoData] = useState<any>(null);
+  const [existingLpoId, setExistingLpoId] = useState<number | null>(
+    cached?.id ?? null,
+  );
+  const [existingLpoData, setExistingLpoData] = useState<any>(
+    cached?.data ?? null,
+  );
 
   // Invoice file states
-  const [invoiceFiles, setInvoiceFiles] = useState<string[]>([]);
+  const [invoiceFiles, setInvoiceFiles] = useState<string[]>(
+    cached?.invoiceFiles ?? [],
+  );
 
   // Signed LPO file states
-  const [signedLpoFiles, setSignedLpoFiles] = useState<string[]>([]);
+  const [signedLpoFiles, setSignedLpoFiles] = useState<string[]>(
+    cached?.signedLpoFiles ?? [],
+  );
 
   const [quotation, setQuotation] = useState("");
   const [supplierContactPersonName, setSupplierContactPersonName] = useState(
@@ -75,10 +102,15 @@ export default function IssueLPOButton({
   const shAmount = parseFloat(shippingHandling || "0");
   const total = amountAfterDiscount + vatAmount + shAmount;
 
-  // Check for existing LPO on component mount and when mrLines change
+  // Check for existing LPO on component mount and when mrLines change.
+  // Skip the fetch if we already have a cache entry for this header+supplier —
+  // that means we're just toggling between "Show by Item" / "Show by Vendor".
   useEffect(() => {
     if (mrLines.length > 0 && mrLines[0]?.approved_supplier_id) {
-      checkExistingLpo();
+      const key = `${mrHeader.id}-${mrLines[0].approved_supplier_id}`;
+      if (!lpoCheckCache.has(key)) {
+        checkExistingLpo();
+      }
     }
   }, [mrHeader.id, mrLines]);
 
@@ -223,6 +255,7 @@ export default function IssueLPOButton({
   async function checkExistingLpo() {
     try {
       const supplierId = mrLines[0]?.approved_supplier_id;
+      const key = `${mrHeader.id}-${supplierId}`;
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPOByMrHeaderID`,
@@ -243,6 +276,7 @@ export default function IssueLPOButton({
         setExistingLpoId(lpoData.id);
 
         // Fetch full LPO details including lpo_mr_lines
+        let fullLpoData: any = null;
         const detailsRes = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getLPODetails`,
           {
@@ -255,45 +289,67 @@ export default function IssueLPOButton({
         if (detailsRes.ok) {
           const detailsData = await detailsRes.json();
           if (detailsData.success) {
-            setExistingLpoData(detailsData.data);
+            fullLpoData = detailsData.data;
+            setExistingLpoData(fullLpoData);
           }
         }
 
         // Load existing invoice files
+        let parsedInvoiceFiles: string[] = [];
         if (lpoData.invoice_file) {
           try {
-            const parsedFiles =
+            const parsed =
               typeof lpoData.invoice_file === "string"
                 ? JSON.parse(lpoData.invoice_file)
                 : lpoData.invoice_file;
-            setInvoiceFiles(Array.isArray(parsedFiles) ? parsedFiles : []);
+            parsedInvoiceFiles = Array.isArray(parsed) ? parsed : [];
           } catch (error) {
             console.error("Error parsing invoice files:", error);
-            setInvoiceFiles([]);
           }
         }
+        setInvoiceFiles(parsedInvoiceFiles);
 
         // Load existing signed LPO files
+        let parsedSignedFiles: string[] = [];
         if (lpoData.signed_file) {
           try {
-            const parsedFiles =
+            const parsed =
               typeof lpoData.signed_file === "string"
                 ? JSON.parse(lpoData.signed_file)
                 : lpoData.signed_file;
-            setSignedLpoFiles(Array.isArray(parsedFiles) ? parsedFiles : []);
+            parsedSignedFiles = Array.isArray(parsed) ? parsed : [];
           } catch (error) {
             console.error("Error parsing signed LPO files:", error);
-            setSignedLpoFiles([]);
           }
         }
+        setSignedLpoFiles(parsedSignedFiles);
+
+        // Populate / refresh cache
+        lpoCheckCache.set(key, {
+          id: lpoData.id,
+          data: fullLpoData,
+          invoiceFiles: parsedInvoiceFiles,
+          signedLpoFiles: parsedSignedFiles,
+        });
       } else {
         setExistingLpoId(null);
         setExistingLpoData(null);
         setInvoiceFiles([]);
         setSignedLpoFiles([]);
+
+        // Cache the "no LPO" result so remounts also skip the fetch
+        lpoCheckCache.set(key, {
+          id: null,
+          data: null,
+          invoiceFiles: [],
+          signedLpoFiles: [],
+        });
       }
     } catch (error) {
       console.error("Error checking for existing LPO:", error);
+    } finally {
+      // Notify parent that this button's LPO state is fully resolved
+      onCheckDone?.();
     }
   }
 
@@ -378,6 +434,8 @@ export default function IssueLPOButton({
         "success",
       );
       setIsOpen(false);
+      // Invalidate cache so the re-fetch picks up the latest data
+      lpoCheckCache.delete(cacheKey);
       await checkExistingLpo();
       await refresh();
     } else {
@@ -408,12 +466,29 @@ export default function IssueLPOButton({
       supplierTypeLower.includes("marketplace") ||
       supplierTypeLower.includes("online");
 
+    // Cache-syncing wrappers — keep lpoCheckCache in sync whenever files
+    // are updated so view-toggles (which read from cache) see fresh data.
+    const handleInvoiceFilesUpdate = (files: string[]) => {
+      setInvoiceFiles(files);
+      const entry = lpoCheckCache.get(cacheKey);
+      if (entry) lpoCheckCache.set(cacheKey, { ...entry, invoiceFiles: files });
+    };
+
+    const handleSignedFilesUpdate = (files: string[]) => {
+      setSignedLpoFiles(files);
+      const entry = lpoCheckCache.get(cacheKey);
+      if (entry) lpoCheckCache.set(cacheKey, { ...entry, signedLpoFiles: files });
+    };
+
     return (
       <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
         <ViewLPOButton
           lpoID={existingLpoId}
           mrHeader={mrHeader}
-          onRefresh={() => checkExistingLpo()}
+          onRefresh={() => {
+            lpoCheckCache.delete(cacheKey);
+            checkExistingLpo();
+          }}
         />
 
         {/* ✅ Only show Upload Signed LPO for Cash/Local suppliers (NOT credit, NOT marketplace) */}
@@ -429,7 +504,7 @@ export default function IssueLPOButton({
               supplierId={supplierId}
               supplierType={supplierType}
               signedLpoFiles={signedLpoFiles}
-              onFilesUpdate={setSignedLpoFiles}
+              onFilesUpdate={handleSignedFilesUpdate}
               canDelete={canDelete}
             />
           )}
@@ -445,7 +520,7 @@ export default function IssueLPOButton({
               LpoID={existingLpoId}
               supplierId={supplierId}
               invoiceFiles={invoiceFiles}
-              onFilesUpdate={setInvoiceFiles}
+              onFilesUpdate={handleInvoiceFilesUpdate}
               canDelete={canDelete}
             />
           )}
