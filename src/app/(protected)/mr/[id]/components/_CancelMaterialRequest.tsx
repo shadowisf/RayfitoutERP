@@ -137,7 +137,7 @@ export default function CancelMaterialRequestButton({
     5: type === "payment" ? 3 : type === "job" ? 1 : 2, // Request Rejected → back to last valid stage
     11: 10, // Price Approval Rejected → roll back up to Manager Price Approval
     13: 12, // Payment Rejected → roll back up to LPO & Invoice
-    16: 12, // GRN Failed → roll back up to LPO & Invoice (payment stage skipped)
+    16: 17, // GRN Failed → roll back up to Awaiting Delivery or LPO & Invoice
   };
 
   useEffect(() => {
@@ -164,15 +164,17 @@ export default function CancelMaterialRequestButton({
       stagesToShow = progressFlow.slice(0, currentIndex);
     }
 
-    const previousStages = stagesToShow.map((id) => {
-      const departmentId = progressToResponsibleDepartment[id] || 0;
-      return {
-        id,
-        name: allProgressStages[id],
-        department: departmentNames[departmentId] || "",
-        departmentId,
-      };
-    });
+    const previousStages = stagesToShow
+      .filter((id) => id !== 9 && id !== 24) // Hide QS Price Check and Stock Entry from rollback options
+      .map((id) => {
+        const departmentId = progressToResponsibleDepartment[id] || 0;
+        return {
+          id,
+          name: allProgressStages[id],
+          department: departmentNames[departmentId] || "",
+          departmentId,
+        };
+      });
 
     setAvailableStages(previousStages);
 

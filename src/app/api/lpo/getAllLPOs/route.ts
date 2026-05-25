@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const [rows]: any = await db.query(`
@@ -39,13 +41,22 @@ export async function GET() {
          JOIN stocks st ON st.mr_line_id = lml2.mr_line_id
          JOIN inventory inv ON inv.id = st.inventory_item_id
          WHERE lml2.lpo_id = l.id
-        ) AS stock_inventory_items
+        ) AS stock_inventory_items,
+        CASE WHEN (
+          LOWER(TRIM(IFNULL(l.payment_status, ''))) IN ('approved','paid','fully paid','completed','done')
+          OR (l.total > 0 AND ROUND(COALESCE(pay.total_paid, 0), 2) >= ROUND(l.total, 2))
+        ) THEN 1 ELSE 0 END AS is_paid
       FROM lpo l
       JOIN suppliers s ON l.supplier_id = s.id
       JOIN mr_headers mh ON l.mr_header_id = mh.id
       LEFT JOIN projects p ON mh.project_id = p.id
       LEFT JOIN lut_mr_headers_departments d ON mh.department_id = d.id
       LEFT JOIN lut_mr_headers_progress pr ON l.progress_id = pr.id
+      LEFT JOIN (
+        SELECT lpo_id, SUM(amount) AS total_paid
+        FROM lpo_payments
+        GROUP BY lpo_id
+      ) pay ON pay.lpo_id = l.id
       ORDER BY l.created_at DESC
     `);
 

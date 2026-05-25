@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { grn_id } = body;
+
+    if (!grn_id) {
+      return NextResponse.json(
+        { error: "grn_id is required", success: false },
+        { status: 400 },
+      );
+    }
+
+    // Delete lines first (FK constraint), then the GRN header
+    await db.query(`DELETE FROM grn_mr_line WHERE grn_id = ?`, [Number(grn_id)]);
+    await db.query(`DELETE FROM grn WHERE id = ?`, [Number(grn_id)]);
+
+    return NextResponse.json({ success: true, message: "GRN deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting GRN:", error);
+    return NextResponse.json(
+      { error: "Failed to delete GRN", success: false },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

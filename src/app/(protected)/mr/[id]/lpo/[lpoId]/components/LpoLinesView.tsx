@@ -115,6 +115,27 @@ export default function LpoLinesView({
   const [isCheckingLpoInvoices, setIsCheckingLpoInvoices] =
     useState<boolean>(true);
 
+  // Signal NavigationLoader once all client-side checks are done
+  useEffect(() => {
+    if (
+      !isCheckingPaymentStatus &&
+      !isCheckingGrn &&
+      !isCheckingGrnQuantity &&
+      !isCheckingQc &&
+      !isCheckingInventory &&
+      !isCheckingLpoInvoices
+    ) {
+      window.dispatchEvent(new Event("page-client-ready"));
+    }
+  }, [
+    isCheckingPaymentStatus,
+    isCheckingGrn,
+    isCheckingGrnQuantity,
+    isCheckingQc,
+    isCheckingInventory,
+    isCheckingLpoInvoices,
+  ]);
+
   // Total invoice amount
   const [totalInvoiceAmount, setTotalInvoiceAmount] = useState(0);
 
@@ -429,15 +450,20 @@ export default function LpoLinesView({
                       );
 
                       if (correspondingMrLine) {
+                        // Use approved_proposed_quantity if set, otherwise fall back to requested quantity
+                        // (mirrors what the GRN form displays as "TOTAL QTY")
+                        const proposedQty = parseFloat(
+                          String(correspondingMrLine.approved_proposed_quantity),
+                        );
                         const orderedQty =
-                          parseFloat(
-                            String(
-                              correspondingMrLine.approved_proposed_quantity,
-                            ),
-                          ) || 0;
+                          !isNaN(proposedQty) && proposedQty > 0
+                            ? proposedQty
+                            : parseFloat(String(correspondingMrLine.quantity)) || 0;
                         const receivedQty =
                           parseFloat(String(grnLine.received_quantity)) || 0;
-                        return orderedQty !== receivedQty;
+                        // Use epsilon comparison (matching DECIMAL(10,3) precision) to avoid
+                        // false mismatches from floating-point representation differences
+                        return Math.abs(orderedQty - receivedQty) >= 0.001;
                       }
                     }
                     return false;
@@ -903,7 +929,7 @@ export default function LpoLinesView({
                     <th>
                       STOCKS
                       {progressId === 17 && (
-                        <span style={{ color: "red", marginLeft: "3px" }}>
+                        <span style={{ color: "red", marginLeft: "4px", fontWeight:"normal" }}>
                           *
                         </span>
                       )}
@@ -1306,7 +1332,10 @@ export default function LpoLinesView({
       {userInfo?.departmentID === 11 && progressId === 17 && (
         <div className="bottom-nav">
           <div></div>
-          {!isCheckingGrnQuantity && hasGrn && hasGrnQuantityMismatch ? (
+          {!isCheckingGrn &&
+          !isCheckingGrnQuantity &&
+          hasGrn &&
+          hasGrnQuantityMismatch ? (
             <SubmitForLPOResubmissionGRNFailButton
               mrHeaderID={mrHeader.id}
               lpoId={lpoId}
@@ -1318,19 +1347,35 @@ export default function LpoLinesView({
               lpoId={lpoId}
               label="SUBMIT FOR COMPLETION"
               disabled={
-                !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+                isCheckingGrn ||
+                isCheckingGrnQuantity ||
+                !hasGrn ||
+                hasGrnQuantityMismatch ||
+                !allItemsHaveStock()
               }
               style={{
                 opacity:
-                  !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+                  isCheckingGrn ||
+                  isCheckingGrnQuantity ||
+                  !hasGrn ||
+                  hasGrnQuantityMismatch ||
+                  !allItemsHaveStock()
                     ? "0.5"
                     : "1",
                 cursor:
-                  !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+                  isCheckingGrn ||
+                  isCheckingGrnQuantity ||
+                  !hasGrn ||
+                  hasGrnQuantityMismatch ||
+                  !allItemsHaveStock()
                     ? "not-allowed"
                     : "pointer",
                 pointerEvents:
-                  !hasGrn || hasGrnQuantityMismatch || !allItemsHaveStock()
+                  isCheckingGrn ||
+                  isCheckingGrnQuantity ||
+                  !hasGrn ||
+                  hasGrnQuantityMismatch ||
+                  !allItemsHaveStock()
                     ? "none"
                     : "auto",
               }}

@@ -321,6 +321,18 @@ export async function PUT(req: Request) {
     }
 
     if (body.action === "submitLpoForDelivery") {
+      // Fetch delivery_date from DB if not provided in body (e.g. credit supplier skip-to-delivery path)
+      let deliveryDateForNotification = body.delivery_date;
+      if (!deliveryDateForNotification) {
+        const [[lpoRow]]: any = await db.query(
+          `SELECT delivery_date FROM lpo WHERE id = ?`,
+          [Number(body.lpo_id)],
+        );
+        if (lpoRow?.delivery_date) {
+          deliveryDateForNotification = new Date(lpoRow.delivery_date).toLocaleDateString("en-GB");
+        }
+      }
+
       await db.query(`UPDATE lpo SET progress_id = 17 WHERE id = ?`, [
         Number(body.lpo_id),
       ]);
@@ -363,7 +375,7 @@ export async function PUT(req: Request) {
             Number(body.lpo_id),
             deptId,
             "LPO Awaiting Delivery",
-            `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) is awaiting delivery (ETA: ${body.delivery_date})`,
+            `LPO-${String(body.lpo_id).padStart(5, "0")} (MR-${String(body.mr_header_id).padStart(5, "0")}) is awaiting delivery (ETA: ${deliveryDateForNotification ?? "TBD"})`,
           ],
         );
       }

@@ -847,34 +847,8 @@ export async function PUT(req: Request) {
         [body.id, nextProgressId, fromProgress, body.changed_by],
       );
 
-      // Create a single consolidated replacement note for all replaced lines
-      const [replacedLines]: any = await db.query(
-        `SELECT ml.material_description, ml.qs_original_material_description,
-                ml.qs_replace_reason, mc.value AS category_name
-         FROM mr_lines ml
-         JOIN lut_material_categories mc ON mc.id = ml.material_category_id
-         WHERE ml.mr_header_id = ? AND ml.qs_approval_status = 'Replaced'
-           AND ml.qs_original_material_description IS NOT NULL`,
-        [body.id],
-      );
-      if (replacedLines.length > 0) {
-        const noteData = JSON.stringify({
-          type: "qs_replacement_note",
-          items: replacedLines.map((l: any) => ({
-            original: l.qs_original_material_description || "",
-            original_category: l.category_name || "",
-            replacement: l.material_description || "",
-            replacement_category: l.category_name || "",
-            reason: l.qs_replace_reason || "",
-          })),
-        });
-        await db.query(
-          `INSERT INTO mr_header_progress_log
-             (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason)
-           VALUES (?, 2, 2, ?, ?)`,
-          [body.id, body.changed_by, noteData],
-        );
-      }
+      // Replacement notes are inserted per-line when setQSReplaced is called,
+      // so no consolidation step is needed here.
 
       if (isPaymentType) {
         // PR: notify manager for initial approval
@@ -1370,6 +1344,49 @@ export async function PUT(req: Request) {
             body.qs_original_material_description || null,
             currentLine.material_description || null,
           ],
+        );
+
+        // ── Per-line replacement note ──────────────────────────────────────
+        // Look up replacement category / subcategory names by ID so the
+        // RequisitionTimeline popup shows correct labels.
+        let replacementCategoryName = "";
+        let replacementSubcategoryName = "";
+        if (body.replacement_category_id) {
+          const [[catRow]]: any = await db.query(
+            `SELECT value FROM lut_material_categories WHERE id = ?`,
+            [Number(body.replacement_category_id)],
+          );
+          replacementCategoryName = catRow?.value || "";
+        }
+        if (body.replacement_subcategory_id) {
+          const [[subRow]]: any = await db.query(
+            `SELECT value FROM lut_material_subcategories WHERE id = ?`,
+            [Number(body.replacement_subcategory_id)],
+          );
+          replacementSubcategoryName = subRow?.value || "";
+        }
+
+        const noteData = JSON.stringify({
+          type: "qs_replacement_note",
+          items: [
+            {
+              original: body.qs_original_material_description || "",
+              original_category: body.qs_original_category_name || "",
+              original_subcategory: body.qs_original_subcategory_name || "",
+              replacement: body.replacement_description || currentLine.material_description || "",
+              replacement_item_code: body.replacement_item_code || "",
+              replacement_category: replacementCategoryName,
+              replacement_subcategory: replacementSubcategoryName,
+              reason: body.qs_replace_reason || "",
+            },
+          ],
+        });
+
+        await db.query(
+          `INSERT INTO mr_header_progress_log
+             (mr_header_id, progress_id, from_progress_id, changed_by, reject_reason)
+           VALUES (?, 2, 2, ?, ?)`,
+          [currentLine.mr_header_id, body.changed_by || null, noteData],
         );
       }
 

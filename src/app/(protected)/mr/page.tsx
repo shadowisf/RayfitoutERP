@@ -47,6 +47,7 @@ type LpoCard = {
   delivery_date: string;
   total: number;
   payment_status: string;
+  is_paid: 0 | 1;
   created_at: string;
   supplier_name: string;
   requested_by: string;
@@ -63,6 +64,55 @@ type LpoCard = {
 // Progress IDs that use LPO cards instead of MR cards
 // TEMPORARILY DISABLED QC: removed 21 (QC Check)
 const LPO_STAGE_IDS = [13, 14, 15, 16, 17, 24, 25];
+
+function getDeliveryDaysLeft(deliveryDate: string): {
+  text: string;
+  style: React.CSSProperties;
+} {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(deliveryDate);
+  d.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  let text = "";
+  let backgroundColor = "rgba(231, 231, 231, 1)";
+  let color = "black";
+
+  if (diff > 0) {
+    text = `${diff}d left`;
+  } else if (diff === 0) {
+    text = "Due today";
+    backgroundColor = "rgba(255, 181, 181, 1)";
+    color = "rgba(248, 77, 77, 1)";
+  } else {
+    text = `${Math.abs(diff)}d overdue`;
+    backgroundColor = "rgba(175, 61, 61, 1)";
+    color = "white";
+  }
+
+  if (diff > 0 && diff <= 1) {
+    backgroundColor = "rgba(255, 181, 181, 1)";
+    color = "rgba(248, 77, 77, 1)";
+  } else if (diff > 1 && diff <= 3) {
+    backgroundColor = "rgba(255, 250, 189, 1)";
+    color = "rgba(134, 83, 47, 1)";
+  }
+
+  return {
+    text,
+    style: {
+      backgroundColor,
+      color,
+      padding: "2px 8px",
+      borderRadius: "50px",
+      fontSize: "10px",
+      fontWeight: "600",
+      whiteSpace: "nowrap" as const,
+      display: "inline-block",
+    },
+  };
+}
 
 export default function MR() {
   const { userInfo } = useAuth();
@@ -1514,13 +1564,22 @@ export default function MR() {
               </div>
             </div>
 
-            {lpoCard.progress_id !== 25 && (
-              <div style={{ alignSelf: "flex-end" }}>
+            <div style={{ alignSelf: "flex-end", display: "flex", alignItems: "flex-end", gap: "6px" }}>
+              {Number(lpoCard.is_paid) !== 1 && (
+                <img
+                  src="/icons/mr-card-payment.svg"
+                  width="23"
+                  height="16"
+                  alt="Payment pending"
+                  title="Payment pending"
+                />
+              )}
+              {lpoCard.progress_id !== 25 && (
                 <svg width="15" height="17" viewBox="0 0 15 17" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M0 17V0H9L9.4 2H15V12H8L7.6 10H2V17H0Z" fill={getFlagColor(dur.hoursDecimal, lpoCard.progress_id)} />
                 </svg>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <div>
@@ -1575,12 +1634,18 @@ export default function MR() {
             </div>
           </div>
 
-          {lpoCard.progress_id === 17 && lpoCard.delivery_date && (
-            <div>
-              <small>DELIVERY ETA</small>
-              <h3>{new Date(lpoCard.delivery_date).toLocaleDateString("en-GB")}</h3>
-            </div>
-          )}
+          {lpoCard.progress_id === 17 && lpoCard.delivery_date && (() => {
+            const { text, style } = getDeliveryDaysLeft(lpoCard.delivery_date);
+            return (
+              <div>
+                <small>DELIVERY ETA</small>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <h3 style={{ margin: 0 }}>{new Date(lpoCard.delivery_date).toLocaleDateString("en-GB")}</h3>
+                  <span style={style}>{text}</span>
+                </div>
+              </div>
+            );
+          })()}
 
           <a
             href={`/mr/${lpoCard.mr_header_id}/lpo/${lpoCard.id}`}
@@ -3170,16 +3235,21 @@ export default function MR() {
                                       </div>
 
                                       {lpoCard.progress_id === 17 &&
-                                        lpoCard.delivery_date && (
-                                          <div>
-                                            <small>DELIVERY ETA</small>
-                                            <h3>
-                                              {new Date(
-                                                lpoCard.delivery_date,
-                                              ).toLocaleDateString("en-GB")}
-                                            </h3>
-                                          </div>
-                                        )}
+                                        lpoCard.delivery_date &&
+                                        (() => {
+                                          const { text, style } = getDeliveryDaysLeft(lpoCard.delivery_date);
+                                          return (
+                                            <div>
+                                              <small>DELIVERY ETA</small>
+                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                <h3 style={{ margin: 0 }}>
+                                                  {new Date(lpoCard.delivery_date).toLocaleDateString("en-GB")}
+                                                </h3>
+                                                <span style={style}>{text}</span>
+                                              </div>
+                                            </div>
+                                          );
+                                        })()}
 
                                       <Button
                                         componentType="link"
