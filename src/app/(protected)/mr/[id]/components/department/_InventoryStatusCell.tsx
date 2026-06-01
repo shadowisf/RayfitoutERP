@@ -8,6 +8,7 @@ export type InventoryMatch = {
   inventory_description: string;
   unit: string;
   total_qty: number;
+  locations: string[];
   match_type: "exact" | "similar";
 };
 
@@ -162,9 +163,11 @@ export default function InventoryStatusCell({ matches }: Props) {
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "7px", flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: "11px", fontWeight: 500, color: "#111", whiteSpace: "nowrap" }}>
-                  {m.inventory_description} ({m.total_qty} {m.unit})
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                  <span style={{ fontSize: "11px", fontWeight: 500, color: "#111", whiteSpace: "nowrap" }}>
+                    {m.inventory_description} ({m.total_qty} {m.unit})
+                  </span>
+                </div>
                 <a href={`/inventory/${m.inventory_item_id}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
                   <ExternalLinkIcon color="#111" />
                 </a>

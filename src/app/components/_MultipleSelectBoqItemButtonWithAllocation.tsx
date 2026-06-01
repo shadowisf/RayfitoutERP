@@ -60,7 +60,6 @@ function SkeletonBlock({
 }
 
 function BoqSkeletonLayout() {
-  // Varying widths for item name rows (2 lines each)
   const tableRows: [string, string][] = [
     ["72%", "44%"],
     ["55%", "30%"],
@@ -88,6 +87,7 @@ function BoqSkeletonLayout() {
               border: "1px solid rgba(223,223,223,1)",
               backgroundColor: "rgba(252,252,252,1)",
               flexShrink: 0,
+              ...SHIMMER,
             }}
           />
         </div>
@@ -122,12 +122,9 @@ function BoqSkeletonLayout() {
             </colgroup>
             <thead>
               <tr>
-                {["", "#", "ITEM", "QUANTITY", "RATE", "TOTAL PRICE", "ALLOCATED QTY", "ATTACHMENTS"].map((col, i) => (
-                  <th
-                    key={i}
-                    style={{ padding: "8px 10px", borderBottom: "1px solid rgba(220,220,220,1)", textAlign: "left" }}
-                  >
-                    {col && <SkeletonBlock w={col === "#" ? "16px" : col === "" ? "16px" : "60%"} h={10} />}
+                {[0, 16, 60, 55, 45, 60, 65, 55].map((w, i) => (
+                  <th key={i} style={{ padding: "8px 10px", borderBottom: "1px solid rgba(220,220,220,1)" }}>
+                    {w > 0 && <SkeletonBlock w={`${w}%`} h={10} />}
                   </th>
                 ))}
               </tr>
@@ -135,9 +132,9 @@ function BoqSkeletonLayout() {
             <tbody>
               {tableRows.map(([nameW, subW], i) => (
                 <tr key={i} style={{ borderBottom: "1px solid rgba(239,239,239,1)" }}>
-                  {/* checkbox */}
+                  {/* + / × circle */}
                   <td style={{ padding: "14px 10px" }}>
-                    <div style={{ width: 16, height: 16, borderRadius: 3, border: "1.5px solid rgba(200,200,200,1)", backgroundColor: "white" }} />
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", ...SHIMMER }} />
                   </td>
                   {/* # */}
                   <td style={{ padding: "14px 10px" }}>
@@ -188,15 +185,10 @@ function BoqSkeletonLayout() {
           boxSizing: "border-box",
         }}
       >
-        {/* Header label */}
         <SkeletonBlock w="55%" h={11} style={{ marginBottom: "16px" }} />
-
-        {/* Item name block */}
         <SkeletonBlock w="90%" h={14} style={{ marginBottom: "6px" }} />
         <SkeletonBlock w="65%" h={14} style={{ marginBottom: "6px" }} />
         <SkeletonBlock w="38%" h={10} style={{ marginBottom: "20px" }} />
-
-        {/* Remaining / Allocated rows */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
           {[["40%", "60%"], ["38%", "55%"]].map(([lW, vW], i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -205,8 +197,6 @@ function BoqSkeletonLayout() {
             </div>
           ))}
         </div>
-
-        {/* Top Allocations section */}
         <SkeletonBlock w="50%" h={11} style={{ marginBottom: "10px" }} />
         <SkeletonBlock w="80%" h={9} style={{ marginBottom: "4px" }} />
         <SkeletonBlock w="70%" h={9} />
@@ -343,7 +333,7 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
     new Set(),
   );
   const [filterGroupSearch, setFilterGroupSearch] = useState("");
-  const [isFetchingItems, setIsFetchingItems] = useState(true);
+  const [isFetchingItems, setIsFetchingItems] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Scroll functions for category tabs
@@ -533,9 +523,10 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
     setFilteredGroupedBoqLines(filtered);
   }, [searchQuery, groupedBoqLines, filterCategories, filterSubCategories]);
 
-  // Fetch BOQ lines when the modal opens
+  // Fetch BOQ lines when the modal opens (lazy — skip if already loaded)
   useEffect(() => {
     if (!isOpen || !projectID || projectID <= 0) return;
+    if (boqLineValues.length > 0) return; // already loaded, don't re-fetch
     setIsFetchingItems(true);
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
@@ -606,7 +597,6 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
   // Reset temp selection and search when form opens; pre-populate allocations in edit mode
   useEffect(() => {
     if (!isOpen) return;
-    setIsFetchingItems(true);
     setTempSelectedBoqIDs(currentBoqLineIDs || []);
     setSearchQuery("");
     setActiveCategoryTab("");
@@ -1161,7 +1151,7 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
           </div>
         ) : undefined
       }
-      haveLoadingState
+      haveLoadingState={true}
     >
       {isFetchingItems ? (
         <BoqSkeletonLayout />

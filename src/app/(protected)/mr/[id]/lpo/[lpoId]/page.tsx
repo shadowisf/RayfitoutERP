@@ -577,6 +577,11 @@ export default async function LpoWithID({
         mrHeaderId={Number(id)}
         currentProgressId={lpo.progress_id}
         lpoId={Number(lpoId)}
+        skipQsReview={
+          !!mrHeader.skip_approvals ||
+          mrHeader.department_id === 8 ||
+          mrHeader.department_id === 16
+        }
       />
 
       <br />

@@ -189,17 +189,6 @@ function SkeletonLayout() {
                 paddingBottom: "5px",
               }}
             >
-              {/* checkbox placeholder */}
-              <div
-                style={{
-                  width: "13px",
-                  height: "13px",
-                  flexShrink: 0,
-                  borderRadius: "3px",
-                  border: "1.5px solid rgba(200,200,200,1)",
-                  backgroundColor: "white",
-                }}
-              />
               <SkeletonBlock w={row.w} h={row.indent ? 10 : 11} />
               {/* count badge placeholder */}
               <div

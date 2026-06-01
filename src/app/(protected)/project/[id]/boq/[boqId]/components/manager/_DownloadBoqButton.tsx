@@ -24,6 +24,7 @@ type DownloadBoqButtonProps = {
   mrHeader?: MrHeader;
   itemName?: string;
   itemId?: number;
+  iconOnly?: boolean;
 };
 
 export default function DownloadBoqButton({
@@ -33,6 +34,7 @@ export default function DownloadBoqButton({
   mrHeader,
   itemName,
   itemId,
+  iconOnly = false,
 }: DownloadBoqButtonProps) {
   const { userInfo } = useAuth();
 
@@ -338,13 +340,19 @@ export default function DownloadBoqButton({
     <>
       <Button
         componentType={"button"}
-        bgColor={"white"}
-        borderColor={"black"}
+        bgColor={iconOnly ? "black" : "white"}
+        borderColor={iconOnly ? "black" : "black"}
         textColor={"black"}
         onClick={handleOpen}
+        style={iconOnly ? { padding: "7px 7px", flexShrink: 0 } : undefined}
       >
-        {isReference ? "EXPORT BOQ REFERENCE" : "EXPORT BOQ IN GROUPS"}
-        <img src={downloadIcon} alt="download" />
+        {!iconOnly &&
+          (isReference ? "EXPORT BOQ REFERENCE" : "EXPORT BOQ IN GROUPS")}
+        <img
+          src={downloadIcon}
+          alt="download"
+          style={iconOnly ? { filter: "invert(1)" } : {}}
+        />
       </Button>
 
       {isOpen && (

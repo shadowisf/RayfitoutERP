@@ -13,6 +13,16 @@ import CreateSupplierButton from "../../../../vendor/components/_CreateSupplierB
 import { useAuth } from "@/app/context/AuthContext";
 import InputItem from "@/app/components/InputItem";
 import { useRefresh } from "@/app/context/RefreshContext";
+import { formatPriceAED } from "@/lib/formatPrice";
+
+type InventoryMatch = {
+  inventory_item_id: number;
+  inventory_description: string;
+  unit: string;
+  total_qty: number;
+  locations: string[];
+  match_type: "exact" | "similar";
+};
 
 type SupplierQuotation = {
   id?: number;
@@ -100,6 +110,16 @@ export default function SupplierAndQuotationButton({
   );
   const [globalPriceCount, setGlobalPriceCount] = useState<number>(0);
 
+  // Header panel: price stats + inventory matches
+  const [priceStats, setPriceStats] = useState<{
+    lowest_price: number | null;
+    avg_price: number | null;
+    prev_price: number | null;
+  } | null>(null);
+  const [inventoryMatches, setInventoryMatches] = useState<
+    InventoryMatch[] | null
+  >(null);
+
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
     if (isNaN(num)) return "";
@@ -145,6 +165,7 @@ export default function SupplierAndQuotationButton({
 
   useEffect(() => {
     if (!isOpen) return;
+
     async function fetchGlobalLowestPrice() {
       try {
         const res = await fetch(
@@ -161,7 +182,46 @@ export default function SupplierAndQuotationButton({
         console.error("Failed to fetch global lowest price:", err);
       }
     }
+
+    async function fetchPriceStats() {
+      try {
+        const encoded = encodeURIComponent(mrLine.material_description);
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialPriceStats?materials=${encoded}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setPriceStats(data[mrLine.material_description] ?? null);
+        }
+      } catch {
+        setPriceStats(null);
+      }
+    }
+
+    async function fetchInventoryMatches() {
+      setInventoryMatches(null); // loading state
+      try {
+        const encoded = encodeURIComponent(mrLine.material_description);
+        const encodedId = encodeURIComponent(
+          String(mrLine.predefined_item_id ?? 0),
+        );
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getInventoryStatus?materials=${encoded}&predefined_ids=${encodedId}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setInventoryMatches(data[mrLine.material_description] ?? []);
+        } else {
+          setInventoryMatches([]);
+        }
+      } catch {
+        setInventoryMatches([]);
+      }
+    }
+
     fetchGlobalLowestPrice();
+    fetchPriceStats();
+    fetchInventoryMatches();
   }, [isOpen, mrLine.id]);
 
   async function checkExistingQuotations() {
@@ -835,41 +895,206 @@ export default function SupplierAndQuotationButton({
               setIsOpen={setIsOpen}
               handleSubmit={handleSupplierAndQuotationSubmit}
               addButtonLabel="CONFIRM"
-              style={{ minWidth: "95dvw" }}
+              style={{ width: "95dvw", height: "95dvh" }}
             >
               <>
-                {/* Info card */}
+                {/* Header: item info (left) + inventory status (right) */}
                 <div
                   style={{
-                    border: "1px solid rgba(239,239,239,1)",
-                    borderRadius: "10px",
-                    padding: "18px 24px",
-                    display: "flex",
-                    gap: "48px",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1.5fr",
+                    gap: "24px",
                     marginBottom: "24px",
-                    flexWrap: "wrap",
+                    alignItems: "flex-start",
                   }}
                 >
-                  <div>
-                    <small>MR NUMBER</small>
-                    <h2>
-                      MR-
-                      {mrHeader.identifier ||
-                        String(mrHeader.id).toString().padStart(5, "0")}
+                  {/* Left: item info + price stats */}
+                  <div
+                    style={{
+                      backgroundColor: "rgba(248,248,248,1)",
+                      borderRadius: "10px",
+                      padding: "18px 24px",
+                    }}
+                  >
+                    <h2
+                      style={{
+                        margin: "4px 0 0",
+                        fontSize: "16px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {mrLine.material_description}
+                      {mrLine.quantity
+                        ? ` • ${formatNumber(mrLine.quantity)} ${mrLine.unit}`
+                        : ""}
                     </h2>
+                    <div style={{ marginBottom: "14px" }}>
+                      {[mrLine.material_category, mrLine.material_subcategory]
+                        .filter(Boolean)
+                        .join(" / ") && (
+                        <small style={{ color: "rgba(120,120,120,1)" }}>
+                          {[
+                            mrLine.material_category,
+                            mrLine.material_subcategory,
+                          ]
+                            .filter(Boolean)
+                            .join(" / ")}
+                        </small>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "32px",
+                        marginTop: "50px",
+                      }}
+                    >
+                      {(
+                        [
+                          {
+                            label: "LOWEST PRICE",
+                            value: priceStats?.lowest_price,
+                          },
+                          { label: "AVG. PRICE", value: priceStats?.avg_price },
+                          {
+                            label: "PREV. PRICE",
+                            value: priceStats?.prev_price,
+                          },
+                        ] as const
+                      ).map(({ label, value }) => (
+                        <div key={label}>
+                          <small>{label}</small>
+                          <h3>
+                            {value != null ? formatPriceAED(value) : "N/A"}
+                          </h3>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <small>PROJECT</small>
-                    <h2>{mrHeader.project_name || "—"}</h2>
-                  </div>
-                  <div>
-                    <small>ITEM(S)</small>
-                    <h2>{mrLine.material_description}</h2>
-                  </div>
-                  <div>
-                    <small>QUOTED BY</small>
-                    <h2>{userInfo?.name}</h2>
-                  </div>
+
+                  {/* Right: inventory status table */}
+                  <table className="items-table fixed-layout">
+                    <colgroup>
+                      <col />
+                      <col style={{ width: "150px" }} />
+                      <col style={{ width: "225px" }} />
+                      <col style={{ width: "175px" }} />
+                    </colgroup>
+                    <thead>
+                      <tr style={{ backgroundColor: "rgba(247,247,247,1)" }}>
+                        {[
+                          "INVENTORY STATUS",
+                          "QTY AVAILABLE",
+                          "LOCATION",
+                          "STATUS",
+                        ].map((h) => (
+                          <th key={h}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inventoryMatches === null ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            style={{
+                              padding: "14px",
+                              color: "rgba(150,150,150,1)",
+                              fontSize: "12px",
+                            }}
+                          >
+                            Loading…
+                          </td>
+                        </tr>
+                      ) : inventoryMatches.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            style={{
+                              padding: "14px",
+                              color: "rgba(150,150,150,1)",
+                              fontSize: "12px",
+                            }}
+                          >
+                            No inventory matches found
+                          </td>
+                        </tr>
+                      ) : (
+                        <>
+                          {inventoryMatches.slice(0, 3).map((m) => (
+                            <tr
+                              key={m.inventory_item_id}
+                              style={{
+                                borderBottom: "1px solid rgba(239,239,239,1)",
+                              }}
+                            >
+                              <td>
+                                <a
+                                  href={`/inventory/${m.inventory_item_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: "rgba(37,150,190,1)",
+                                    fontWeight: 600,
+                                    textDecoration: "none",
+                                  }}
+                                >
+                                  {m.inventory_description}
+                                </a>
+                              </td>
+                              <td>
+                                {m.total_qty} {m.unit}
+                              </td>
+                              <td>
+                                {m.locations && m.locations.length > 0
+                                  ? m.locations.join(" + ")
+                                  : "—"}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "3px 10px",
+                                    borderRadius: "50px",
+                                    fontSize: "11px",
+                                    fontWeight: 600,
+                                    backgroundColor:
+                                      m.match_type === "exact"
+                                        ? "rgba(6,95,70,1)"
+                                        : "rgba(209,250,229,1)",
+                                    color:
+                                      m.match_type === "exact"
+                                        ? "rgba(209,250,229,1)"
+                                        : "rgba(6,95,70,1)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {m.match_type === "exact"
+                                    ? "Exact Match"
+                                    : "Similar Match"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {inventoryMatches.length > 3 && (
+                            <tr>
+                              <td
+                                colSpan={4}
+                                style={{
+                                  padding: "8px 14px",
+                                  color: "rgba(37,150,190,1)",
+                                  fontSize: "11px",
+                                }}
+                              >
+                                …and {inventoryMatches.length - 3} more match
+                                {inventoryMatches.length - 3 !== 1 ? "es" : ""}
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
 
                 <h4 style={{ marginBottom: "16px" }}>
@@ -883,14 +1108,14 @@ export default function SupplierAndQuotationButton({
                   <colgroup>
                     <col style={{ width: "75px" }} />
                     <col style={{ width: "225px" }} />
+                    <col style={{ width: "225px" }} />
                     <col />
-                    <col style={{ width: "150px" }} />
                     <col style={{ width: "275px" }} />
                     <col style={{ width: "225px" }} />
                     <col style={{ width: "225px" }} />
-                    <col style={{ width: "125px" }} />
-                    <col style={{ width: "125px" }} />
-                    <col style={{ width: "100px" }} />
+                    <col />
+                    <col />
+                    <col />
                   </colgroup>
                   <thead>
                     <tr>
@@ -916,14 +1141,14 @@ export default function SupplierAndQuotationButton({
                         const totalVal = parseFloat(
                           quotation.total_price || "",
                         );
-                        const totalAlert =
+                        const totalAlert: { type: "lowest" | "higher"; pct: number } | null =
                           !isNaN(totalVal) &&
                           totalVal > 0 &&
                           globalLowestPrice !== null &&
                           globalPriceCount > 0
                             ? totalVal <= globalLowestPrice
-                              ? "lowest"
-                              : `+${Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100)}% vs lowest`
+                              ? { type: "lowest", pct: 0 }
+                              : { type: "higher", pct: Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100) }
                             : null;
 
                         const hasFile =
@@ -1007,6 +1232,7 @@ export default function SupplierAndQuotationButton({
                                   display: "flex",
                                   alignItems: "center",
                                   gap: "8px",
+                                  minWidth: 0,
                                 }}
                               >
                                 {hasFile ? (
@@ -1022,6 +1248,8 @@ export default function SupplierAndQuotationButton({
                                       height: "40px",
                                       boxSizing: "border-box",
                                       backgroundColor: "white",
+                                      flex: 1,
+                                      minWidth: 0,
                                     }}
                                   >
                                     <div
@@ -1030,6 +1258,8 @@ export default function SupplierAndQuotationButton({
                                         alignItems: "center",
                                         gap: "10px",
                                         overflow: "hidden",
+                                        minWidth: 0,
+                                        flex: 1,
                                       }}
                                     >
                                       {isImage ? (
@@ -1266,29 +1496,29 @@ export default function SupplierAndQuotationButton({
                               {totalAlert && (
                                 <div
                                   style={{
-                                    height: 0,
-                                    overflow: "visible",
-                                    position: "relative",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    marginTop: "4px",
+                                    whiteSpace: "nowrap",
                                   }}
                                 >
-                                  <div
+                                  <img
+                                    src={totalAlert.type === "lowest" ? "/icons/check-green.svg" : "/icons/warning.svg"}
+                                    alt={totalAlert.type}
+                                    style={{ width: "11px", height: "11px", flexShrink: 0 }}
+                                  />
+                                  <span
                                     style={{
-                                      position: "absolute",
-                                      top: "4px",
-                                      left: 0,
                                       fontSize: "10px",
                                       fontWeight: 600,
-                                      whiteSpace: "nowrap",
-                                      color:
-                                        totalAlert === "lowest"
-                                          ? "rgba(0,163,93,1)"
-                                          : "rgba(220,38,38,1)",
+                                      color: totalAlert.type === "lowest" ? "rgba(0,163,93,1)" : "rgba(220,38,38,1)",
                                     }}
                                   >
-                                    {totalAlert === "lowest"
-                                      ? "Lowest ✓"
-                                      : totalAlert}
-                                  </div>
+                                    {totalAlert.type === "lowest"
+                                      ? "Lowest Price"
+                                      : `+${totalAlert.pct}% higher than lowest price`}
+                                  </span>
                                 </div>
                               )}
                             </td>

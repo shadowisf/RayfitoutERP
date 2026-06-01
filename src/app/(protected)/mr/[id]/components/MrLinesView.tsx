@@ -430,11 +430,10 @@ export default function MrLinesView({
         }
       }
     }
-    return [...seen].filter(
-      (id) => !lpoCheckCache.has(`${mrHeader.id}-${id}`),
-    ).length;
-  // Computed once on mount — mrLines and mrHeader.id don't change.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return [...seen].filter((id) => !lpoCheckCache.has(`${mrHeader.id}-${id}`))
+      .length;
+    // Computed once on mount — mrLines and mrHeader.id don't change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [lpoButtonsDoneCount, setLpoButtonsDoneCount] = useState(0);
@@ -3063,7 +3062,9 @@ export default function MrLinesView({
                       mrHeader.progress_id === 1 ? (
                         <MultipleSelectBoqItemButtonWithAllocation
                           projectID={mrHeader.project_id}
-                          onSelectBoq={(ids, _, __, allocatedQtys) => saveInlineBoq(item, ids, allocatedQtys)}
+                          onSelectBoq={(ids, _, __, allocatedQtys) =>
+                            saveInlineBoq(item, ids, allocatedQtys)
+                          }
                           currentBoqLineIDs={
                             item.boq_line_ids
                               ? String(item.boq_line_ids)
@@ -3602,11 +3603,7 @@ export default function MrLinesView({
                                                 });
                                                 setSelectedDraftItemIds(newSet);
                                               }}
-                                              style={{
-                                                cursor: "pointer",
-                                                accentColor:
-                                                  "rgba(0, 163, 93, 1)",
-                                              }}
+                                              className="manager-checkbox"
                                             />
                                           </th>
                                         )}
@@ -3631,11 +3628,7 @@ export default function MrLinesView({
                                               });
                                               setSelectedItemIds(newSet);
                                             }}
-                                            style={{
-                                              cursor: "pointer",
-                                              accentColor:
-                                                "rgba(0, 163, 93, 1)",
-                                            }}
+                                            className="manager-checkbox"
                                           />
                                         </th>
                                       )}
@@ -3664,11 +3657,7 @@ export default function MrLinesView({
                                                 newSet,
                                               );
                                             }}
-                                            style={{
-                                              cursor: "pointer",
-                                              accentColor:
-                                                "rgba(0, 163, 93, 1)",
-                                            }}
+                                            className="manager-checkbox"
                                           />
                                         </th>
                                       )}
@@ -3695,11 +3684,7 @@ export default function MrLinesView({
                                               });
                                               setSelectedManagerItemIds(newSet);
                                             }}
-                                            style={{
-                                              cursor: "pointer",
-                                              accentColor:
-                                                "rgba(0, 163, 93, 1)",
-                                            }}
+                                            className="manager-checkbox"
                                           />
                                         </th>
                                       )}
@@ -3940,11 +3925,7 @@ export default function MrLinesView({
                                                         newSet,
                                                       );
                                                     }}
-                                                    style={{
-                                                      cursor: "pointer",
-                                                      accentColor:
-                                                        "rgba(0, 163, 93, 1)",
-                                                    }}
+                                                    className="manager-checkbox"
                                                   />
                                                 </td>
                                               )}
@@ -3965,11 +3946,7 @@ export default function MrLinesView({
                                                     else newSet.delete(item.id);
                                                     setSelectedItemIds(newSet);
                                                   }}
-                                                  style={{
-                                                    cursor: "pointer",
-                                                    accentColor:
-                                                      "rgba(0, 163, 93, 1)",
-                                                  }}
+                                                  className="manager-checkbox"
                                                 />
                                               </td>
                                             )}
@@ -3992,11 +3969,7 @@ export default function MrLinesView({
                                                       newSet,
                                                     );
                                                   }}
-                                                  style={{
-                                                    cursor: "pointer",
-                                                    accentColor:
-                                                      "rgba(0, 163, 93, 1)",
-                                                  }}
+                                                  className="manager-checkbox"
                                                 />
                                               </td>
                                             )}
@@ -4019,11 +3992,7 @@ export default function MrLinesView({
                                                       newSet,
                                                     );
                                                   }}
-                                                  style={{
-                                                    cursor: "pointer",
-                                                    accentColor:
-                                                      "rgba(0, 163, 93, 1)",
-                                                  }}
+                                                  className="manager-checkbox"
                                                 />
                                               </td>
                                             )}
@@ -4249,8 +4218,17 @@ export default function MrLinesView({
                                                     projectID={
                                                       mrHeader.project_id
                                                     }
-                                                    onSelectBoq={(ids, _, __, allocatedQtys) =>
-                                                      saveInlineBoq(item, ids, allocatedQtys)
+                                                    onSelectBoq={(
+                                                      ids,
+                                                      _,
+                                                      __,
+                                                      allocatedQtys,
+                                                    ) =>
+                                                      saveInlineBoq(
+                                                        item,
+                                                        ids,
+                                                        allocatedQtys,
+                                                      )
                                                     }
                                                     currentBoqLineIDs={
                                                       item.boq_line_ids
@@ -4271,9 +4249,16 @@ export default function MrLinesView({
                                                     mrLineUnit={item.unit}
                                                     mrLineId={item.id}
                                                     disabled={
-                                                      !(inlineQty[item.id] !== undefined
-                                                        ? Number(inlineQty[item.id].replace(/,/g, ""))
-                                                        : Number(item.quantity)) ||
+                                                      !(inlineQty[item.id] !==
+                                                      undefined
+                                                        ? Number(
+                                                            inlineQty[
+                                                              item.id
+                                                            ].replace(/,/g, ""),
+                                                          )
+                                                        : Number(
+                                                            item.quantity,
+                                                          )) ||
                                                       !item.unit ||
                                                       item.unit === "N/A"
                                                     }
@@ -5418,8 +5403,17 @@ export default function MrLinesView({
                                                         projectID={
                                                           mrHeader.project_id
                                                         }
-                                                        onSelectBoq={(ids, _, __, allocatedQtys) =>
-                                                          saveInlineBoq(item, ids, allocatedQtys)
+                                                        onSelectBoq={(
+                                                          ids,
+                                                          _,
+                                                          __,
+                                                          allocatedQtys,
+                                                        ) =>
+                                                          saveInlineBoq(
+                                                            item,
+                                                            ids,
+                                                            allocatedQtys,
+                                                          )
                                                         }
                                                         currentBoqLineIDs={
                                                           item.boq_line_ids
@@ -5440,9 +5434,20 @@ export default function MrLinesView({
                                                         mrLineUnit={item.unit}
                                                         mrLineId={item.id}
                                                         disabled={
-                                                          !(inlineQty[item.id] !== undefined
-                                                            ? Number(inlineQty[item.id].replace(/,/g, ""))
-                                                            : Number(item.quantity)) ||
+                                                          !(inlineQty[
+                                                            item.id
+                                                          ] !== undefined
+                                                            ? Number(
+                                                                inlineQty[
+                                                                  item.id
+                                                                ].replace(
+                                                                  /,/g,
+                                                                  "",
+                                                                ),
+                                                              )
+                                                            : Number(
+                                                                item.quantity,
+                                                              )) ||
                                                           !item.unit ||
                                                           item.unit === "N/A"
                                                         }
@@ -5454,7 +5459,10 @@ export default function MrLinesView({
                                                           mrHeader.project_id
                                                         }
                                                         onSelectBoq={(ids) =>
-                                                          saveInlineBoq(item, ids)
+                                                          saveInlineBoq(
+                                                            item,
+                                                            ids,
+                                                          )
                                                         }
                                                         currentBoqLineIDs={
                                                           item.boq_line_ids
@@ -5753,10 +5761,7 @@ export default function MrLinesView({
                                             });
                                             setSelectedDraftItemIds(newSet);
                                           }}
-                                          style={{
-                                            cursor: "pointer",
-                                            accentColor: "rgba(0, 163, 93, 1)",
-                                          }}
+                                          className="manager-checkbox"
                                         />
                                       </th>
                                     )}
@@ -5781,10 +5786,7 @@ export default function MrLinesView({
                                           });
                                           setSelectedItemIds(newSet);
                                         }}
-                                        style={{
-                                          cursor: "pointer",
-                                          accentColor: "rgba(0, 163, 93, 1)",
-                                        }}
+                                        className="manager-checkbox"
                                       />
                                     </th>
                                   )}
@@ -5811,10 +5813,7 @@ export default function MrLinesView({
                                           });
                                           setSelectedProcurementItemIds(newSet);
                                         }}
-                                        style={{
-                                          cursor: "pointer",
-                                          accentColor: "rgba(0, 163, 93, 1)",
-                                        }}
+                                        className="manager-checkbox"
                                       />
                                     </th>
                                   )}
@@ -5839,10 +5838,7 @@ export default function MrLinesView({
                                           });
                                           setSelectedManagerItemIds(newSet);
                                         }}
-                                        style={{
-                                          cursor: "pointer",
-                                          accentColor: "rgba(0, 163, 93, 1)",
-                                        }}
+                                        className="manager-checkbox"
                                       />
                                     </th>
                                   )}
@@ -6077,11 +6073,7 @@ export default function MrLinesView({
                                                     newSet,
                                                   );
                                                 }}
-                                                style={{
-                                                  cursor: "pointer",
-                                                  accentColor:
-                                                    "rgba(0, 163, 93, 1)",
-                                                }}
+                                                className="manager-checkbox"
                                               />
                                             </td>
                                           )}
@@ -6101,11 +6093,7 @@ export default function MrLinesView({
                                                 else newSet.delete(item.id);
                                                 setSelectedItemIds(newSet);
                                               }}
-                                              style={{
-                                                cursor: "pointer",
-                                                accentColor:
-                                                  "rgba(0, 163, 93, 1)",
-                                              }}
+                                              className="manager-checkbox"
                                             />
                                           </td>
                                         )}
@@ -6127,11 +6115,7 @@ export default function MrLinesView({
                                                   newSet,
                                                 );
                                               }}
-                                              style={{
-                                                cursor: "pointer",
-                                                accentColor:
-                                                  "rgba(0, 163, 93, 1)",
-                                              }}
+                                              className="manager-checkbox"
                                             />
                                           </td>
                                         )}
@@ -6154,11 +6138,7 @@ export default function MrLinesView({
                                                   newSet,
                                                 );
                                               }}
-                                              style={{
-                                                cursor: "pointer",
-                                                accentColor:
-                                                  "rgba(0, 163, 93, 1)",
-                                              }}
+                                              className="manager-checkbox"
                                             />
                                           </td>
                                         )}
@@ -6380,8 +6360,17 @@ export default function MrLinesView({
                                             mrHeader.progress_id === 1 ? (
                                               <MultipleSelectBoqItemButtonWithAllocation
                                                 projectID={mrHeader.project_id}
-                                                onSelectBoq={(ids, _, __, allocatedQtys) =>
-                                                  saveInlineBoq(item, ids, allocatedQtys)
+                                                onSelectBoq={(
+                                                  ids,
+                                                  _,
+                                                  __,
+                                                  allocatedQtys,
+                                                ) =>
+                                                  saveInlineBoq(
+                                                    item,
+                                                    ids,
+                                                    allocatedQtys,
+                                                  )
                                                 }
                                                 currentBoqLineIDs={
                                                   item.boq_line_ids
@@ -6398,8 +6387,13 @@ export default function MrLinesView({
                                                 mrLineUnit={item.unit}
                                                 mrLineId={item.id}
                                                 disabled={
-                                                  !(inlineQty[item.id] !== undefined
-                                                    ? Number(inlineQty[item.id].replace(/,/g, ""))
+                                                  !(inlineQty[item.id] !==
+                                                  undefined
+                                                    ? Number(
+                                                        inlineQty[
+                                                          item.id
+                                                        ].replace(/,/g, ""),
+                                                      )
                                                     : Number(item.quantity)) ||
                                                   !item.unit ||
                                                   item.unit === "N/A"
@@ -7240,7 +7234,11 @@ export default function MrLinesView({
         {showBySupplier &&
           Object.entries(mrLinesBySupplier).map(
             ([supplier, items], index, allSuppliers) => (
-              <div key={supplier} className="subcategory-section" style={{ marginBottom: "2rem" }}>
+              <div
+                key={supplier}
+                className="subcategory-section"
+                style={{ marginBottom: "2rem" }}
+              >
                 <div className="subcategory-header">
                   <div
                     style={{
@@ -7828,95 +7826,105 @@ export default function MrLinesView({
                 {isManagerPriceApproval && <col style={{ width: "24px" }} />}
                 <col style={{ width: "40px" }} />
                 <col style={{ width: "130px" }} />
-                {mrHeader.progress_id === 1 && <col style={{ width: "150px" }} />}
-            {mrHeader.progress_id >= 9 ? (
-              <>
-                <col style={{ width: "80px" }} />
-                {hasAnyQtyStocks && <col style={{ width: "90px" }} />}
-                {hasAnyQtyStocks && <col style={{ width: "80px" }} />}
-              </>
-            ) : (
-              <col style={{ width: "120px" }} />
-            )}
-            <col style={{ width: "95px" }} />
-            {hasAnyBrandSpecs && <col style={{ width: "120px" }} />}
-            {hasAnyAttachment && <col style={{ width: "100px" }} />}
-            {((mrHeader.progress_id === 5 &&
-              (userInfo?.departmentID === mrHeader.department_id ||
-                userInfo?.departmentID === 8 ||
-                userInfo?.departmentID === 16)) ||
-              (mrHeader.progress_id === 3 &&
-                userInfo?.departmentID === mrHeader.department_id &&
-                userInfo?.departmentID !== 8) ||
-              (mrHeader.progress_id === 2 &&
-                userInfo?.departmentID === mrHeader.department_id &&
-                userInfo?.departmentID !== 16)) && (
-              <col style={{ width: "160px" }} />
-            )}
-            {(mrHeader.progress_id === 1 ||
-              mrHeader.progress_id === 5 ||
-              mrHeader.progress_id === 11) &&
-              userInfo?.departmentID === mrHeader.department_id && (
-                <col style={{ width: "160px" }} />
-              )}
-            {mrHeader.progress_id === 11 && userInfo?.departmentID === 9 && (
-              <col style={{ width: "160px" }} />
-            )}
-            {mrHeader.progress_id === 3 &&
-              (userInfo?.departmentID === 8 ||
-                userInfo?.departmentID === mrHeader.department_id) && (
-                <col style={{ width: "160px" }} />
-              )}
-            {mrHeader.progress_id === 3 && userInfo?.departmentID === 8 && (
-              <col style={{ width: "160px" }} />
-            )}
-            {mrHeader.progress_id === 2 && userInfo?.departmentID === 16 && (
-              <col style={{ width: "160px" }} />
-            )}
-            {mrHeader.progress_id >= 10 &&
-              (mrHeader.progress_id !== 11 || userInfo?.departmentID === 8) &&
-              !isManagerPriceApproval && <col style={{ width: "160px" }} />}
-            {mrHeader.progress_id === 7 && (
-              <>
-                <col style={{ width: "100px" }} />
-                <col style={{ width: "100px" }} />
-                <col style={{ width: "100px" }} />
-                {userInfo?.departmentID === 9 && (
+                {mrHeader.progress_id === 1 && (
+                  <col style={{ width: "150px" }} />
+                )}
+                {mrHeader.progress_id >= 9 ? (
+                  <>
+                    <col style={{ width: "80px" }} />
+                    {hasAnyQtyStocks && <col style={{ width: "90px" }} />}
+                    {hasAnyQtyStocks && <col style={{ width: "80px" }} />}
+                  </>
+                ) : (
+                  <col style={{ width: "120px" }} />
+                )}
+                <col style={{ width: "95px" }} />
+                {hasAnyBrandSpecs && <col style={{ width: "120px" }} />}
+                {hasAnyAttachment && <col style={{ width: "100px" }} />}
+                {((mrHeader.progress_id === 5 &&
+                  (userInfo?.departmentID === mrHeader.department_id ||
+                    userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === 16)) ||
+                  (mrHeader.progress_id === 3 &&
+                    userInfo?.departmentID === mrHeader.department_id &&
+                    userInfo?.departmentID !== 8) ||
+                  (mrHeader.progress_id === 2 &&
+                    userInfo?.departmentID === mrHeader.department_id &&
+                    userInfo?.departmentID !== 16)) && (
                   <col style={{ width: "160px" }} />
                 )}
-              </>
-            )}
-            {mrHeader.progress_id === 9 && userInfo?.departmentID === 16 && (
-              <col style={{ width: "160px" }} />
-            )}
-            {mrHeader.progress_id >= 10 &&
-              canSeePrice &&
-              !isManagerPriceApproval && <col style={{ width: "100px" }} />}
-            {mrHeader.progress_id >= 10 &&
-              canSeePrice &&
-              !isManagerPriceApproval && <col style={{ width: "100px" }} />}
-            {isManagerPriceApproval && (
-              <>
-                <col style={{ width: "100px" }} />
-                <col style={{ width: "100px" }} />
-                <col style={{ width: "100px" }} />
-                <col style={{ width: "160px" }} />
-                <col style={{ width: "130px" }} />
-                <col style={{ width: "100px" }} />
-              </>
-            )}
-            {userInfo?.departmentID === 11 && mrHeader.progress_id === 4 && (
-              <col style={{ width: "160px" }} />
-            )}
-            {userInfo?.departmentID === 12 && mrHeader.progress_id === 21 && (
-              <col style={{ width: "160px" }} />
-            )}
-            {userInfo?.departmentID === 11 && mrHeader.progress_id === 24 && (
-              <col style={{ width: "120px" }} />
-            )}
-            {userInfo?.departmentID === 9 && mrHeader.progress_id === 23 && (
-              <col style={{ width: "140px" }} />
-            )}
+                {(mrHeader.progress_id === 1 ||
+                  mrHeader.progress_id === 5 ||
+                  mrHeader.progress_id === 11) &&
+                  userInfo?.departmentID === mrHeader.department_id && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {mrHeader.progress_id === 11 &&
+                  userInfo?.departmentID === 9 && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {mrHeader.progress_id === 3 &&
+                  (userInfo?.departmentID === 8 ||
+                    userInfo?.departmentID === mrHeader.department_id) && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {mrHeader.progress_id === 3 && userInfo?.departmentID === 8 && (
+                  <col style={{ width: "160px" }} />
+                )}
+                {mrHeader.progress_id === 2 &&
+                  userInfo?.departmentID === 16 && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {mrHeader.progress_id >= 10 &&
+                  (mrHeader.progress_id !== 11 ||
+                    userInfo?.departmentID === 8) &&
+                  !isManagerPriceApproval && <col style={{ width: "160px" }} />}
+                {mrHeader.progress_id === 7 && (
+                  <>
+                    <col style={{ width: "100px" }} />
+                    <col style={{ width: "100px" }} />
+                    <col style={{ width: "100px" }} />
+                    {userInfo?.departmentID === 9 && (
+                      <col style={{ width: "160px" }} />
+                    )}
+                  </>
+                )}
+                {mrHeader.progress_id === 9 &&
+                  userInfo?.departmentID === 16 && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {mrHeader.progress_id >= 10 &&
+                  canSeePrice &&
+                  !isManagerPriceApproval && <col style={{ width: "100px" }} />}
+                {mrHeader.progress_id >= 10 &&
+                  canSeePrice &&
+                  !isManagerPriceApproval && <col style={{ width: "100px" }} />}
+                {isManagerPriceApproval && (
+                  <>
+                    <col style={{ width: "100px" }} />
+                    <col style={{ width: "100px" }} />
+                    <col style={{ width: "100px" }} />
+                    <col style={{ width: "160px" }} />
+                    <col style={{ width: "130px" }} />
+                    <col style={{ width: "100px" }} />
+                  </>
+                )}
+                {userInfo?.departmentID === 11 &&
+                  mrHeader.progress_id === 4 && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {userInfo?.departmentID === 12 &&
+                  mrHeader.progress_id === 21 && (
+                    <col style={{ width: "160px" }} />
+                  )}
+                {userInfo?.departmentID === 11 &&
+                  mrHeader.progress_id === 24 && (
+                    <col style={{ width: "120px" }} />
+                  )}
+                {userInfo?.departmentID === 9 &&
+                  mrHeader.progress_id === 23 && (
+                    <col style={{ width: "140px" }} />
+                  )}
               </>
             )}
           </colgroup>
@@ -7982,45 +7990,28 @@ export default function MrLinesView({
         userInfo?.departmentID === mrHeader.department_id && (
           <div className="bottom-nav">
             <div></div>
-            {/* ✅ Check if any item has BOQ reference */}
-            {hasAnyItemWithBoqReference() ? (
-              // If any item has BOQ → Submit for QS Approval
-              <SubmitForQSApprovalButton
-                mrHeader={mrHeader}
-                disabled={
-                  hasAnyRejectedItems() ||
-                  hasAnyQSRejectedItems() ||
-                  (requireStrictValidation && hasIncompleteLines())
-                }
-              />
-            ) : (
-              // If no items have BOQ → Submit directly to Manager Approval
-              <SubmitForInitialApprovalButton
-                mrHeader={mrHeader}
-                progressId={mrHeader.progress_id}
-                disabled={
-                  hasAnyRejectedItems() ||
-                  (requireStrictValidation && hasIncompleteLines())
-                }
-                style={{
-                  opacity:
-                    hasAnyRejectedItems() ||
-                    (requireStrictValidation && hasIncompleteLines())
-                      ? "0.5"
-                      : "1",
-                  cursor:
-                    hasAnyRejectedItems() ||
-                    (requireStrictValidation && hasIncompleteLines())
-                      ? "not-allowed"
-                      : "pointer",
-                  pointerEvents:
-                    hasAnyRejectedItems() ||
-                    (requireStrictValidation && hasIncompleteLines())
-                      ? "none"
-                      : "auto",
-                }}
-              />
-            )}
+            {/* All lines must have qty, unit, and BOQ ref before submitting.
+                SubmitForQSApprovalButton internally routes to QS Review or skips
+                straight to Quotations when the current user is manager/QS or
+                skip_approvals is set on the MR. */}
+            <SubmitForQSApprovalButton
+              mrHeader={mrHeader}
+              disabled={
+                hasAnyRejectedItems() ||
+                hasAnyQSRejectedItems() ||
+                hasIncompleteLines()
+              }
+              style={
+                hasIncompleteLines() && !hasAnyRejectedItems() && !hasAnyQSRejectedItems()
+                  ? { cursor: "not-allowed" }
+                  : undefined
+              }
+              title={
+                hasIncompleteLines()
+                  ? "All lines must have qty, unit, and BOQ reference before submitting"
+                  : undefined
+              }
+            />
           </div>
         )}
 
