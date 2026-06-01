@@ -98,7 +98,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { project_id, jo_line_id } = body;
+    const { project_id, jo_line_id, mr_line_id } = body;
 
     let rows: any;
 
@@ -112,6 +112,17 @@ export async function POST(req: Request) {
            ON jjbl.boq_line_id = bl.id AND jjbl.jo_line_id = ?
          WHERE bl.project_id = ? AND bh.is_draft = 0`,
         [jo_line_id, project_id],
+      );
+    } else if (mr_line_id) {
+      // When viewing from an MR, join junction table to get allocated_qty per BOQ line
+      [rows] = await db.query(
+        `SELECT bl.*, jmbl.allocated_qty
+         FROM vw_boq_lines bl
+         JOIN boq_headers bh ON bh.id = bl.boq_id
+         LEFT JOIN jt_mr_lines_boq_lines jmbl
+           ON jmbl.boq_line_id = bl.id AND jmbl.mr_line_id = ?
+         WHERE bl.project_id = ? AND bh.is_draft = 0`,
+        [mr_line_id, project_id],
       );
     } else {
       [rows] = await db.query(
@@ -195,6 +206,7 @@ export async function POST(req: Request) {
         category_number: categoryNumber,
         subcategory_number: subCategoryNumber,
         subcontracted_qty: jo_line_id ? Number(row.subcontracted_qty) || 0 : undefined,
+        allocated_qty: mr_line_id ? (row.allocated_qty != null ? Number(row.allocated_qty) : null) : undefined,
       };
     });
 

@@ -121,6 +121,7 @@ export default function MR() {
 
   const [mrHeaders, setMrHeaders] = useState<MrHeader[]>([]);
   const [lpoCards, setLpoCards] = useState<LpoCard[]>([]);
+  const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [selectedManagerMrIds, setSelectedManagerMrIds] = useState<Set<number>>(
     new Set(),
   );
@@ -266,56 +267,39 @@ export default function MR() {
   useEffect(() => {
     if (mrHeaders.length === 0) return;
 
-    const fetchDeliveryDates = async () => {
-      const deliveryDatesMap: {
-        [mrId: number]: Array<{ supplier_name: string; delivery_date: string }>;
-      } = {};
+    // Only fetch delivery dates for MRs in "Awaiting Delivery" (progress 17)
+    // — other stages never display delivery dates, so the calls would be wasted.
+    const mrIds = mrHeaders
+      .filter((mr) => mr.progress_id === 17)
+      .map((mr) => mr.id);
 
-      await Promise.all(
-        mrHeaders.map(async (mr) => {
-          try {
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getDeliveryDatesByMrHeaderID`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mr_header_id: mr.id }),
-              },
-            );
-            const data = await res.json();
+    if (mrIds.length === 0) return;
 
-            if (data.success && data.delivery_dates) {
-              deliveryDatesMap[mr.id] = data.delivery_dates;
-            } else {
-              deliveryDatesMap[mr.id] = [];
-            }
-          } catch (err) {
-            console.error(
-              `Error fetching delivery dates for MR ${mr.id}:`,
-              err,
-            );
-            deliveryDatesMap[mr.id] = [];
-          }
-        }),
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getBatchDeliveryDates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mr_header_ids: mrIds }),
+    })
+      .then((res) => res.json())
+      .then((data: Record<number, Array<{ supplier_name: string; delivery_date: string }>>) => {
+        setMrDeliveryDates(data);
+      })
+      .catch((err) =>
+        console.error("Error fetching batch delivery dates:", err),
       );
-
-      setMrDeliveryDates(deliveryDatesMap);
-    };
-
-    fetchDeliveryDates();
   }, [mrHeaders]);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
-      method: "GET",
-    }).then((res) => res.json().then((data) => setMrHeaders(data)));
-
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getAllLPOs`, {
-      method: "GET",
-    })
-      .then((res) => res.json())
-      .then((data) => setLpoCards(data))
-      .catch((err) => console.error("Error fetching LPO cards:", err));
+    setIsLoadingCards(true);
+    Promise.all([
+      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, { method: "GET" })
+        .then((res) => res.json())
+        .then((data) => setMrHeaders(data)),
+      fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getAllLPOs`, { method: "GET" })
+        .then((res) => res.json())
+        .then((data) => setLpoCards(data))
+        .catch((err) => console.error("Error fetching LPO cards:", err)),
+    ]).finally(() => setIsLoadingCards(false));
   }, [userInfo, tableRefreshKey]);
 
   useEffect(() => {
@@ -341,104 +325,64 @@ export default function MR() {
 
     const controller = new AbortController();
 
-    const fetchLpoDurations = async () => {
-      const durationsMap: {
-        [key: string]: { duration: string; hoursDecimal: number; style: any };
-      } = {};
+    const items = lpoCards.map((c) => ({
+      lpo_id: c.id,
+      progress_id: c.progress_id,
+    }));
 
-      await Promise.all(
-        lpoCards.map(async (lpoCard) => {
-          try {
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getProgressDuration`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  lpo_id: lpoCard.id,
-                  progress_id: lpoCard.progress_id,
-                }),
-                signal: controller.signal,
-              },
-            );
-            const data = await res.json();
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/lpo/getBatchProgressDurations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+        signal: controller.signal,
+      },
+    )
+      .then((res) => res.json())
+      .then((data: Record<string, { hours_in_stage: number; minutes_in_stage: number } | null>) => {
+        if (controller.signal.aborted) return;
 
-            let hoursDecimal = 0;
-            if (
-              data &&
-              data.hours_in_stage != null &&
-              data.minutes_in_stage != null
-            ) {
-              hoursDecimal =
-                Number(data.hours_in_stage) +
-                Number(data.minutes_in_stage) / 60;
-            }
+        const durationsMap: {
+          [key: string]: { duration: string; hoursDecimal: number; style: any };
+        } = {};
 
-            const totalMinutes = Math.round(hoursDecimal * 60);
-            const days = Math.floor(totalMinutes / (60 * 24));
-            const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-            const minutes = totalMinutes % 60;
+        for (const lpoCard of lpoCards) {
+          const key = `lpo-${lpoCard.id}-${lpoCard.progress_id}`;
+          const raw = data[key];
 
-            const durationParts: string[] = [];
-            if (days > 0) durationParts.push(`${days}d`);
-            if (hours > 0) durationParts.push(`${hours}h`);
-            if (minutes > 0 || durationParts.length === 0)
-              durationParts.push(`${minutes}m`);
-            const durationString = durationParts.join(" ");
-
-            let durationStyle = {
-              color: "black",
-              backgroundColor: "rgba(231, 231, 231, 1)",
-            };
-
-            if (hoursDecimal > 48) {
-              durationStyle = {
-                color: "white",
-                backgroundColor: "rgba(175, 61, 61, 1)",
-              };
-            } else if (hoursDecimal >= 24 && hoursDecimal <= 48) {
-              durationStyle = {
-                color: "rgba(248, 77, 77, 1)",
-                backgroundColor: "rgba(255, 181, 181, 1)",
-              };
-            } else if (hoursDecimal >= 12 && hoursDecimal <= 24) {
-              durationStyle = {
-                color: "rgba(134, 83, 47, 1)",
-                backgroundColor: "rgba(255, 250, 189, 1)",
-              };
-            }
-
-            durationsMap[`lpo-${lpoCard.id}-${lpoCard.progress_id}`] = {
-              duration: durationString,
-              hoursDecimal,
-              style: durationStyle,
-            };
-          } catch (err: any) {
-            // Silently ignore aborts (navigation away mid-fetch)
-            if (err?.name === "AbortError") return;
-            console.error(
-              `Error fetching duration for LPO ${lpoCard.id}:`,
-              err,
-            );
-            durationsMap[`lpo-${lpoCard.id}-${lpoCard.progress_id}`] = {
-              duration: "0m",
-              hoursDecimal: 0,
-              style: {
-                color: "black",
-                backgroundColor: "rgba(231, 231, 231, 1)",
-              },
-            };
+          let hoursDecimal = 0;
+          if (raw && raw.hours_in_stage != null && raw.minutes_in_stage != null) {
+            hoursDecimal = Number(raw.hours_in_stage) + Number(raw.minutes_in_stage) / 60;
           }
-        }),
-      );
 
-      // Don't update state if the effect was cleaned up
-      if (!controller.signal.aborted) {
+          const totalMinutes = Math.round(hoursDecimal * 60);
+          const days = Math.floor(totalMinutes / (60 * 24));
+          const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+          const minutes = totalMinutes % 60;
+          const durationParts: string[] = [];
+          if (days > 0) durationParts.push(`${days}d`);
+          if (hours > 0) durationParts.push(`${hours}h`);
+          if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+
+          let durationStyle = { color: "black", backgroundColor: "rgba(231, 231, 231, 1)" };
+          if (hoursDecimal > 48) {
+            durationStyle = { color: "white", backgroundColor: "rgba(175, 61, 61, 1)" };
+          } else if (hoursDecimal >= 24) {
+            durationStyle = { color: "rgba(248, 77, 77, 1)", backgroundColor: "rgba(255, 181, 181, 1)" };
+          } else if (hoursDecimal >= 12) {
+            durationStyle = { color: "rgba(134, 83, 47, 1)", backgroundColor: "rgba(255, 250, 189, 1)" };
+          }
+
+          durationsMap[key] = { duration: durationParts.join(" "), hoursDecimal, style: durationStyle };
+        }
+
         setLpoDurations(durationsMap);
-      }
-    };
-
-    fetchLpoDurations();
+      })
+      .catch((err: any) => {
+        if (err?.name === "AbortError") return;
+        console.error("Error fetching batch LPO durations:", err);
+      });
 
     return () => controller.abort();
   }, [lpoCards]);
@@ -448,101 +392,64 @@ export default function MR() {
 
     const controller = new AbortController();
 
-    const fetchDurations = async () => {
-      const durationsMap: {
-        [key: string]: { duration: string; hoursDecimal: number; style: any };
-      } = {};
+    const items = mrHeaders.map((mr) => ({
+      mr_header_id: mr.id,
+      progress_id: mr.progress_id,
+    }));
 
-      await Promise.all(
-        mrHeaders.map(async (mr) => {
-          try {
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getProgressDuration`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  mr_header_id: mr.id,
-                  progress_id: mr.progress_id,
-                }),
-                signal: controller.signal,
-              },
-            );
-            const data = await res.json();
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getBatchProgressDurations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+        signal: controller.signal,
+      },
+    )
+      .then((res) => res.json())
+      .then((data: Record<string, { hours_in_stage: number; minutes_in_stage: number } | null>) => {
+        if (controller.signal.aborted) return;
 
-            let hoursDecimal = 0;
-            if (
-              data &&
-              data.hours_in_stage != null &&
-              data.minutes_in_stage != null
-            ) {
-              hoursDecimal =
-                Number(data.hours_in_stage) +
-                Number(data.minutes_in_stage) / 60;
-            }
+        const durationsMap: {
+          [key: string]: { duration: string; hoursDecimal: number; style: any };
+        } = {};
 
-            const totalMinutes = Math.round(hoursDecimal * 60);
-            const days = Math.floor(totalMinutes / (60 * 24));
-            const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-            const minutes = totalMinutes % 60;
+        for (const mr of mrHeaders) {
+          const key = `${mr.id}-${mr.progress_id}`;
+          const raw = data[key];
 
-            const durationParts: string[] = [];
-            if (days > 0) durationParts.push(`${days}d`);
-            if (hours > 0) durationParts.push(`${hours}h`);
-            if (minutes > 0 || durationParts.length === 0)
-              durationParts.push(`${minutes}m`);
-            const durationString = durationParts.join(" ");
-
-            let durationStyle = {
-              color: "black",
-              backgroundColor: "rgba(231, 231, 231, 1)",
-            };
-
-            if (hoursDecimal > 48) {
-              durationStyle = {
-                color: "white",
-                backgroundColor: "rgba(175, 61, 61, 1)",
-              };
-            } else if (hoursDecimal >= 24 && hoursDecimal <= 48) {
-              durationStyle = {
-                color: "rgba(248, 77, 77, 1)",
-                backgroundColor: "rgba(255, 181, 181, 1)",
-              };
-            } else if (hoursDecimal >= 12 && hoursDecimal <= 24) {
-              durationStyle = {
-                color: "rgba(134, 83, 47, 1)",
-                backgroundColor: "rgba(255, 250, 189, 1)",
-              };
-            }
-
-            durationsMap[`${mr.id}-${mr.progress_id}`] = {
-              duration: durationString,
-              hoursDecimal,
-              style: durationStyle,
-            };
-          } catch (err: any) {
-            // Silently ignore aborts (navigation away mid-fetch)
-            if (err?.name === "AbortError") return;
-            console.error(`Error fetching duration for MR ${mr.id}:`, err);
-            durationsMap[`${mr.id}-${mr.progress_id}`] = {
-              duration: "0m",
-              hoursDecimal: 0,
-              style: {
-                color: "black",
-                backgroundColor: "rgba(231, 231, 231, 1)",
-              },
-            };
+          let hoursDecimal = 0;
+          if (raw && raw.hours_in_stage != null && raw.minutes_in_stage != null) {
+            hoursDecimal = Number(raw.hours_in_stage) + Number(raw.minutes_in_stage) / 60;
           }
-        }),
-      );
 
-      // Don't update state if the effect was cleaned up
-      if (!controller.signal.aborted) {
+          const totalMinutes = Math.round(hoursDecimal * 60);
+          const days = Math.floor(totalMinutes / (60 * 24));
+          const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+          const minutes = totalMinutes % 60;
+          const durationParts: string[] = [];
+          if (days > 0) durationParts.push(`${days}d`);
+          if (hours > 0) durationParts.push(`${hours}h`);
+          if (minutes > 0 || durationParts.length === 0) durationParts.push(`${minutes}m`);
+
+          let durationStyle = { color: "black", backgroundColor: "rgba(231, 231, 231, 1)" };
+          if (hoursDecimal > 48) {
+            durationStyle = { color: "white", backgroundColor: "rgba(175, 61, 61, 1)" };
+          } else if (hoursDecimal >= 24) {
+            durationStyle = { color: "rgba(248, 77, 77, 1)", backgroundColor: "rgba(255, 181, 181, 1)" };
+          } else if (hoursDecimal >= 12) {
+            durationStyle = { color: "rgba(134, 83, 47, 1)", backgroundColor: "rgba(255, 250, 189, 1)" };
+          }
+
+          durationsMap[key] = { duration: durationParts.join(" "), hoursDecimal, style: durationStyle };
+        }
+
         setMrDurations(durationsMap);
-      }
-    };
-
-    fetchDurations();
+      })
+      .catch((err: any) => {
+        if (err?.name === "AbortError") return;
+        console.error("Error fetching batch MR durations:", err);
+      });
 
     return () => controller.abort();
   }, [mrHeaders]);
@@ -1890,6 +1797,47 @@ export default function MR() {
           paddingRight: "40px",
         }}
       >
+        {isLoadingCards ? (
+          /* ── Skeleton toolbar ─────────────────────────────────────────────── */
+          <>
+            {/* Top row */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              {/* Left: title + subtitle */}
+              <div>
+                <div className="skeleton-pulse" style={{ width: "230px", height: "28px", borderRadius: "5px" }} />
+                <br /><br />
+                <div className="skeleton-pulse" style={{ width: "170px", height: "16px", borderRadius: "4px" }} />
+                <br />
+              </div>
+              {/* Right: view toggle + search */}
+              <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                <div className="skeleton-pulse" style={{ width: "178px", height: "42px", borderRadius: "10px" }} />
+                <div className="skeleton-pulse" style={{ width: "300px", height: "40px", borderRadius: "8px" }} />
+              </div>
+            </div>
+
+            <br />
+
+            {/* Bottom row */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {/* Left: toggle buttons + divider + filter */}
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div className="skeleton-pulse" style={{ width: "185px", height: "36px", borderRadius: "50px" }} />
+                <div className="skeleton-pulse" style={{ width: "230px", height: "36px", borderRadius: "50px" }} />
+                <div style={{ borderRight: "1px solid rgba(207,207,207,1)", height: "30px", alignSelf: "center" }} />
+                <div className="skeleton-pulse" style={{ width: "100px", height: "36px", borderRadius: "50px" }} />
+              </div>
+              {/* Right: action buttons */}
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div className="skeleton-pulse" style={{ width: "80px",  height: "36px", borderRadius: "8px" }} />
+                <div className="skeleton-pulse" style={{ width: "175px", height: "36px", borderRadius: "8px" }} />
+                <div className="skeleton-pulse" style={{ width: "175px", height: "36px", borderRadius: "8px" }} />
+              </div>
+            </div>
+          </>
+        ) : (
+          /* ── Real toolbar ──────────────────────────────────────────────────── */
+          <>
         <div
           style={{
             display: "flex",
@@ -2298,6 +2246,8 @@ export default function MR() {
             />
           </div>
         </div>
+          </>
+        )}
         {/* ── End sticky toolbar ───────────────────────────────────────────────── */}
       </div>
 
@@ -2318,7 +2268,85 @@ export default function MR() {
         />
       )}
 
-      {viewMode === "kanban" && (
+      {viewMode === "kanban" && isLoadingCards && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+          {/* ── Skeleton kanban ── */}
+          {[
+            { groupW: "55px",  cols: [{ statusW: "60px",  cards: 2 }] },
+            { groupW: "75px",  cols: [{ statusW: "85px",  cards: 3 }, { statusW: "150px", cards: 2 }] },
+            { groupW: "160px", cols: [{ statusW: "90px",  cards: 2 }, { statusW: "110px", cards: 1 }, { statusW: "100px", cards: 2 }] },
+          ].map((group, gi) => (
+            <div key={gi}>
+              {/* Group header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "20px" }}>
+                <div className="skeleton-pulse" style={{ width: "14px", height: "14px", borderRadius: "3px" }} />
+                <div className="skeleton-pulse" style={{ width: group.groupW, height: "20px", borderRadius: "4px" }} />
+                <div className="skeleton-pulse" style={{ width: "90px", height: "26px", borderRadius: "50px" }} />
+              </div>
+
+              {/* Status columns — same grid as real kanban */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
+                {group.cols.map((col, ci) => (
+                  <div key={ci} style={{ display: "flex", flexDirection: "column" }}>
+                    {/* Column header pill — matches real: padding 15px, borderRadius 50px, border */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", padding: "15px", borderRadius: "50px", backgroundColor: "white", border: "1px solid rgba(231,231,231,1)" }}>
+                      <div className="skeleton-pulse" style={{ width: col.statusW, height: "14px", borderRadius: "4px" }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div className="skeleton-pulse" style={{ width: "70px", height: "26px", borderRadius: "50px" }} />
+                        <div className="skeleton-pulse" style={{ width: "32px", height: "32px", borderRadius: "50%" }} />
+                      </div>
+                    </div>
+
+                    {/* Cards */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginTop: "15px" }}>
+                      {Array.from({ length: col.cards }).map((_, ki) => (
+                        <div key={ki} style={{ backgroundColor: "white", borderRadius: "15px", padding: "15px", border: "1px solid rgba(231,231,231,1)", display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {/* Badge row + flag */}
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                              <div className="skeleton-pulse" style={{ width: "130px", height: "24px", borderRadius: "50px" }} />
+                              <div className="skeleton-pulse" style={{ width: "58px",  height: "24px", borderRadius: "50px" }} />
+                              <div className="skeleton-pulse" style={{ width: "52px",  height: "24px", borderRadius: "50px" }} />
+                            </div>
+                            <div className="skeleton-pulse" style={{ width: "15px", height: "17px", borderRadius: "2px", flexShrink: 0 }} />
+                          </div>
+                          {/* MR NUMBER */}
+                          <div>
+                            <div className="skeleton-pulse" style={{ width: "70px", height: "9px", borderRadius: "3px", marginBottom: "6px" }} />
+                            <div className="skeleton-pulse" style={{ width: "95px", height: "15px", borderRadius: "4px" }} />
+                          </div>
+                          {/* PROJECT */}
+                          <div>
+                            <div className="skeleton-pulse" style={{ width: "48px", height: "9px", borderRadius: "3px", marginBottom: "6px" }} />
+                            <div className="skeleton-pulse" style={{ width: `${130 + (ki * 35) % 70}px`, height: "15px", borderRadius: "4px" }} />
+                          </div>
+                          {/* IDENTIFIER */}
+                          <div>
+                            <div className="skeleton-pulse" style={{ width: "60px", height: "9px", borderRadius: "3px", marginBottom: "6px" }} />
+                            <div className="skeleton-pulse" style={{ width: "45px", height: "15px", borderRadius: "4px" }} />
+                          </div>
+                          {/* REQUESTER */}
+                          <div>
+                            <div className="skeleton-pulse" style={{ width: "62px", height: "9px", borderRadius: "3px", marginBottom: "6px" }} />
+                            <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                              <div className="skeleton-pulse" style={{ width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0 }} />
+                              <div className="skeleton-pulse" style={{ width: `${110 + (ki * 25) % 55}px`, height: "15px", borderRadius: "4px" }} />
+                            </div>
+                          </div>
+                          {/* VIEW button */}
+                          <div className="skeleton-pulse" style={{ width: "100%", height: "40px", borderRadius: "50px" }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {viewMode === "kanban" && !isLoadingCards && (
         <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
           {stageGroups.map((group) => {
             if (

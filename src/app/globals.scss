@@ -1008,21 +1008,19 @@ label {
   }
 
   td {
-    /* padding: 25px 30px; */
     padding: 15px 20px;
     text-align: left;
+    vertical-align: middle;
+    background-color: white;
+    border-bottom: 1px solid rgba(239, 239, 239, 1);
   }
 
   th {
-    /* padding: 15px 30px; */
     padding: 15px 20px;
     text-align: left;
-    /* border-bottom: 1px solid #eee; */
-  }
-
-  td {
-    vertical-align: middle;
-    background-color: white;
+    background: rgba(239, 239, 239, 1);
+    font-weight: 900;
+    white-space: nowrap;
     border-bottom: 1px solid rgba(239, 239, 239, 1);
   }
 
@@ -1033,12 +1031,6 @@ label {
   tfoot td {
     border-top: 1px solid rgba(239, 239, 239, 1);
     border-bottom: none;
-  }
-
-  th {
-    background: rgba(239, 239, 239, 1);
-    font-weight: 900;
-    white-space: nowrap;
   }
 
   .attachments-grid {
@@ -1417,6 +1409,56 @@ label {
   }
 }
 
+.skeleton-pulse {
+  background: linear-gradient(90deg, rgba(220,220,220,1) 25%, rgba(240,240,240,1) 50%, rgba(220,220,220,1) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+.tooltip-bar {
+  position: relative;
+  cursor: default;
+  z-index: 1;
+
+  > .tooltip-label {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    color: rgba(30, 30, 30, 1);
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(220, 220, 220, 1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 9999;
+  }
+
+  &:hover {
+    z-index: 9999;
+
+    > .tooltip-label {
+      opacity: 1;
+    }
+  }
+}
+
+/* Ensure table cells containing a tooltip-bar don't clip the tooltip */
+td:has(.tooltip-bar) {
+  overflow: visible;
+  position: relative;
+}
+
+tr:has(.tooltip-bar:hover) {
+  position: relative;
+  z-index: 9999;
+}
+
 @keyframes hover-cursor-fill {
   from {
     stroke-dashoffset: 44;
@@ -1704,6 +1746,14 @@ label {
 /* ── FormPopUp table rows: white by default, pink only on actual hover ── */
 .form-outer-container .items-table tbody tr td {
   background-color: white !important;
+  border-bottom: 1px solid rgba(239, 239, 239, 1);
+}
+.form-outer-container .items-table tbody tr:last-child td {
+  border-bottom: none;
+}
+/* Expanded purchase-history row — remove bottom border on the parent item row */
+.items-table tbody tr.history-expanded td {
+  border-bottom: none !important;
 }
 .form-outer-container .items-table tbody tr:hover td {
   background-color: rgba(253, 249, 249, 1) !important;
@@ -1719,7 +1769,9 @@ label {
 .form-outer-container .items-table tfoot tr td,
 .form-outer-container .items-table tfoot tr:hover td {
   background-color: white !important;
+  border-bottom: none;
 }
+
 
 /* ── Three-dots dropdown menu hover ── */
 .three-dots-dropdown > * {

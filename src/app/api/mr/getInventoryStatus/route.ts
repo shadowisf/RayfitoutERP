@@ -78,21 +78,6 @@ function phraseInInventory(phrase: string[], invKw: string[]): boolean {
 
 /**
  * Compare a material description against an inventory item name.
- *
- * Uses progressive phrase matching (longest consecutive keyword run first),
- * then scores the matched phrase using IDF weights so that rare, specific
- * words contribute far more than generic ones like "water" or "steel".
- *
- * Score = Σ IDF(matched keywords) / Σ IDF(all material keywords)
- *
- * Example — "Clean Water Pump" vs "Water Power Supply":
- *   Only "water" matches (low IDF ≈ 0.4).
- *   score = 0.4 / (IDF(clean) + IDF(water) + IDF(pump)) ≈ 0.4 / 3.2 = 0.13
- *   → below threshold → no match ✓
- *
- * Example — "Clean Water Pump" vs "Centrifugal Water Pump":
- *   "water pump" consecutive phrase matches (IDF(water)+IDF(pump) ≈ 0.4+1.5).
- *   score = 1.9 / 3.2 ≈ 0.59 → similar match ✓
  */
 function compareDescriptions(
   material: string,
@@ -109,12 +94,9 @@ function compareDescriptions(
 
   if (matKw.length === 0 || invKw.length === 0) return { score: 0, isExact: false };
 
-  // Total IDF weight of all material keywords (denominator)
   const totalIdf = matKw.reduce((sum, kw) => sum + (idf.get(kw) ?? 1), 0);
   if (totalIdf === 0) return { score: 0, isExact: false };
 
-  // Find the longest consecutive phrase from material keywords that exists
-  // inside the inventory keywords, then score it by IDF weight.
   for (let size = matKw.length; size >= 1; size--) {
     for (let start = 0; start <= matKw.length - size; start++) {
       const phrase = matKw.slice(start, start + size);
@@ -136,6 +118,7 @@ type MatchEntry = {
   inventory_description: string;
   unit: string;
   total_qty: number;
+  locations: string[];
   match_type: "exact" | "similar";
   _score?: number; // internal, stripped before response
 };
@@ -168,9 +151,6 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── Resolve predefined descriptions ──────────────────────────────────────
-    // For MR lines that have a predefined_item_id, fetch the canonical
-    // material_description from lut_predefined_items and use that for matching.
-    // For lines without a predefined_item_id, use the MR line's own description.
     const nonNullIds = [...new Set(predefinedIds.filter((id): id is number => id !== null))];
     const predefinedDescMap = new Map<number, string>();
 
@@ -184,51 +164,91 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Build targets: each entry holds the original material string (used as the
-    // result key) and the effective description used for matching.
     const targets = materials.map((material, i) => {
       const pid = predefinedIds[i] ?? null;
       const effectiveDesc = pid !== null && predefinedDescMap.has(pid)
-        ? predefinedDescMap.get(pid)!   // use predefined canonical description
-        : material;                      // fall back to MR line's own description
+        ? predefinedDescMap.get(pid)!
+        : material;
       return { original: material, effectiveDesc };
     });
 
-    // ── Fetch all active inventory items (Pass 1) ────────────────────────────
+    // ── Pass 1: All active inventory items with correct available qty ─────────
+    // available_qty = total_stock - total_issued
+    // (transfers cancel out globally, so net = 0)
+    // Only items with available_qty > 0 are returned.
     const [invRows] = await db.query<RowDataPacket[]>(
-      `SELECT
-         i.id                            AS inventory_item_id,
-         i.description                   AS inventory_description,
-         i.unit,
-         COALESCE(SUM(s.quantity), 0)    AS total_qty
-       FROM inventory i
-       LEFT JOIN stocks s ON s.inventory_item_id = i.id AND s.mr_line_id IS NOT NULL
-       WHERE i.is_archived = 0
-       GROUP BY i.id, i.description, i.unit`,
+      `SELECT * FROM (
+         SELECT
+           i.id                                      AS inventory_item_id,
+           i.description                             AS inventory_description,
+           i.unit,
+           GREATEST(0,
+             COALESCE(s_agg.total_stock, 0)
+             - COALESCE(iss_agg.total_issued, 0)
+           )                                         AS available_qty
+         FROM inventory i
+         LEFT JOIN (
+           SELECT inventory_item_id, SUM(quantity) AS total_stock
+           FROM stocks
+           GROUP BY inventory_item_id
+         ) s_agg ON s_agg.inventory_item_id = i.id
+         LEFT JOIN (
+           SELECT jt.inventory_item_id, SUM(jt.quantity) AS total_issued
+           FROM stocks_transfer_issue sti
+           INNER JOIN jt_stocks_transfer_issue_inventory_item jt
+             ON sti.id = jt.stocks_transfer_issue_id
+           WHERE LOWER(sti.type) LIKE '%issue%'
+           GROUP BY jt.inventory_item_id
+         ) iss_agg ON iss_agg.inventory_item_id = i.id
+         WHERE i.is_archived = 0
+       ) sub
+       WHERE sub.available_qty > 0`,
     );
 
-    // ── Fetch stocks with their MR line descriptions (Pass 2) ─────────────
-    // Only stocks that have a mr_line_id are included.
-    // If the mr_line has a predefined_item_id, use the predefined item's
-    // canonical description; otherwise fall back to ml.material_description.
+    // Fetch distinct locations per inventory item from stocks (non-empty, qty > 0)
+    const [locationRows] = await db.query<RowDataPacket[]>(
+      `SELECT inventory_item_id,
+              GROUP_CONCAT(DISTINCT location ORDER BY location SEPARATOR '||') AS locations
+       FROM stocks
+       WHERE location IS NOT NULL AND location != '' AND quantity > 0
+       GROUP BY inventory_item_id`,
+    );
+    const locationMap = new Map<number, string[]>(
+      (locationRows as any[]).map((r) => [
+        r.inventory_item_id,
+        String(r.locations ?? "").split("||").filter(Boolean),
+      ]),
+    );
+
+    // Build a lookup map: inventory_item_id → row data (for Pass 2 qty lookup)
+    const invMap = new Map<number, { inventory_description: string; unit: string; available_qty: number; locations: string[] }>(
+      (invRows as any[]).map((r) => [
+        r.inventory_item_id,
+        {
+          inventory_description: r.inventory_description || "",
+          unit: r.unit || "",
+          available_qty: Number(r.available_qty),
+          locations: locationMap.get(r.inventory_item_id) ?? [],
+        },
+      ]),
+    );
+
+    // ── Pass 2: MR-line descriptions linked to inventory items ────────────────
+    // Gives us a second matching surface: the MR line description that was
+    // originally received into an inventory item.
+    // Only include inventory items that are in invMap (i.e. have available stock).
     const [stockMrRows] = await db.query<RowDataPacket[]>(
-      `SELECT
+      `SELECT DISTINCT
          COALESCE(pi.material_description, ml.material_description) AS mr_line_desc,
-         i.id                            AS inventory_item_id,
-         i.description                   AS inventory_description,
-         i.unit,
-         COALESCE(SUM(s.quantity), 0)    AS total_qty
+         s.inventory_item_id
        FROM stocks s
-       JOIN mr_lines            ml ON ml.id  = s.mr_line_id
+       JOIN mr_lines ml ON ml.id = s.mr_line_id
        LEFT JOIN lut_predefined_items pi ON pi.id = ml.predefined_item_id
-       JOIN inventory            i  ON i.id  = s.inventory_item_id
-       WHERE s.mr_line_id       IS NOT NULL
-         AND s.inventory_item_id IS NOT NULL
-       GROUP BY COALESCE(pi.material_description, ml.material_description),
-                i.id, i.description, i.unit`,
+       WHERE s.mr_line_id IS NOT NULL
+         AND s.inventory_item_id IS NOT NULL`,
     );
 
-    // Build IDF from all inventory descriptions — done once, shared across all targets
+    // Build IDF from all inventory descriptions in the available-stock pool
     const idf = buildIdf((invRows as any[]).map((r) => r.inventory_description || ""));
 
     const result: Record<string, MatchEntry[]> = {};
@@ -246,7 +266,8 @@ export async function GET(req: NextRequest) {
             inventory_item_id: row.inventory_item_id,
             inventory_description: invName,
             unit: row.unit || "",
-            total_qty: Number(row.total_qty) || 0,
+            total_qty: Number(row.available_qty),
+            locations: locationMap.get(row.inventory_item_id) ?? [],
             match_type: "exact",
             _score: 1,
           });
@@ -255,7 +276,8 @@ export async function GET(req: NextRequest) {
             inventory_item_id: row.inventory_item_id,
             inventory_description: invName,
             unit: row.unit || "",
-            total_qty: Number(row.total_qty) || 0,
+            total_qty: Number(row.available_qty),
+            locations: locationMap.get(row.inventory_item_id) ?? [],
             match_type: "similar",
             _score: score,
           });
@@ -263,15 +285,19 @@ export async function GET(req: NextRequest) {
       }
 
       // ── Pass 2: compare effective description against MR line descriptions ─
-      // If the MR line description matches, surface the linked inventory item.
       for (const row of stockMrRows as any[]) {
+        const invId: number = row.inventory_item_id;
+
+        // Skip if the inventory item has no available stock
+        const invData = invMap.get(invId);
+        if (!invData) continue;
+
         const mrLineDesc: string = row.mr_line_desc || "";
         const { score, isExact } = compareDescriptions(effectiveDesc, mrLineDesc, idf);
 
         if (!isExact && score < SIMILARITY_THRESHOLD) continue;
 
         const matchType: "exact" | "similar" = isExact ? "exact" : "similar";
-        const invId: number = row.inventory_item_id;
 
         const existing = matchMap.get(invId);
         if (existing) {
@@ -283,9 +309,10 @@ export async function GET(req: NextRequest) {
         } else {
           matchMap.set(invId, {
             inventory_item_id: invId,
-            inventory_description: row.inventory_description || "",
-            unit: row.unit || "",
-            total_qty: Number(row.total_qty) || 0,
+            inventory_description: invData.inventory_description,
+            unit: invData.unit,
+            total_qty: invData.available_qty,
+            locations: invData.locations,
             match_type: matchType,
             _score: isExact ? 1 : score,
           });
@@ -299,7 +326,6 @@ export async function GET(req: NextRequest) {
         return (b._score ?? 0) - (a._score ?? 0);
       });
 
-      // Key by original material string so callers can look it up unchanged
       result[original] = matches.map(({ _score, ...rest }) => rest);
     }
 

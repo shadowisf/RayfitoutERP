@@ -1,7 +1,7 @@
 "use client";
 
 import FormPopUp from "@/app/components/FormPopup";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, Fragment } from "react";
 import { MrLine } from "../[id]/types/mrLine";
 import { JoLine } from "../[id]/types/joLine";
 import Button from "@/app/components/Button";
@@ -34,6 +34,7 @@ type BoqItemDetail = {
   category_number: number;
   subcategory_number: number;
   subcontracted_qty?: number;
+  allocated_qty?: number | null;
 };
 
 // Grouped by category only for tabs and summary
@@ -58,6 +59,26 @@ type GroupedBySubCategory = {
     items: BoqItemDetail[];
     totalPrice: number;
   };
+};
+
+type InventoryMatch = {
+  inventory_item_id: number;
+  inventory_description: string;
+  unit: string;
+  total_qty: number;
+  locations: string[];
+  match_type: "exact" | "similar";
+};
+
+type PurchaseHistoryEntry = {
+  lpo_id: number;
+  mr_header_id: number;
+  material_description: string;
+  lpo_date: string;
+  quantity: number;
+  unit: string;
+  total_price: number;
+  lpo_status: string;
 };
 
 // Helper function to format quantity without trailing zeroes
@@ -143,6 +164,25 @@ export default function BoqReferencePopUp({
   const [showRightArrow, setShowRightArrow] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Header panel: price stats + inventory matches
+  const [priceStats, setPriceStats] = useState<{
+    lowest_price: number | null;
+    avg_price: number | null;
+    prev_price: number | null;
+  } | null>(null);
+  const [inventoryMatches, setInventoryMatches] = useState<
+    InventoryMatch[] | null
+  >(null);
+
+  // Purchase history per BOQ line
+  const [expandedBoqRows, setExpandedBoqRows] = useState<Set<number>>(
+    new Set(),
+  );
+  const [purchaseHistory, setPurchaseHistory] = useState<
+    Record<number, PurchaseHistoryEntry[]>
+  >({});
+  const [loadingHistory, setLoadingHistory] = useState<Set<number>>(new Set());
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch BOQ items
@@ -163,7 +203,7 @@ export default function BoqReferencePopUp({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           project_id: mrHeader.project_id,
-          ...(joLine ? { jo_line_id: joLine.id } : {}),
+          ...(joLine ? { jo_line_id: joLine.id } : { mr_line_id: item.id }),
         }),
       },
     )
@@ -189,6 +229,7 @@ export default function BoqReferencePopUp({
             category_number: boqLine.category_number,
             subcategory_number: boqLine.subcategory_number,
             subcontracted_qty: boqLine.subcontracted_qty,
+            allocated_qty: boqLine.allocated_qty ?? null,
           }));
 
         setBoqItems(filteredItems);
@@ -199,6 +240,85 @@ export default function BoqReferencePopUp({
         setIsLoading(false);
       });
   }, [isOpen, item.boq_line_ids, mrHeader.project_id]);
+
+  // Auto-fetch purchase history for all BOQ items (MR context only)
+  useEffect(() => {
+    if (!showBudgetUtilizationBar || boqItems.length === 0) return;
+    boqItems.forEach((boqItem) => {
+      if (purchaseHistory[boqItem.id] !== undefined) return; // already fetched
+      setLoadingHistory((prev) => new Set(prev).add(boqItem.id));
+      fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getPurchaseHistoryByBoqLineID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ boq_line_id: boqItem.id }),
+        },
+      )
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data: PurchaseHistoryEntry[]) => {
+          setPurchaseHistory((prev) => ({ ...prev, [boqItem.id]: data }));
+        })
+        .catch(() => {
+          setPurchaseHistory((prev) => ({ ...prev, [boqItem.id]: [] }));
+        })
+        .finally(() => {
+          setLoadingHistory((prev) => {
+            const next = new Set(prev);
+            next.delete(boqItem.id);
+            return next;
+          });
+        });
+    });
+  }, [boqItems]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch price stats + inventory matches when popup opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const itemDescription: string =
+      (item as any).material_description || (item as any).description || "";
+    const predefinedId: number = (item as any).predefined_item_id ?? 0;
+
+    if (!itemDescription) return;
+
+    async function fetchPriceStats() {
+      try {
+        const encoded = encodeURIComponent(itemDescription);
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialPriceStats?materials=${encoded}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setPriceStats(data[itemDescription] ?? null);
+        }
+      } catch {
+        setPriceStats(null);
+      }
+    }
+
+    async function fetchInventoryMatches() {
+      setInventoryMatches(null);
+      try {
+        const encoded = encodeURIComponent(itemDescription);
+        const encodedId = encodeURIComponent(String(predefinedId));
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getInventoryStatus?materials=${encoded}&predefined_ids=${encodedId}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setInventoryMatches(data[itemDescription] ?? []);
+        } else {
+          setInventoryMatches([]);
+        }
+      } catch {
+        setInventoryMatches([]);
+      }
+    }
+
+    fetchPriceStats();
+    fetchInventoryMatches();
+  }, [isOpen, item]);
 
   // Group by category only (for tabs and summary)
   const groupedByCategory = useMemo(() => {
@@ -405,6 +525,12 @@ export default function BoqReferencePopUp({
   // Whether to show JO-specific subcontracted columns
   const showJoColumns = !!joLine;
 
+  // Whether to show MR-specific allocated qty + total cost columns
+  // Both joLine (JO context) and absence of material_description (PR/payment context) exclude these columns
+  const showAllocatedQty = !joLine && !!(item as any).material_description;
+  // Budget utilization bar: same condition — alias kept for readability
+  const showBudgetUtilizationBar = showAllocatedQty;
+
   // Grand total of subcontracted works value (subcontracted_qty × rate_per_quantity) across all filtered items
   const grandSubcontractedWorksValue = useMemo(() => {
     if (!showJoColumns) return 0;
@@ -465,6 +591,336 @@ export default function BoqReferencePopUp({
     );
   }, [item]);
 
+  async function togglePurchaseHistory(boqLineId: number) {
+    if (expandedBoqRows.has(boqLineId)) {
+      setExpandedBoqRows((prev) => {
+        const next = new Set(prev);
+        next.delete(boqLineId);
+        return next;
+      });
+      return;
+    }
+    setExpandedBoqRows((prev) => new Set(prev).add(boqLineId));
+    if (purchaseHistory[boqLineId] !== undefined) return; // already fetched
+    setLoadingHistory((prev) => new Set(prev).add(boqLineId));
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getPurchaseHistoryByBoqLineID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ boq_line_id: boqLineId }),
+        },
+      );
+      if (res.ok) {
+        const data: PurchaseHistoryEntry[] = await res.json();
+        setPurchaseHistory((prev) => ({ ...prev, [boqLineId]: data }));
+      } else {
+        setPurchaseHistory((prev) => ({ ...prev, [boqLineId]: [] }));
+      }
+    } catch {
+      setPurchaseHistory((prev) => ({ ...prev, [boqLineId]: [] }));
+    } finally {
+      setLoadingHistory((prev) => {
+        const next = new Set(prev);
+        next.delete(boqLineId);
+        return next;
+      });
+    }
+  }
+
+  function renderPurchaseHistoryTable(boqItem: BoqItemDetail) {
+    const budget = Number(boqItem.rate_per_quantity) * Number(boqItem.quantity);
+    const history = purchaseHistory[boqItem.id] ?? [];
+    const isLoading = loadingHistory.has(boqItem.id);
+
+    let runningTotal = 0;
+
+    // Aggregate quantities by unit for the TOTAL row
+    const totalQtyByUnit: Record<string, number> = {};
+    history.forEach((e) => {
+      totalQtyByUnit[e.unit] =
+        (totalQtyByUnit[e.unit] || 0) + Number(e.quantity);
+    });
+    const totalQtyStr = Object.entries(totalQtyByUnit)
+      .map(([unit, qty]) => `${formatQuantity(qty)} ${unit}`)
+      .join(" + ");
+    const totalSpend = history.reduce((s, e) => s + Number(e.total_price), 0);
+    const totalPct = budget > 0 ? (totalSpend / budget) * 100 : 0;
+    const totalPnl = budget - totalSpend;
+
+    return (
+      <div
+        style={{
+          paddingTop: "24px",
+          paddingBottom: "24px",
+          paddingLeft: "30px",
+          paddingRight: "30px",
+        }}
+      >
+        <table
+          className="items-table"
+          style={{ tableLayout: "fixed", width: "100%" }}
+        >
+          <colgroup>
+            <col style={{ width: "150px" }} />
+            <col />
+            <col style={{ width: "140px" }} />
+            <col style={{ width: "140px" }} />
+            <col style={{ width: "150px" }} />
+            <col style={{ width: "260px" }} />
+            <col style={{ width: "140px" }} />
+          </colgroup>
+          <thead>
+            <tr>
+              {[
+                "LPO NUMBER",
+                "MATERIAL",
+                "DATE",
+                "QTY",
+                "TOTAL COST",
+                "BUDGET UTILIZATION",
+                "RUNNING PNL",
+              ].map((h) => (
+                <th key={h}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td colSpan={7}>Loading…</td>
+              </tr>
+            ) : history.length === 0 ? (
+              <tr>
+                <td colSpan={7}>No purchase history</td>
+              </tr>
+            ) : (
+              <>
+                {history.map((entry, idx) => {
+                  runningTotal += Number(entry.total_price);
+                  const pct = budget > 0 ? (runningTotal / budget) * 100 : 0;
+                  const pnl = budget - runningTotal;
+                  const over = pnl < 0;
+                  const barColor = over
+                    ? "rgba(220,38,38,1)"
+                    : "rgba(34,197,94,1)";
+                  const pnlColor = over
+                    ? "rgba(220,38,38,1)"
+                    : "rgba(34,150,100,1)";
+                  const dateStr = new Date(entry.lpo_date)
+                    .toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                    .toUpperCase();
+
+                  return (
+                    <tr key={`${entry.lpo_id}-${idx}`}>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <a
+                          href={`/mr/${entry.mr_header_id}/lpo/${entry.lpo_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: "rgba(37,150,190,1)",
+                            fontWeight: 600,
+                            textDecoration: "none",
+                          }}
+                        >
+                          LPO-{String(entry.lpo_id).padStart(5, "0")}
+                        </a>
+                      </td>
+                      <td>{entry.material_description}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>{dateStr}</td>
+                      <td
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {formatQuantity(Number(entry.quantity))} {entry.unit}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {formatPriceAED(Number(entry.total_price))}
+                      </td>
+                      <td>
+                        <div
+                          className="tooltip-bar"
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "4px",
+                          }}
+                        >
+                          <span className="tooltip-label">
+                            <span
+                              style={{
+                                color: over
+                                  ? "rgba(220,38,38,1)"
+                                  : "rgba(34,150,100,1)",
+                              }}
+                            >
+                              {formatPriceAED(runningTotal)}
+                            </span>
+                            {" / "}
+                            {formatPriceAED(budget)}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: barColor,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {Math.round(pct)}%
+                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            {over && (
+                              <img src="/icons/warning.svg" alt="over budget" style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+                            )}
+                            <div
+                              style={{
+                                flex: 1,
+                                height: "6px",
+                                borderRadius: "3px",
+                                backgroundColor: "rgba(220,220,220,1)",
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${Math.min(pct, 100)}%`,
+                                  height: "100%",
+                                  backgroundColor: barColor,
+                                  borderRadius: "3px",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td
+                        style={{
+                          whiteSpace: "nowrap",
+                          fontWeight: 600,
+                          color: pnlColor,
+                        }}
+                      >
+                        {over
+                          ? `- ${formatPriceAED(Math.abs(pnl))}`
+                          : `+ ${formatPriceAED(pnl)}`}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* TOTAL row */}
+                <tr style={{ fontWeight: 700 }}>
+                  <td></td>
+                  <td style={{ fontSize: "11px", letterSpacing: "0.05em" }}>
+                    TOTAL
+                  </td>
+                  <td></td>
+                  <td
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {totalQtyStr}
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    {formatPriceAED(totalSpend)}
+                  </td>
+                  <td>
+                    <div
+                      className="tooltip-bar"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px",
+                      }}
+                    >
+                      <span className="tooltip-label">
+                        <span
+                          style={{
+                            color:
+                              totalPnl < 0
+                                ? "rgba(220,38,38,1)"
+                                : "rgba(34,150,100,1)",
+                          }}
+                        >
+                          {formatPriceAED(totalSpend)}
+                        </span>
+                        {" / "}
+                        {formatPriceAED(budget)}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color:
+                            totalPnl < 0
+                              ? "rgba(220,38,38,1)"
+                              : "rgba(34,197,94,1)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {Math.round(totalPct)}%
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        {totalPnl < 0 && (
+                          <img src="/icons/warning.svg" alt="over budget" style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+                        )}
+                        <div
+                          style={{
+                            flex: 1,
+                            height: "6px",
+                            borderRadius: "3px",
+                            backgroundColor: "rgba(220,220,220,1)",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${Math.min(totalPct, 100)}%`,
+                              height: "100%",
+                              backgroundColor:
+                                totalPnl < 0
+                                  ? "rgba(220,38,38,1)"
+                                  : "rgba(34,197,94,1)",
+                              borderRadius: "3px",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    style={{
+                      whiteSpace: "nowrap",
+                      color:
+                        totalPnl < 0
+                          ? "rgba(220,38,38,1)"
+                          : "rgba(34,150,100,1)",
+                    }}
+                  >
+                    {totalPnl < 0
+                      ? `- ${formatPriceAED(Math.abs(totalPnl))}`
+                      : `+ ${formatPriceAED(totalPnl)}`}
+                  </td>
+                </tr>
+              </>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <>
       <Button
@@ -517,932 +973,682 @@ export default function BoqReferencePopUp({
             }
           })()}
           setIsOpen={setIsOpen}
+          haveLoadingState={true}
           style={{
             whiteSpace: "pre-wrap",
-            minWidth: "1500px",
-            minHeight: "95dvh",
+            width: "95dvw",
+            height: "95dvh",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            {/* Search Bar */}
-            <div
-              style={{
-                position: "relative",
-                flex: 1,
-                maxWidth: "400px",
-                backgroundColor: "white",
-                marginBottom: "20px",
-              }}
-            >
-              <input
-                type="text"
-                placeholder="SEARCH"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "400px",
-                  padding: "10px 40px 10px 15px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(223, 223, 223, 1)",
-                  fontSize: "14px",
-                }}
-              />
-              <img
-                src={searchIcon}
-                alt="search"
-                style={{
-                  position: "absolute",
-                  right: "15px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: "16px",
-                  height: "16px",
-                  opacity: 0.5,
-                }}
-              />
-            </div>
-
-            {/* Download Button - Only show if there are items to download */}
-            {boqItems.length > 0 && (
-              <DownloadBoqButton
-                boqHeader={downloadBoqHeader}
-                boqLines={downloadBoqLines}
-                isReference={true}
-                mrHeader={mrHeader}
-                itemName={itemName}
-                itemId={item.id}
-              />
-            )}
-          </div>
-
-          {/* Category Grid - Grouped by Category Only */}
-          <div className="category-grid">
-            <div style={{ position: "relative", flex: 1 }}>
-              {/* Left Fade Gradient */}
-              {showLeftArrow && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: "300px",
-                    background:
-                      "linear-gradient(to right, white 0%, rgba(255, 255, 255, 0) 100%)",
-                    pointerEvents: "none",
-                    zIndex: 5,
-                  }}
-                />
-              )}
-
-              {/* Left Arrow Button */}
-              {showLeftArrow && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scroll("left");
-                  }}
-                  style={{
-                    position: "absolute",
-                    left: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    zIndex: 10,
-                    backgroundColor: "black",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "10px",
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <img
-                    src={arrowRight}
-                    style={{ transform: "rotate(-180deg)", width: "12px" }}
-                    alt="scroll left"
-                  />
-                </button>
-              )}
-
-              <div
-                ref={scrollContainerRef}
-                onScroll={checkScroll}
-                style={{
-                  overflowX: "auto",
-                  scrollbarWidth: "none",
-                  msOverflowStyle: "none",
-                }}
-              >
-                <style jsx>{`
-                  div::-webkit-scrollbar {
-                    display: none;
-                  }
-                `}</style>
-                <div style={{ display: "flex", gap: "1px" }}>
-                  {/* SUMMARY tab - only if canSeePrice */}
-                  {canSeePrice && (
-                    <div
-                      className={`item ${activeCategory === "SUMMARY" ? "active" : ""}`}
-                      onClick={() => setActiveCategory("SUMMARY")}
-                      style={{
-                        flexShrink: 0,
-                        textTransform: "uppercase",
-                        cursor: "pointer",
-                      }}
-                    >
-                      SUMMARY
-                    </div>
-                  )}
-
-                  {/* ALL tab */}
-                  <div
-                    className={`item ${activeCategory === "ALL" ? "active" : ""}`}
-                    onClick={() => setActiveCategory("ALL")}
-                    style={{
-                      flexShrink: 0,
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                    }}
-                  >
-                    ALL
-                  </div>
-
-                  {/* Category tabs - grouped by category only */}
-                  {categoryKeys.map((category) => {
-                    const group = filteredByCategory[category];
-                    return (
-                      <div
-                        key={category}
-                        className={`item ${activeCategory === category ? "active" : ""}`}
-                        onClick={() => setActiveCategory(category)}
-                        style={{
-                          flexShrink: 0,
-                          cursor: "pointer",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {category}
+          <div className="boq-ref-popup">
+          {isLoading ? (
+            /* ── Skeleton loading ── */
+            <div>
+              {/* Top two-column skeleton */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "24px", marginBottom: "24px" }}>
+                {/* Left box */}
+                <div style={{ backgroundColor: "rgba(248,248,248,1)", borderRadius: "10px", padding: "18px 24px" }}>
+                  <div className="skeleton-pulse" style={{ height: "18px", borderRadius: "6px", width: "70%", marginBottom: "8px" }} />
+                  <div className="skeleton-pulse" style={{ height: "12px", borderRadius: "6px", width: "40%", marginBottom: "36px" }} />
+                  <div style={{ display: "flex", gap: "32px" }}>
+                    {[1,2,3].map((i) => (
+                      <div key={i}>
+                        <div className="skeleton-pulse" style={{ height: "10px", borderRadius: "4px", width: "60px", marginBottom: "6px" }} />
+                        <div className="skeleton-pulse" style={{ height: "16px", borderRadius: "4px", width: "80px" }} />
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+                </div>
+                {/* Right: inventory status table */}
+                <table className="items-table fixed-layout">
+                  <thead>
+                    <tr>
+                      {[70, 50, 60, 55].map((w, idx) => (
+                        <th key={idx}><div className="skeleton-pulse" style={{ height: "10px", borderRadius: "4px", width: `${w}%` }} /></th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[1,2,3].map((i) => (
+                      <tr key={i}>
+                        <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px" }} /></td>
+                        <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px", width: "60px" }} /></td>
+                        <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px" }} /></td>
+                        <td><div className="skeleton-pulse" style={{ height: "22px", borderRadius: "25px", width: "100px" }} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Tab bar skeleton */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+                {[1,2,3].map((i) => (
+                  <div key={i} className="skeleton-pulse" style={{ height: "34px", width: "120px", borderRadius: "6px" }} />
+                ))}
+                <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+                  <div className="skeleton-pulse" style={{ height: "34px", width: "34px", borderRadius: "6px" }} />
+                  <div className="skeleton-pulse" style={{ height: "34px", width: "200px", borderRadius: "6px" }} />
                 </div>
               </div>
-
-              {/* Right Fade Gradient */}
-              {showRightArrow && (
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: "300px",
-                    background:
-                      "linear-gradient(to left, white 0%, rgba(255, 255, 255, 0) 100%)",
-                    pointerEvents: "none",
-                    zIndex: 5,
-                  }}
-                />
-              )}
-
-              {/* Right Arrow Button */}
-              {showRightArrow && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scroll("right");
-                  }}
-                  style={{
-                    position: "absolute",
-                    right: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    zIndex: 10,
-                    backgroundColor: "black",
-                    borderRadius: "10px",
-                    color: "white",
-                    border: "none",
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <img
-                    src={arrowRight}
-                    style={{ width: "12px" }}
-                    alt="scroll right"
-                  />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <br />
-          <br />
-
-          {/* No Results Message */}
-          {searchQuery.trim() && categoryKeys.length === 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px",
-                color: "rgba(128, 128, 128, 1)",
-              }}
-            >
-              <p>No results found for "{searchQuery}"</p>
-            </div>
-          )}
-
-          {/* Content Area */}
-          <div>
-            {isLoading ? (
-              <div style={{ textAlign: "center", padding: "40px" }}>
-                Loading BOQ details...
-              </div>
-            ) : categoryKeys.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px" }}>
-                No BOQ items found
-              </div>
-            ) : activeCategory === "SUMMARY" ? (
-              // SUMMARY View - Categories only (aggregated)
-              <table
-                className="items-table"
-                style={{ tableLayout: "fixed", width: "100%" }}
-              >
-                <colgroup>
-                  <col style={{ width: "80px" }} />
-                  <col />
-                  {canSeePrice && <col style={{ width: "200px" }} />}
-                  {showJoColumns && canSeeWorksValue && (
-                    <col style={{ width: "250px" }} />
-                  )}
-                </colgroup>
+              {/* Section header skeleton */}
+              <div className="skeleton-pulse" style={{ height: "14px", width: "300px", borderRadius: "4px", marginBottom: "12px" }} />
+              {/* BOQ items table */}
+              <table className="items-table">
                 <thead>
                   <tr>
-                    <th
-                      style={{
-                        padding: "15px 30px",
-                        textAlign: "left",
-                        background: "rgba(239, 239, 239, 1)",
-                        fontWeight: 900,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      #
-                    </th>
-                    <th
-                      style={{
-                        padding: "15px 30px",
-                        textAlign: "left",
-                        background: "rgba(239, 239, 239, 1)",
-                        fontWeight: 900,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      CATEGORY
-                    </th>
-                    {canSeePrice && (
-                      <th
-                        style={{
-                          padding: "15px 30px",
-                          textAlign: "left",
-                          background: "rgba(239, 239, 239, 1)",
-                          fontWeight: 900,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        SUBTOTAL
-                      </th>
-                    )}
-                    {showJoColumns && canSeeWorksValue && (
-                      <th
-                        style={{
-                          padding: "15px 30px",
-                          textAlign: "left",
-                          background: "rgba(239, 239, 239, 1)",
-                          fontWeight: 900,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        SUBCONTRACTED WORKS VALUE
-                      </th>
-                    )}
+                    {[20, 65, 40, 30, 55, 50, 55, 60].map((w, idx) => (
+                      <th key={idx}><div className="skeleton-pulse" style={{ height: "10px", borderRadius: "4px", width: `${w}%` }} /></th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {categoryKeys.map((category, index) => {
-                    const group = filteredByCategory[category];
-                    const bgColor = getRowBgColor(index);
-                    const categorySubcontractedValue = group.items.reduce(
-                      (sum, i) =>
-                        sum +
-                        (Number(i.subcontracted_qty) || 0) *
-                          (Number(i.rate_per_quantity) || 0),
-                      0,
-                    );
-                    return (
-                      <tr
-                        key={category}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => setActiveCategory(category)}
-                      >
-                        <td
+                  {[1,2,3,4].map((i) => (
+                    <tr key={i}>
+                      <td><div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "30px" }} /></td>
+                      <td>
+                        <div className="skeleton-pulse" style={{ height: "13px", borderRadius: "4px", marginBottom: "6px", width: "80%" }} />
+                        <div className="skeleton-pulse" style={{ height: "11px", borderRadius: "4px", width: "60%" }} />
+                      </td>
+                      <td><div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "60px" }} /></td>
+                      <td><div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "40px" }} /></td>
+                      <td><div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "60px" }} /></td>
+                      <td><div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "70px" }} /></td>
+                      <td><div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "70px" }} /></td>
+                      <td><div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "40px" }} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+          <>
+            {/* Header: item info (left) + inventory status (right) */}
+            {(() => {
+              const itemDescription: string =
+                (item as any).material_description ||
+                (item as any).description ||
+                "";
+              const itemCategory: string =
+                (item as any).material_category || "";
+              const itemSubCategory: string =
+                (item as any).material_subcategory || "";
+              const itemQty = (item as any).quantity;
+              const itemUnit: string = (item as any).unit || "";
+              const categoryLabel = [itemCategory, itemSubCategory]
+                .filter(Boolean)
+                .join(" / ");
+
+              return (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1.5fr",
+                    gap: "24px",
+                    marginBottom: "24px",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  {/* Left: item info + price stats */}
+                  <div
+                    style={{
+                      backgroundColor: "rgba(248,248,248,1)",
+                      borderRadius: "10px",
+                      padding: "18px 24px",
+                    }}
+                  >
+                    <h2
+                      style={{
+                        margin: "4px 0 0",
+                        fontSize: "16px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {itemDescription}
+                      {itemQty
+                        ? ` • ${formatQuantity(Number(itemQty))} ${itemUnit}`
+                        : ""}
+                    </h2>
+                    <div style={{ marginBottom: "14px" }}>
+                      {categoryLabel && (
+                        <small style={{ color: "rgba(120,120,120,1)" }}>
+                          {categoryLabel}
+                        </small>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "32px",
+                        marginTop: "50px",
+                      }}
+                    >
+                      {(
+                        [
+                          {
+                            label: "LOWEST PRICE",
+                            value: priceStats?.lowest_price,
+                          },
+                          { label: "AVG. PRICE", value: priceStats?.avg_price },
+                          {
+                            label: "PREV. PRICE",
+                            value: priceStats?.prev_price,
+                          },
+                        ] as const
+                      ).map(({ label, value }) => (
+                        <div key={label}>
+                          <small>{label}</small>
+                          <h3>
+                            {value != null ? formatPriceAED(value) : "N/A"}
+                          </h3>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right: inventory status table */}
+                  <table className="items-table fixed-layout">
+                    <colgroup>
+                      <col />
+                      <col style={{ width: "150px" }} />
+                      <col style={{ width: "225px" }} />
+                      <col style={{ width: "175px" }} />
+                    </colgroup>
+                    <thead>
+                      <tr style={{ backgroundColor: "rgba(247,247,247,1)" }}>
+                        {[
+                          "INVENTORY STATUS",
+                          "QTY AVAILABLE",
+                          "LOCATION",
+                          "STATUS",
+                        ].map((h) => (
+                          <th key={h}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inventoryMatches === null ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            style={{
+                              padding: "14px",
+                              color: "rgba(150,150,150,1)",
+                              fontSize: "12px",
+                            }}
+                          >
+                            Loading…
+                          </td>
+                        </tr>
+                      ) : inventoryMatches.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            style={{
+                              padding: "14px",
+                              color: "rgba(150,150,150,1)",
+                              fontSize: "12px",
+                            }}
+                          >
+                            No inventory matches found
+                          </td>
+                        </tr>
+                      ) : (
+                        <>
+                          {inventoryMatches.slice(0, 3).map((m) => (
+                            <tr
+                              key={m.inventory_item_id}
+                              style={{
+                                borderBottom: "1px solid rgba(239,239,239,1)",
+                              }}
+                            >
+                              <td>
+                                <a
+                                  href={`/inventory/${m.inventory_item_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: "rgba(37,150,190,1)",
+                                    fontWeight: 600,
+                                    textDecoration: "none",
+                                  }}
+                                >
+                                  {m.inventory_description}
+                                </a>
+                              </td>
+                              <td>
+                                {m.total_qty} {m.unit}
+                              </td>
+                              <td>
+                                {m.locations && m.locations.length > 0
+                                  ? m.locations.join(" + ")
+                                  : "—"}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "3px 10px",
+                                    borderRadius: "50px",
+                                    fontSize: "11px",
+                                    fontWeight: 600,
+                                    backgroundColor:
+                                      m.match_type === "exact"
+                                        ? "rgba(6,95,70,1)"
+                                        : "rgba(209,250,229,1)",
+                                    color:
+                                      m.match_type === "exact"
+                                        ? "rgba(209,250,229,1)"
+                                        : "rgba(6,95,70,1)",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {m.match_type === "exact"
+                                    ? "Exact Match"
+                                    : "Similar Match"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {inventoryMatches.length > 3 && (
+                            <tr>
+                              <td
+                                colSpan={4}
+                                style={{
+                                  padding: "8px 14px",
+                                  color: "rgba(37,150,190,1)",
+                                  fontSize: "11px",
+                                }}
+                              >
+                                …and {inventoryMatches.length - 3} more match
+                                {inventoryMatches.length - 3 !== 1 ? "es" : ""}
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            {/* Search + Category tabs + Download — all inline */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "16px",
+                marginBottom: "20px",
+              }}
+            >
+              {/* Category Grid - takes remaining space */}
+              <div
+                className="category-grid"
+                style={{ flex: 1, marginBottom: 0 }}
+              >
+                <div style={{ position: "relative", flex: 1 }}>
+                  {/* Left Fade Gradient */}
+                  {showLeftArrow && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: "300px",
+                        background:
+                          "linear-gradient(to right, white 0%, rgba(255, 255, 255, 0) 100%)",
+                        pointerEvents: "none",
+                        zIndex: 5,
+                      }}
+                    />
+                  )}
+
+                  {/* Left Arrow Button */}
+                  {showLeftArrow && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        scroll("left");
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        zIndex: 10,
+                        backgroundColor: "black",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "10px",
+                        width: "40px",
+                        height: "40px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <img
+                        src={arrowRight}
+                        style={{ transform: "rotate(-180deg)", width: "12px" }}
+                        alt="scroll left"
+                      />
+                    </button>
+                  )}
+
+                  <div
+                    ref={scrollContainerRef}
+                    onScroll={checkScroll}
+                    style={{
+                      overflowX: "auto",
+                      scrollbarWidth: "none",
+                      msOverflowStyle: "none",
+                    }}
+                  >
+                    <style jsx>{`
+                      div::-webkit-scrollbar {
+                        display: none;
+                      }
+                    `}</style>
+                    <div style={{ display: "flex", gap: "1px" }}>
+                      {/* SUMMARY tab - only if canSeePrice */}
+                      {canSeePrice && (
+                        <div
+                          className={`item ${activeCategory === "SUMMARY" ? "active" : ""}`}
+                          onClick={() => setActiveCategory("SUMMARY")}
                           style={{
-                            padding: "25px 30px",
-                            textAlign: "left",
-                            verticalAlign: "middle",
-                            backgroundColor: bgColor,
-                          }}
-                        >
-                          {index + 1}
-                        </td>
-                        <td
-                          style={{
-                            padding: "25px 30px",
-                            textAlign: "left",
-                            verticalAlign: "middle",
-                            backgroundColor: bgColor,
+                            flexShrink: 0,
                             textTransform: "uppercase",
-                            fontWeight: 600,
+                            cursor: "pointer",
                           }}
                         >
-                          {category}
-                        </td>
-                        {canSeePrice && (
+                          SUMMARY
+                        </div>
+                      )}
+
+                      {/* ALL tab */}
+                      <div
+                        className={`item ${activeCategory === "ALL" ? "active" : ""}`}
+                        onClick={() => setActiveCategory("ALL")}
+                        style={{
+                          flexShrink: 0,
+                          textTransform: "uppercase",
+                          cursor: "pointer",
+                        }}
+                      >
+                        ALL
+                      </div>
+
+                      {/* Category tabs - grouped by category only */}
+                      {categoryKeys.map((category) => {
+                        const group = filteredByCategory[category];
+                        return (
+                          <div
+                            key={category}
+                            className={`item ${activeCategory === category ? "active" : ""}`}
+                            onClick={() => setActiveCategory(category)}
+                            style={{
+                              flexShrink: 0,
+                              cursor: "pointer",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {category}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right Fade Gradient */}
+                  {showRightArrow && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: "300px",
+                        background:
+                          "linear-gradient(to left, white 0%, rgba(255, 255, 255, 0) 100%)",
+                        pointerEvents: "none",
+                        zIndex: 5,
+                      }}
+                    />
+                  )}
+
+                  {/* Right Arrow Button */}
+                  {showRightArrow && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        scroll("right");
+                      }}
+                      style={{
+                        position: "absolute",
+                        right: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        zIndex: 10,
+                        backgroundColor: "black",
+                        borderRadius: "10px",
+                        color: "white",
+                        border: "none",
+                        width: "40px",
+                        height: "40px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <img
+                        src={arrowRight}
+                        style={{ width: "12px" }}
+                        alt="scroll right"
+                      />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {/* end category-grid */}
+
+              <div
+                style={{ display: "flex", gap: "10px", alignItems: "center" }}
+              >
+                {/* Download Button — icon only */}
+                {boqItems.length > 0 && (
+                  <DownloadBoqButton
+                    boqHeader={downloadBoqHeader}
+                    boqLines={downloadBoqLines}
+                    isReference={true}
+                    mrHeader={mrHeader}
+                    itemName={itemName}
+                    itemId={item.id}
+                    iconOnly
+                  />
+                )}
+
+                {/* Search Bar */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    placeholder="SEARCH"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: "300px",
+                      padding: "7px 36px 7px 15px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(223, 223, 223, 1)",
+                      fontSize: "14px",
+                    }}
+                  />
+                  <img
+                    src={searchIcon}
+                    alt="search"
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "14px",
+                      height: "14px",
+                      opacity: 0.5,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* end search+tabs+download row */}
+
+            <br />
+
+            {/* No Results Message */}
+            {searchQuery.trim() && categoryKeys.length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px",
+                  color: "rgba(128, 128, 128, 1)",
+                }}
+              >
+                <p>No results found for "{searchQuery}"</p>
+              </div>
+            )}
+
+            {/* Content Area */}
+            <div>
+              {isLoading ? (
+                <div style={{ textAlign: "center", padding: "40px" }}>
+                  Loading BOQ details...
+                </div>
+              ) : categoryKeys.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px" }}>
+                  No BOQ items found
+                </div>
+              ) : activeCategory === "SUMMARY" ? (
+                // SUMMARY View - Categories only (aggregated)
+                <table
+                  className="items-table"
+                  style={{ tableLayout: "fixed", width: "100%" }}
+                >
+                  <colgroup>
+                    <col style={{ width: "80px" }} />
+                    <col />
+                    {canSeePrice && <col style={{ width: "200px" }} />}
+                    {showJoColumns && canSeeWorksValue && (
+                      <col style={{ width: "250px" }} />
+                    )}
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>CATEGORY</th>
+                      {canSeePrice && <th>SUBTOTAL</th>}
+                      {showJoColumns && canSeeWorksValue && (
+                        <th>SUBCONTRACTED WORKS VALUE</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoryKeys.map((category, index) => {
+                      const group = filteredByCategory[category];
+                      const bgColor = getRowBgColor(index);
+                      const categorySubcontractedValue = group.items.reduce(
+                        (sum, i) =>
+                          sum +
+                          (Number(i.subcontracted_qty) || 0) *
+                            (Number(i.rate_per_quantity) || 0),
+                        0,
+                      );
+                      return (
+                        <tr
+                          key={category}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => setActiveCategory(category)}
+                        >
+                          <td>{index + 1}</td>
                           <td
                             style={{
-                              padding: "25px 30px",
-                              textAlign: "left",
-                              verticalAlign: "middle",
-                              backgroundColor: bgColor,
+                              textTransform: "uppercase",
                               fontWeight: 600,
                             }}
                           >
-                            {formatPriceAED(group.totalPrice)}
+                            {category}
+                          </td>
+                          {canSeePrice && (
+                            <td>{formatPriceAED(group.totalPrice)}</td>
+                          )}
+                          {showJoColumns && canSeeWorksValue && (
+                            <td>
+                              {formatPriceAED(categorySubcontractedValue)}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {(canSeePrice || (showJoColumns && canSeeWorksValue)) && (
+                    <tfoot
+                      style={{
+                        borderTop: "1px solid rgba(232, 223, 223, 1)",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <tr>
+                        <td></td>
+                        <td>
+                          <h3>SUBTOTAL</h3>
+                        </td>
+                        {canSeePrice && (
+                          <td>
+                            <h3 style={{ textWrap: "nowrap" }}>
+                              {formatPriceAED(grandTotal)}
+                            </h3>
                           </td>
                         )}
                         {showJoColumns && canSeeWorksValue && (
-                          <td
-                            style={{
-                              padding: "25px 30px",
-                              textAlign: "left",
-                              verticalAlign: "middle",
-                              backgroundColor: bgColor,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {formatPriceAED(categorySubcontractedValue)}
+                          <td>
+                            <h3 style={{ textWrap: "nowrap" }}>
+                              {formatPriceAED(grandSubcontractedWorksValue)}
+                            </h3>
                           </td>
                         )}
                       </tr>
-                    );
-                  })}
-                </tbody>
-                {(canSeePrice || (showJoColumns && canSeeWorksValue)) && (
-                  <tfoot
-                    style={{
-                      borderTop: "1px solid rgba(232, 223, 223, 1)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    <tr>
-                      <td
-                        style={{
-                          padding: "25px 30px",
-                          textAlign: "left",
-                          verticalAlign: "middle",
-                          backgroundColor: "white",
-                        }}
-                      ></td>
-                      <td
-                        style={{
-                          padding: "25px 30px",
-                          textAlign: "left",
-                          verticalAlign: "middle",
-                          backgroundColor: "white",
-                        }}
-                      >
-                        <h3>SUBTOTAL</h3>
-                      </td>
-                      {canSeePrice && (
-                        <td
-                          style={{
-                            padding: "25px 30px",
-                            textAlign: "left",
-                            verticalAlign: "middle",
-                            backgroundColor: "white",
-                          }}
-                        >
-                          <h3 style={{ textWrap: "nowrap" }}>
-                            {formatPriceAED(grandTotal)}
-                          </h3>
-                        </td>
-                      )}
-                      {showJoColumns && canSeeWorksValue && (
-                        <td
-                          style={{
-                            padding: "25px 30px",
-                            textAlign: "left",
-                            verticalAlign: "middle",
-                            backgroundColor: "white",
-                          }}
-                        >
-                          <h3 style={{ textWrap: "nowrap" }}>
-                            {formatPriceAED(grandSubcontractedWorksValue)}
-                          </h3>
-                        </td>
-                      )}
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            ) : activeCategory === "ALL" ? (
-              // ALL View - Show all subcategories grouped
-              subCategoryKeys.map((key, groupIndex) => {
-                const group = filteredBySubCategory[key];
-                const groupSubcontractedWorksValue = group.items.reduce(
-                  (sum, i) =>
-                    sum +
-                    (Number(i.subcontracted_qty) || 0) *
-                      (Number(i.rate_per_quantity) || 0),
-                  0,
-                );
-                return (
-                  <div key={key} style={{ marginBottom: "30px" }}>
-                    {/* Subcategory Header - Simple text only */}
-                    <h2
-                      style={{
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {group.category_number}.{group.subcategory_number}{" "}
-                      {group.category} / {group.sub_category}
-                    </h2>
-
-                    <br />
-
-                    {/* Items Table */}
-                    <table
-                      className="items-table"
-                      style={{ tableLayout: "fixed", width: "100%" }}
-                    >
-                      <colgroup>
-                        <col style={{ width: "120px" }} />
-                        <col />
-                        <col style={{ width: "160px" }} />
-                        <col style={{ width: "150px" }} />
-                        {canSeePrice && <col style={{ width: "180px" }} />}
-                        {showJoColumns && <col style={{ width: "180px" }} />}
-                        {showJoColumns && canSeeWorksValue && (
-                          <col style={{ width: "220px" }} />
-                        )}
-                        <col style={{ width: "160px" }} />
-                      </colgroup>
-                      <thead>
-                        <tr>
-                          <th
-                            style={{
-                              padding: "15px 30px",
-                              textAlign: "left",
-                              background: "rgba(239, 239, 239, 1)",
-                              fontWeight: 900,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            #
-                          </th>
-                          <th
-                            style={{
-                              padding: "15px 30px",
-                              textAlign: "left",
-                              background: "rgba(239, 239, 239, 1)",
-                              fontWeight: 900,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            ITEM
-                          </th>
-                          <th
-                            style={{
-                              padding: "15px 30px",
-                              textAlign: "left",
-                              background: "rgba(239, 239, 239, 1)",
-                              fontWeight: 900,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            RATE
-                          </th>
-                          <th
-                            style={{
-                              padding: "15px 30px",
-                              textAlign: "left",
-                              background: "rgba(239, 239, 239, 1)",
-                              fontWeight: 900,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            QUANTITY
-                          </th>
-                          {canSeePrice && (
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              TOTAL PRICE
-                            </th>
-                          )}
-                          {showJoColumns && (
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              SUBCONTRACTED QTY
-                            </th>
-                          )}
-                          {showJoColumns && canSeeWorksValue && (
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              SUBCONTRACTED WORKS VALUE
-                            </th>
-                          )}
-                          <th
-                            style={{
-                              padding: "15px 30px",
-                              textAlign: "left",
-                              background: "rgba(239, 239, 239, 1)",
-                              fontWeight: 900,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            ATTACHMENT(S)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.items.map((boqItem, itemIndex) => {
-                          const attachmentUrls = parseAttachments(
-                            boqItem.attachments,
-                          );
-                          const bgColor = getRowBgColor(itemIndex);
-                          const itemSubcontractedWorksValue =
-                            (Number(boqItem.subcontracted_qty) || 0) *
-                            (Number(boqItem.rate_per_quantity) || 0);
-
-                          return (
-                            <tr key={boqItem.id}>
-                              <td
-                                style={{
-                                  whiteSpace: "nowrap",
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: bgColor,
-                                }}
-                              >
-                                {boqItem.item_number}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: bgColor,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "10px",
-                                  }}
-                                >
-                                  <strong>{boqItem.item_name}</strong>
-
-                                  {boqItem.item_description && (
-                                    <p style={{ whiteSpace: "pre-wrap" }}>
-                                      {boqItem.item_description}
-                                    </p>
-                                  )}
-
-                                  {boqItem.location && (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "10px",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <img
-                                        src={locationIcon}
-                                        style={{ width: "16px" }}
-                                        alt="location"
-                                      />
-                                      <span
-                                        style={{
-                                          fontWeight: 600,
-                                          marginTop: "4px",
-                                          color: "rgba(105, 105, 105, 1)",
-                                        }}
-                                      >
-                                        {boqItem.location}
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  {boqItem.scope_of_work && (
-                                    <div
-                                      style={{
-                                        backgroundColor:
-                                          "rgba(225, 225, 225, 1)",
-                                        borderRadius: "50px",
-                                        padding: "4px 10px",
-                                        width: "fit-content",
-                                      }}
-                                    >
-                                      <strong>{boqItem.scope_of_work}</strong>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: bgColor,
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {Number(boqItem.rate_per_quantity) > 0
-                                  ? formatPrice(boqItem.rate_per_quantity)
-                                  : "-"}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: bgColor,
-                                }}
-                              >
-                                {formatQuantity(boqItem.quantity)}{" "}
-                                {boqItem.unit}
-                              </td>
-                              {canSeePrice && (
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                  }}
-                                >
-                                  {formatPriceAED(
-                                    Number(boqItem.total_cost) ||
-                                      Number(boqItem.rate_per_quantity) *
-                                        Number(boqItem.quantity) ||
-                                      0,
-                                  )}
-                                </td>
-                              )}
-                              {showJoColumns && (
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                  }}
-                                >
-                                  {Number(boqItem.subcontracted_qty) > 0
-                                    ? `${formatQuantity(Number(boqItem.subcontracted_qty))} ${boqItem.unit}`
-                                    : "-"}
-                                </td>
-                              )}
-                              {showJoColumns && canSeeWorksValue && (
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                  }}
-                                >
-                                  {itemSubcontractedWorksValue > 0
-                                    ? formatPriceAED(
-                                        itemSubcontractedWorksValue,
-                                      )
-                                    : "-"}
-                                </td>
-                              )}
-                              <td
-                                className="attachments"
-                                style={{
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: bgColor,
-                                }}
-                              >
-                                <div
-                                  className="attachments-grid"
-                                  style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "repeat(2, 60px)",
-                                    gap: "5px",
-                                  }}
-                                >
-                                  {attachmentUrls.map((url, i) => (
-                                    <img
-                                      key={i}
-                                      src={url}
-                                      alt="attachment"
-                                      style={{
-                                        width: "60px",
-                                        height: "100%",
-                                        objectFit: "contain",
-                                      }}
-                                    />
-                                  ))}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      {(canSeePrice || (showJoColumns && canSeeWorksValue)) && (
-                        <tfoot
-                          style={{
-                            borderTop: "1px solid rgba(232, 223, 223, 1)",
-                            pointerEvents: "none",
-                          }}
-                        >
-                          <tr>
-                            {/* # col spacer */}
-                            <td
-                              style={{
-                                padding: "25px 30px",
-                                backgroundColor: "white",
-                              }}
-                            ></td>
-                            {/* ITEM col: label */}
-                            <td
-                              style={{
-                                padding: "25px 30px",
-                                textAlign: "left",
-                                verticalAlign: "middle",
-                                backgroundColor: "white",
-                              }}
-                            >
-                              <h3>SUBTOTAL</h3>
-                            </td>
-                            {/* RATE col spacer */}
-                            <td
-                              style={{
-                                padding: "25px 30px",
-                                backgroundColor: "white",
-                              }}
-                            ></td>
-                            {/* QUANTITY col spacer */}
-                            <td
-                              style={{
-                                padding: "25px 30px",
-                                backgroundColor: "white",
-                              }}
-                            ></td>
-                            {/* TOTAL PRICE col: value */}
-                            {canSeePrice && (
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: "white",
-                                }}
-                              >
-                                <h3 style={{ textWrap: "nowrap" }}>
-                                  {formatPriceAED(group.totalPrice)}
-                                </h3>
-                              </td>
-                            )}
-                            {/* SUBCONTRACTED QTY col spacer */}
-                            {showJoColumns && (
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  backgroundColor: "white",
-                                }}
-                              ></td>
-                            )}
-                            {/* SUBCONTRACTED WORKS VALUE col: value */}
-                            {showJoColumns && canSeeWorksValue && (
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: "white",
-                                }}
-                              >
-                                <h3 style={{ textWrap: "nowrap" }}>
-                                  {formatPriceAED(groupSubcontractedWorksValue)}
-                                </h3>
-                              </td>
-                            )}
-                            {/* ATTACHMENT col spacer */}
-                            <td
-                              style={{
-                                padding: "25px 30px",
-                                backgroundColor: "white",
-                              }}
-                            ></td>
-                          </tr>
-                        </tfoot>
-                      )}
-                    </table>
-
-                    <br />
-                    <br />
-                  </div>
-                );
-              })
-            ) : activeCategoryData ? (
-              // Individual Category View - Show all items in this category (all subcategories)
-              <div>
-                {/* Items from all subcategories in this category */}
-                {activeCategoryData.subCategories.map((subCat, subIndex) => {
-                  // Get items for this subcategory
-                  const subCatItems = activeCategoryData.items.filter(
-                    (item) => item.sub_category === subCat,
-                  );
-
-                  if (subCatItems.length === 0) return null;
-
-                  const firstItem = subCatItems[0];
-                  const subCatTotal = subCatItems.reduce(
-                    (sum, item) =>
-                      sum +
-                      (Number(item.total_cost) ||
-                        Number(item.rate_per_quantity) *
-                          Number(item.quantity) ||
-                        0),
-                    0,
-                  );
-                  const subCatSubcontractedWorksValue = subCatItems.reduce(
+                    </tfoot>
+                  )}
+                </table>
+              ) : activeCategory === "ALL" ? (
+                // ALL View - Show all subcategories grouped
+                subCategoryKeys.map((key, groupIndex) => {
+                  const group = filteredBySubCategory[key];
+                  const groupSubcontractedWorksValue = group.items.reduce(
                     (sum, i) =>
                       sum +
                       (Number(i.subcontracted_qty) || 0) *
                         (Number(i.rate_per_quantity) || 0),
                     0,
                   );
-
                   return (
-                    <div key={subCat} style={{ marginBottom: "30px" }}>
-                      {/* Subcategory Header */}
+                    <div key={key} style={{ marginBottom: "30px" }}>
+                      {/* Subcategory Header - Simple text only */}
                       <h2
                         style={{
                           textTransform: "uppercase",
                         }}
                       >
-                        {activeCategoryData.category_number}.
-                        {firstItem.subcategory_number} {subCat}
+                        {group.category_number}.{group.subcategory_number}{" "}
+                        {group.category} / {group.sub_category}
                       </h2>
 
                       <br />
 
+                      {/* Items Table */}
                       <table
                         className="items-table"
                         style={{ tableLayout: "fixed", width: "100%" }}
@@ -1452,7 +1658,13 @@ export default function BoqReferencePopUp({
                           <col />
                           <col style={{ width: "160px" }} />
                           <col style={{ width: "150px" }} />
-                          {canSeePrice && <col style={{ width: "180px" }} />}
+                          {showAllocatedQty && (
+                            <col style={{ width: "160px" }} />
+                          )}
+                          {showAllocatedQty && (
+                            <col style={{ width: "220px" }} />
+                          )}
+                          {canSeePrice && <col style={{ width: "200px" }} />}
                           {showJoColumns && <col style={{ width: "180px" }} />}
                           {showJoColumns && canSeeWorksValue && (
                             <col style={{ width: "220px" }} />
@@ -1461,295 +1673,359 @@ export default function BoqReferencePopUp({
                         </colgroup>
                         <thead>
                           <tr>
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              #
-                            </th>
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              ITEM
-                            </th>
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              RATE
-                            </th>
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              QUANTITY
-                            </th>
-                            {canSeePrice && (
-                              <th
-                                style={{
-                                  padding: "15px 30px",
-                                  textAlign: "left",
-                                  background: "rgba(239, 239, 239, 1)",
-                                  fontWeight: 900,
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                TOTAL PRICE
-                              </th>
-                            )}
-                            {showJoColumns && (
-                              <th
-                                style={{
-                                  padding: "15px 30px",
-                                  textAlign: "left",
-                                  background: "rgba(239, 239, 239, 1)",
-                                  fontWeight: 900,
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                SUBCONTRACTED QTY
-                              </th>
-                            )}
+                            <th>#</th>
+                            <th>ITEM</th>
+                            <th>RATE</th>
+                            <th>QTY</th>
+                            {showAllocatedQty && <th>ALLOCATED QTY</th>}
+                            {showAllocatedQty && <th>TOTAL COST</th>}
+                            {canSeePrice && <th>TOTAL PRICE</th>}
+                            {showJoColumns && <th>SUBCONTRACTED QTY</th>}
                             {showJoColumns && canSeeWorksValue && (
-                              <th
-                                style={{
-                                  padding: "15px 30px",
-                                  textAlign: "left",
-                                  background: "rgba(239, 239, 239, 1)",
-                                  fontWeight: 900,
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                SUBCONTRACTED WORKS VALUE
-                              </th>
+                              <th>SUBCONTRACTED WORKS VALUE</th>
                             )}
-                            <th
-                              style={{
-                                padding: "15px 30px",
-                                textAlign: "left",
-                                background: "rgba(239, 239, 239, 1)",
-                                fontWeight: 900,
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              ATTACHMENT(S)
-                            </th>
+                            <th>ATTACHMENT(S)</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {subCatItems.map((boqItem, itemIndex) => {
-                            const attachmentUrls = parseAttachments(
-                              boqItem.attachments,
-                            );
-                            const bgColor = getRowBgColor(itemIndex);
-                            const itemSubcontractedWorksValue =
-                              (Number(boqItem.subcontracted_qty) || 0) *
-                              (Number(boqItem.rate_per_quantity) || 0);
+                          {(() => {
+                            const totalCols =
+                              5 +
+                              (showAllocatedQty ? 2 : 0) +
+                              (canSeePrice ? 1 : 0) +
+                              (showJoColumns ? 1 : 0) +
+                              (showJoColumns && canSeeWorksValue ? 1 : 0);
+                            return group.items.map((boqItem, itemIndex) => {
+                              const attachmentUrls = parseAttachments(
+                                boqItem.attachments,
+                              );
+                              const bgColor = getRowBgColor(itemIndex);
+                              const itemSubcontractedWorksValue =
+                                (Number(boqItem.subcontracted_qty) || 0) *
+                                (Number(boqItem.rate_per_quantity) || 0);
+                              const isExpanded = expandedBoqRows.has(
+                                boqItem.id,
+                              );
 
-                            return (
-                              <tr key={boqItem.id}>
-                                <td
-                                  style={{
-                                    whiteSpace: "nowrap",
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                  }}
-                                >
-                                  {boqItem.item_number}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "10px",
-                                    }}
+                              return (
+                                <Fragment key={boqItem.id}>
+                                  <tr
+                                    className={
+                                      isExpanded ? "history-expanded" : ""
+                                    }
                                   >
-                                    <strong>{boqItem.item_name}</strong>
-
-                                    {boqItem.item_description && (
-                                      <p style={{ whiteSpace: "pre-wrap" }}>
-                                        {boqItem.item_description}
-                                      </p>
-                                    )}
-
-                                    {boqItem.location && (
+                                    <td
+                                      style={{
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      {boqItem.item_number}
+                                    </td>
+                                    <td>
                                       <div
                                         style={{
                                           display: "flex",
+                                          flexDirection: "column",
                                           gap: "10px",
-                                          alignItems: "center",
                                         }}
                                       >
-                                        <img
-                                          src={locationIcon}
-                                          style={{ width: "16px" }}
-                                          alt="location"
-                                        />
-                                        <span
+                                        <strong>{boqItem.item_name}</strong>
+
+                                        {boqItem.item_description && (
+                                          <p style={{ whiteSpace: "pre-wrap" }}>
+                                            {boqItem.item_description}
+                                          </p>
+                                        )}
+
+                                        {boqItem.location && (
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "10px",
+                                              alignItems: "center",
+                                            }}
+                                          >
+                                            <img
+                                              src={locationIcon}
+                                              style={{ width: "16px" }}
+                                              alt="location"
+                                            />
+                                            <span
+                                              style={{
+                                                fontWeight: 600,
+                                                marginTop: "4px",
+                                                color: "rgba(105, 105, 105, 1)",
+                                              }}
+                                            >
+                                              {boqItem.location}
+                                            </span>
+                                          </div>
+                                        )}
+
+                                        {boqItem.scope_of_work && (
+                                          <div
+                                            style={{
+                                              backgroundColor:
+                                                "rgba(225, 225, 225, 1)",
+                                              borderRadius: "50px",
+                                              padding: "4px 10px",
+                                              width: "fit-content",
+                                            }}
+                                          >
+                                            <strong>
+                                              {boqItem.scope_of_work}
+                                            </strong>
+                                          </div>
+                                        )}
+
+                                        {/* Purchase History toggle */}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            togglePurchaseHistory(boqItem.id);
+                                          }}
                                           style={{
-                                            fontWeight: 600,
-                                            marginTop: "4px",
-                                            color: "rgba(105, 105, 105, 1)",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "5px",
+                                            backgroundColor:
+                                              "rgba(239,239,239,1)",
+                                            border: "none",
+                                            borderRadius: "50px",
+                                            cursor: "pointer",
+                                            padding: "6px 12px",
+                                            color: "black",
+                                            fontSize: "11px",
+                                            width: "fit-content",
                                           }}
                                         >
-                                          {boqItem.location}
-                                        </span>
+                                          <svg
+                                            width="14"
+                                            height="14"
+                                            viewBox="0 0 12 12"
+                                            fill="none"
+                                            style={{
+                                              transition: "transform 0.2s",
+                                              transform: isExpanded
+                                                ? "rotate(180deg)"
+                                                : "rotate(0deg)",
+                                              flexShrink: 0,
+                                            }}
+                                          >
+                                            <path
+                                              d="M2 4L6 8L10 4"
+                                              stroke="currentColor"
+                                              strokeWidth="1"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                          </svg>
+                                          Purchase History
+                                        </button>
                                       </div>
+                                    </td>
+                                    <td
+                                      style={{
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      {Number(boqItem.rate_per_quantity) > 0
+                                        ? formatPrice(boqItem.rate_per_quantity)
+                                        : "-"}
+                                    </td>
+                                    <td>
+                                      {formatQuantity(boqItem.quantity)}{" "}
+                                      {boqItem.unit}
+                                    </td>
+                                    {showAllocatedQty && (
+                                      <td>
+                                        {boqItem.allocated_qty != null
+                                          ? `${formatQuantity(boqItem.allocated_qty)} ${boqItem.unit}`
+                                          : "-"}
+                                      </td>
                                     )}
-
-                                    {boqItem.scope_of_work && (
+                                    {showAllocatedQty &&
+                                      (() => {
+                                        const history =
+                                          purchaseHistory[boqItem.id];
+                                        const purchasedTotal =
+                                          history != null
+                                            ? history.reduce(
+                                                (s, e) =>
+                                                  s + Number(e.total_price),
+                                                0,
+                                              )
+                                            : null;
+                                        const itemBudget =
+                                          Number(boqItem.rate_per_quantity) *
+                                          Number(boqItem.quantity);
+                                        const utilizationPct =
+                                          purchasedTotal != null &&
+                                          itemBudget > 0
+                                            ? Math.min(
+                                                (purchasedTotal / itemBudget) *
+                                                  100,
+                                                100,
+                                              )
+                                            : 0;
+                                        const utilizationColor =
+                                          purchasedTotal != null &&
+                                          purchasedTotal > itemBudget
+                                            ? "rgba(220,38,38,1)"
+                                            : "rgba(34,197,94,1)";
+                                        return (
+                                          <td>
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "8px",
+                                              }}
+                                            >
+                                              <span
+                                                style={{ whiteSpace: "nowrap" }}
+                                              >
+                                                {purchasedTotal != null
+                                                  ? formatPriceAED(
+                                                      purchasedTotal,
+                                                    )
+                                                  : "—"}
+                                              </span>
+                                              {purchasedTotal != null && (
+                                                <div
+                                                  className="tooltip-bar"
+                                                  style={{
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    gap: "4px",
+                                                  }}
+                                                >
+                                                  <span className="tooltip-label">
+                                                    <span
+                                                      style={{
+                                                        color:
+                                                          purchasedTotal >
+                                                          itemBudget
+                                                            ? "rgba(220,38,38,1)"
+                                                            : "rgba(34,150,100,1)",
+                                                      }}
+                                                    >
+                                                      {formatPriceAED(
+                                                        purchasedTotal,
+                                                      )}
+                                                    </span>
+                                                    {" / "}
+                                                    {formatPriceAED(itemBudget)}
+                                                  </span>
+                                                  <span
+                                                    style={{
+                                                      fontSize: "10px",
+                                                      color: utilizationColor,
+                                                      whiteSpace: "nowrap",
+                                                    }}
+                                                  >
+                                                    {Math.round(utilizationPct)}%
+                                                  </span>
+                                                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                                    {purchasedTotal > itemBudget && (
+                                                      <img src="/icons/warning.svg" alt="over budget" style={{ width: "11px", height: "11px", flexShrink: 0 }} />
+                                                    )}
+                                                    <div
+                                                      style={{
+                                                        flex: 1,
+                                                        height: "5px",
+                                                        borderRadius: "3px",
+                                                        backgroundColor:
+                                                          "rgba(220,220,220,1)",
+                                                        overflow: "hidden",
+                                                      }}
+                                                    >
+                                                      <div
+                                                        style={{
+                                                          width: `${utilizationPct}%`,
+                                                          height: "100%",
+                                                          backgroundColor:
+                                                            utilizationColor,
+                                                          borderRadius: "3px",
+                                                        }}
+                                                      />
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </td>
+                                        );
+                                      })()}
+                                    {canSeePrice && (
+                                      <td>
+                                        {formatPriceAED(
+                                          Number(boqItem.rate_per_quantity) *
+                                            Number(boqItem.quantity),
+                                        )}
+                                      </td>
+                                    )}
+                                    {showJoColumns && (
+                                      <td>
+                                        {Number(boqItem.subcontracted_qty) > 0
+                                          ? `${formatQuantity(Number(boqItem.subcontracted_qty))} ${boqItem.unit}`
+                                          : "-"}
+                                      </td>
+                                    )}
+                                    {showJoColumns && canSeeWorksValue && (
+                                      <td>
+                                        {itemSubcontractedWorksValue > 0
+                                          ? formatPriceAED(
+                                              itemSubcontractedWorksValue,
+                                            )
+                                          : "-"}
+                                      </td>
+                                    )}
+                                    <td className="attachments">
                                       <div
+                                        className="attachments-grid"
                                         style={{
-                                          backgroundColor:
-                                            "rgba(225, 225, 225, 1)",
-                                          borderRadius: "50px",
-                                          padding: "4px 10px",
-                                          width: "fit-content",
+                                          display: "grid",
+                                          gridTemplateColumns:
+                                            "repeat(2, 60px)",
+                                          gap: "5px",
                                         }}
                                       >
-                                        <strong>{boqItem.scope_of_work}</strong>
+                                        {attachmentUrls.map((url, i) => (
+                                          <img
+                                            key={i}
+                                            src={url}
+                                            alt="attachment"
+                                            style={{
+                                              width: "60px",
+                                              height: "100%",
+                                              objectFit: "contain",
+                                            }}
+                                          />
+                                        ))}
                                       </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  {Number(boqItem.rate_per_quantity) > 0
-                                    ? formatPrice(boqItem.rate_per_quantity)
-                                    : "-"}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                  }}
-                                >
-                                  {formatQuantity(boqItem.quantity)}{" "}
-                                  {boqItem.unit}
-                                </td>
-                                {canSeePrice && (
-                                  <td
-                                    style={{
-                                      padding: "25px 30px",
-                                      textAlign: "left",
-                                      verticalAlign: "middle",
-                                      backgroundColor: bgColor,
-                                    }}
-                                  >
-                                    {formatPriceAED(
-                                      Number(boqItem.total_cost) ||
-                                        Number(boqItem.rate_per_quantity) *
-                                          Number(boqItem.quantity) ||
-                                        0,
-                                    )}
-                                  </td>
-                                )}
-                                {showJoColumns && (
-                                  <td
-                                    style={{
-                                      padding: "25px 30px",
-                                      textAlign: "left",
-                                      verticalAlign: "middle",
-                                      backgroundColor: bgColor,
-                                    }}
-                                  >
-                                    {Number(boqItem.subcontracted_qty) > 0
-                                      ? `${formatQuantity(Number(boqItem.subcontracted_qty))} ${boqItem.unit}`
-                                      : "-"}
-                                  </td>
-                                )}
-                                {showJoColumns && canSeeWorksValue && (
-                                  <td
-                                    style={{
-                                      padding: "25px 30px",
-                                      textAlign: "left",
-                                      verticalAlign: "middle",
-                                      backgroundColor: bgColor,
-                                    }}
-                                  >
-                                    {itemSubcontractedWorksValue > 0
-                                      ? formatPriceAED(
-                                          itemSubcontractedWorksValue,
-                                        )
-                                      : "-"}
-                                  </td>
-                                )}
-                                <td
-                                  className="attachments"
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: bgColor,
-                                  }}
-                                >
-                                  <div
-                                    className="attachments-grid"
-                                    style={{
-                                      display: "grid",
-                                      gridTemplateColumns: "repeat(2, 60px)",
-                                      gap: "5px",
-                                    }}
-                                  >
-                                    {attachmentUrls.map((url, i) => (
-                                      <img
-                                        key={i}
-                                        src={url}
-                                        alt="attachment"
-                                        style={{
-                                          width: "60px",
-                                          height: "100%",
-                                          objectFit: "contain",
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                                    </td>
+                                  </tr>
+                                  {isExpanded && (
+                                    <tr>
+                                      <td
+                                        style={{ padding: 0, width: "120px" }}
+                                      ></td>
+                                      <td
+                                        colSpan={totalCols - 1}
+                                        style={{ padding: 0 }}
+                                      >
+                                        {renderPurchaseHistoryTable(boqItem)}
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Fragment>
+                              );
+                            });
+                          })()}
                         </tbody>
-                        {(canSeePrice ||
+                        {(showAllocatedQty ||
                           (showJoColumns && canSeeWorksValue)) && (
                           <tfoot
                             style={{
@@ -1759,95 +2035,65 @@ export default function BoqReferencePopUp({
                           >
                             <tr>
                               {/* # col spacer */}
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  backgroundColor: "white",
-                                }}
-                              ></td>
+                              <td></td>
                               {/* ITEM col: label */}
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  textAlign: "left",
-                                  verticalAlign: "middle",
-                                  backgroundColor: "white",
-                                }}
-                              >
-                                <h3 style={{ fontSize: "14px" }}>SUBTOTAL</h3>
+                              <td>
+                                <h3>SUBTOTAL</h3>
                               </td>
                               {/* RATE col spacer */}
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  backgroundColor: "white",
-                                }}
-                              ></td>
+                              <td></td>
                               {/* QUANTITY col spacer */}
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  backgroundColor: "white",
-                                }}
-                              ></td>
-                              {/* TOTAL PRICE col: value */}
+                              <td></td>
+                              {/* ALLOCATED QTY col spacer */}
+                              {showAllocatedQty && <td></td>}
+                              {/* TOTAL COST col: sum of purchase history */}
+                              {showAllocatedQty && (
+                                <td>
+                                  <h3 style={{ textWrap: "nowrap" }}>
+                                    {formatPriceAED(
+                                      group.items.reduce(
+                                        (sum, i) =>
+                                          sum +
+                                          (purchaseHistory[i.id] ?? []).reduce(
+                                            (s, e) => s + Number(e.total_price),
+                                            0,
+                                          ),
+                                        0,
+                                      ),
+                                    )}
+                                  </h3>
+                                </td>
+                              )}
+                              {/* TOTAL PRICE col: sum of rate×qty */}
                               {canSeePrice && (
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: "white",
-                                  }}
-                                >
-                                  <h3
-                                    style={{
-                                      textWrap: "nowrap",
-                                      fontSize: "14px",
-                                    }}
-                                  >
-                                    {formatPriceAED(subCatTotal)}
+                                <td>
+                                  <h3 style={{ textWrap: "nowrap" }}>
+                                    {formatPriceAED(
+                                      group.items.reduce(
+                                        (sum, i) =>
+                                          sum +
+                                          Number(i.rate_per_quantity) *
+                                            Number(i.quantity),
+                                        0,
+                                      ),
+                                    )}
                                   </h3>
                                 </td>
                               )}
                               {/* SUBCONTRACTED QTY col spacer */}
-                              {showJoColumns && (
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    backgroundColor: "white",
-                                  }}
-                                ></td>
-                              )}
+                              {showJoColumns && <td></td>}
                               {/* SUBCONTRACTED WORKS VALUE col: value */}
                               {showJoColumns && canSeeWorksValue && (
-                                <td
-                                  style={{
-                                    padding: "25px 30px",
-                                    textAlign: "left",
-                                    verticalAlign: "middle",
-                                    backgroundColor: "white",
-                                  }}
-                                >
-                                  <h3
-                                    style={{
-                                      textWrap: "nowrap",
-                                      fontSize: "14px",
-                                    }}
-                                  >
+                                <td>
+                                  <h3 style={{ textWrap: "nowrap" }}>
                                     {formatPriceAED(
-                                      subCatSubcontractedWorksValue,
+                                      groupSubcontractedWorksValue,
                                     )}
                                   </h3>
                                 </td>
                               )}
                               {/* ATTACHMENT col spacer */}
-                              <td
-                                style={{
-                                  padding: "25px 30px",
-                                  backgroundColor: "white",
-                                }}
-                              ></td>
+                              <td></td>
                             </tr>
                           </tfoot>
                         )}
@@ -1857,10 +2103,530 @@ export default function BoqReferencePopUp({
                       <br />
                     </div>
                   );
-                })}
-              </div>
-            ) : null}
+                })
+              ) : activeCategoryData ? (
+                // Individual Category View - Show all items in this category (all subcategories)
+                <div>
+                  {/* Items from all subcategories in this category */}
+                  {activeCategoryData.subCategories.map((subCat, subIndex) => {
+                    // Get items for this subcategory
+                    const subCatItems = activeCategoryData.items.filter(
+                      (item) => item.sub_category === subCat,
+                    );
+
+                    if (subCatItems.length === 0) return null;
+
+                    const firstItem = subCatItems[0];
+                    const subCatTotal = subCatItems.reduce(
+                      (sum, item) =>
+                        sum +
+                        (purchaseHistory[item.id] ?? []).reduce(
+                          (s, e) => s + Number(e.total_price),
+                          0,
+                        ),
+                      0,
+                    );
+                    const subCatSubcontractedWorksValue = subCatItems.reduce(
+                      (sum, i) =>
+                        sum +
+                        (Number(i.subcontracted_qty) || 0) *
+                          (Number(i.rate_per_quantity) || 0),
+                      0,
+                    );
+
+                    return (
+                      <div key={subCat} style={{ marginBottom: "30px" }}>
+                        {/* Subcategory Header */}
+                        <h2
+                          style={{
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {activeCategoryData.category_number}.
+                          {firstItem.subcategory_number} {subCat}
+                        </h2>
+
+                        <br />
+
+                        <table
+                          className="items-table"
+                          style={{ tableLayout: "fixed", width: "100%" }}
+                        >
+                          <colgroup>
+                            <col style={{ width: "120px" }} />
+                            <col />
+                            <col style={{ width: "160px" }} />
+                            <col style={{ width: "150px" }} />
+                            {showAllocatedQty && (
+                              <col style={{ width: "160px" }} />
+                            )}
+                            {showAllocatedQty && (
+                              <col style={{ width: "220px" }} />
+                            )}
+                            {canSeePrice && <col style={{ width: "200px" }} />}
+                            {showJoColumns && (
+                              <col style={{ width: "180px" }} />
+                            )}
+                            {showJoColumns && canSeeWorksValue && (
+                              <col style={{ width: "220px" }} />
+                            )}
+                            <col style={{ width: "160px" }} />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>ITEM</th>
+                              <th>RATE</th>
+                              <th>QUANTITY</th>
+                              {showAllocatedQty && <th>ALLOCATED QTY</th>}
+                              {showAllocatedQty && <th>TOTAL COST</th>}
+                              {canSeePrice && <th>TOTAL PRICE</th>}
+                              {showJoColumns && <th>SUBCONTRACTED QTY</th>}
+                              {showJoColumns && canSeeWorksValue && (
+                                <th>SUBCONTRACTED WORKS VALUE</th>
+                              )}
+                              <th>ATTACHMENT(S)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(() => {
+                              const totalCols =
+                                5 +
+                                (showAllocatedQty ? 2 : 0) +
+                                (canSeePrice ? 1 : 0) +
+                                (showJoColumns ? 1 : 0) +
+                                (showJoColumns && canSeeWorksValue ? 1 : 0);
+                              return subCatItems.map((boqItem, itemIndex) => {
+                                const attachmentUrls = parseAttachments(
+                                  boqItem.attachments,
+                                );
+                                const bgColor = getRowBgColor(itemIndex);
+                                const itemSubcontractedWorksValue =
+                                  (Number(boqItem.subcontracted_qty) || 0) *
+                                  (Number(boqItem.rate_per_quantity) || 0);
+                                const isExpanded = expandedBoqRows.has(
+                                  boqItem.id,
+                                );
+
+                                return (
+                                  <Fragment key={boqItem.id}>
+                                    <tr
+                                      className={
+                                        isExpanded ? "history-expanded" : ""
+                                      }
+                                    >
+                                      <td
+                                        style={{
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {boqItem.item_number}
+                                      </td>
+                                      <td>
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "10px",
+                                          }}
+                                        >
+                                          <strong>{boqItem.item_name}</strong>
+
+                                          {boqItem.item_description && (
+                                            <p
+                                              style={{ whiteSpace: "pre-wrap" }}
+                                            >
+                                              {boqItem.item_description}
+                                            </p>
+                                          )}
+
+                                          {boqItem.location && (
+                                            <div
+                                              style={{
+                                                display: "flex",
+                                                gap: "10px",
+                                                alignItems: "center",
+                                              }}
+                                            >
+                                              <img
+                                                src={locationIcon}
+                                                style={{ width: "16px" }}
+                                                alt="location"
+                                              />
+                                              <span
+                                                style={{
+                                                  fontWeight: 600,
+                                                  marginTop: "4px",
+                                                  color:
+                                                    "rgba(105, 105, 105, 1)",
+                                                }}
+                                              >
+                                                {boqItem.location}
+                                              </span>
+                                            </div>
+                                          )}
+
+                                          {boqItem.scope_of_work && (
+                                            <div
+                                              style={{
+                                                backgroundColor:
+                                                  "rgba(225, 225, 225, 1)",
+                                                borderRadius: "50px",
+                                                padding: "4px 10px",
+                                                width: "fit-content",
+                                              }}
+                                            >
+                                              <strong>
+                                                {boqItem.scope_of_work}
+                                              </strong>
+                                            </div>
+                                          )}
+
+                                          {/* Purchase History toggle */}
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              togglePurchaseHistory(boqItem.id);
+                                            }}
+                                            style={{
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              gap: "5px",
+                                              backgroundColor:
+                                                "rgba(239,239,239,1)",
+                                              border: "none",
+                                              borderRadius: "50px",
+                                              cursor: "pointer",
+                                              padding: "6px 12px",
+                                              color: "black",
+                                              fontSize: "11px",
+                                              width: "fit-content",
+                                            }}
+                                          >
+                                            <svg
+                                              width="14"
+                                              height="14"
+                                              viewBox="0 0 12 12"
+                                              fill="none"
+                                              style={{
+                                                transition: "transform 0.2s",
+                                                transform: isExpanded
+                                                  ? "rotate(180deg)"
+                                                  : "rotate(0deg)",
+                                                flexShrink: 0,
+                                              }}
+                                            >
+                                              <path
+                                                d="M2 4L6 8L10 4"
+                                                stroke="currentColor"
+                                                strokeWidth="1"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                              />
+                                            </svg>
+                                            Purchase History
+                                          </button>
+                                        </div>
+                                      </td>
+                                      <td
+                                        style={{
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {Number(boqItem.rate_per_quantity) > 0
+                                          ? formatPrice(
+                                              boqItem.rate_per_quantity,
+                                            )
+                                          : "-"}
+                                      </td>
+                                      <td>
+                                        {formatQuantity(boqItem.quantity)}{" "}
+                                        {boqItem.unit}
+                                      </td>
+                                      {showAllocatedQty && (
+                                        <td>
+                                          {boqItem.allocated_qty != null
+                                            ? `${formatQuantity(boqItem.allocated_qty)} ${boqItem.unit}`
+                                            : "-"}
+                                        </td>
+                                      )}
+                                      {showAllocatedQty &&
+                                        (() => {
+                                          const history =
+                                            purchaseHistory[boqItem.id];
+                                          const purchasedTotal =
+                                            history != null
+                                              ? history.reduce(
+                                                  (s, e) =>
+                                                    s + Number(e.total_price),
+                                                  0,
+                                                )
+                                              : null;
+                                          const itemBudget =
+                                            Number(boqItem.rate_per_quantity) *
+                                            Number(boqItem.quantity);
+                                          const utilizationPct =
+                                            purchasedTotal != null &&
+                                            itemBudget > 0
+                                              ? Math.min(
+                                                  (purchasedTotal /
+                                                    itemBudget) *
+                                                    100,
+                                                  100,
+                                                )
+                                              : 0;
+                                          const utilizationColor =
+                                            purchasedTotal != null &&
+                                            purchasedTotal > itemBudget
+                                              ? "rgba(220,38,38,1)"
+                                              : "rgba(34,197,94,1)";
+                                          return (
+                                            <td>
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  flexDirection: "column",
+                                                  gap: "8px",
+                                                }}
+                                              >
+                                                <span
+                                                  style={{
+                                                    whiteSpace: "nowrap",
+                                                  }}
+                                                >
+                                                  {purchasedTotal != null
+                                                    ? formatPriceAED(
+                                                        purchasedTotal,
+                                                      )
+                                                    : "—"}
+                                                </span>
+                                                {purchasedTotal != null && (
+                                                  <div
+                                                    className="tooltip-bar"
+                                                    style={{
+                                                      display: "flex",
+                                                      flexDirection: "column",
+                                                      gap: "4px",
+                                                    }}
+                                                  >
+                                                    <span className="tooltip-label">
+                                                      <span
+                                                        style={{
+                                                          color:
+                                                            purchasedTotal >
+                                                            itemBudget
+                                                              ? "rgba(220,38,38,1)"
+                                                              : "rgba(34,150,100,1)",
+                                                        }}
+                                                      >
+                                                        {formatPriceAED(
+                                                          purchasedTotal,
+                                                        )}
+                                                      </span>
+                                                      {" / "}
+                                                      {formatPriceAED(
+                                                        itemBudget,
+                                                      )}
+                                                    </span>
+                                                    <span
+                                                      style={{
+                                                        fontSize: "10px",
+                                                        color: utilizationColor,
+                                                        whiteSpace: "nowrap",
+                                                      }}
+                                                    >
+                                                      {Math.round(utilizationPct)}%
+                                                    </span>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                                      {purchasedTotal > itemBudget && (
+                                                        <img src="/icons/warning.svg" alt="over budget" style={{ width: "11px", height: "11px", flexShrink: 0 }} />
+                                                      )}
+                                                      <div
+                                                        style={{
+                                                          flex: 1,
+                                                          height: "5px",
+                                                          borderRadius: "3px",
+                                                          backgroundColor:
+                                                            "rgba(220,220,220,1)",
+                                                          overflow: "hidden",
+                                                        }}
+                                                      >
+                                                        <div
+                                                          style={{
+                                                            width: `${utilizationPct}%`,
+                                                            height: "100%",
+                                                            backgroundColor:
+                                                              utilizationColor,
+                                                            borderRadius: "3px",
+                                                          }}
+                                                        />
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </td>
+                                          );
+                                        })()}
+                                      {canSeePrice && (
+                                        <td>
+                                          {formatPriceAED(
+                                            Number(boqItem.rate_per_quantity) *
+                                              Number(boqItem.quantity),
+                                          )}
+                                        </td>
+                                      )}
+                                      {showJoColumns && (
+                                        <td>
+                                          {Number(boqItem.subcontracted_qty) > 0
+                                            ? `${formatQuantity(Number(boqItem.subcontracted_qty))} ${boqItem.unit}`
+                                            : "-"}
+                                        </td>
+                                      )}
+                                      {showJoColumns && canSeeWorksValue && (
+                                        <td>
+                                          {itemSubcontractedWorksValue > 0
+                                            ? formatPriceAED(
+                                                itemSubcontractedWorksValue,
+                                              )
+                                            : "-"}
+                                        </td>
+                                      )}
+                                      <td className="attachments">
+                                        <div
+                                          className="attachments-grid"
+                                          style={{
+                                            display: "grid",
+                                            gridTemplateColumns:
+                                              "repeat(2, 60px)",
+                                            gap: "5px",
+                                          }}
+                                        >
+                                          {attachmentUrls.map((url, i) => (
+                                            <img
+                                              key={i}
+                                              src={url}
+                                              alt="attachment"
+                                              style={{
+                                                width: "60px",
+                                                height: "100%",
+                                                objectFit: "contain",
+                                              }}
+                                            />
+                                          ))}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {isExpanded && (
+                                      <tr>
+                                        <td
+                                          style={{ padding: 0, width: "120px" }}
+                                        ></td>
+                                        <td
+                                          colSpan={totalCols - 1}
+                                          style={{ padding: 0 }}
+                                        >
+                                          {renderPurchaseHistoryTable(boqItem)}
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                          {(showAllocatedQty ||
+                            (showJoColumns && canSeeWorksValue)) && (
+                            <tfoot
+                              style={{
+                                borderTop: "1px solid rgba(232, 223, 223, 1)",
+                                pointerEvents: "none",
+                              }}
+                            >
+                              <tr>
+                                {/* # col spacer */}
+                                <td></td>
+                                {/* ITEM col: label */}
+                                <td>
+                                  <h3 style={{ fontSize: "14px" }}>SUBTOTAL</h3>
+                                </td>
+                                {/* RATE col spacer */}
+                                <td></td>
+                                {/* QUANTITY col spacer */}
+                                <td></td>
+                                {/* ALLOCATED QTY col spacer */}
+                                {showAllocatedQty && <td></td>}
+                                {/* TOTAL COST col: value */}
+                                {showAllocatedQty && (
+                                  <td>
+                                    <h3
+                                      style={{
+                                        textWrap: "nowrap",
+                                        fontSize: "14px",
+                                      }}
+                                    >
+                                      {formatPriceAED(subCatTotal)}
+                                    </h3>
+                                  </td>
+                                )}
+                                {/* TOTAL PRICE col: sum of rate×qty */}
+                                {canSeePrice && (
+                                  <td>
+                                    <h3
+                                      style={{
+                                        textWrap: "nowrap",
+                                        fontSize: "14px",
+                                      }}
+                                    >
+                                      {formatPriceAED(
+                                        subCatItems.reduce(
+                                          (sum, i) =>
+                                            sum +
+                                            Number(i.rate_per_quantity) *
+                                              Number(i.quantity),
+                                          0,
+                                        ),
+                                      )}
+                                    </h3>
+                                  </td>
+                                )}
+                                {/* SUBCONTRACTED QTY col spacer */}
+                                {showJoColumns && <td></td>}
+                                {/* SUBCONTRACTED WORKS VALUE col: value */}
+                                {showJoColumns && canSeeWorksValue && (
+                                  <td>
+                                    <h3
+                                      style={{
+                                        textWrap: "nowrap",
+                                        fontSize: "14px",
+                                      }}
+                                    >
+                                      {formatPriceAED(
+                                        subCatSubcontractedWorksValue,
+                                      )}
+                                    </h3>
+                                  </td>
+                                )}
+                                {/* ATTACHMENT col spacer */}
+                                <td></td>
+                              </tr>
+                            </tfoot>
+                          )}
+                        </table>
+
+                        <br />
+                        <br />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </>
+          )}
           </div>
+          {/* boq-ref-popup */}
         </FormPopUp>
       )}
     </>

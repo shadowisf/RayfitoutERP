@@ -13,12 +13,14 @@ type props = {
   mrHeader: MrHeader;
   disabled?: boolean;
   style?: React.CSSProperties;
+  title?: string;
 };
 
 export default function SubmitForQSApprovalButton({
   mrHeader,
   disabled,
   style,
+  title,
 }: props) {
   const router = useRouter();
   const { refresh } = useRefresh();
@@ -75,6 +77,7 @@ export default function SubmitForQSApprovalButton({
         onClick={() => setIsOpen(true)}
         style={{ ...style }}
         disabled={disabled}
+        title={title}
       >
         {bypassQSReview ? "SUBMIT FOR QUOTATIONS" : "SUBMIT FOR QS REVIEW"}
       </Button>

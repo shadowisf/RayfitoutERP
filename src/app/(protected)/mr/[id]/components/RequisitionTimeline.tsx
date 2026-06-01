@@ -28,6 +28,10 @@ type RequisitionTimelineProps = {
   mrNumber?: string;
   projectName?: string;
   requiredDate?: string;
+  /** True when the MR was created by manager/QS dept or has skip_approvals=1.
+   *  QS Review (stage 2) and QS Price Check (stage 9) are excluded from the
+   *  planned stage list when this is true. */
+  skipQsReview?: boolean;
 };
 
 // Rejection progress IDs for MR/LPO
@@ -150,6 +154,7 @@ export default function RequisitionTimeline({
   mrNumber,
   projectName,
   requiredDate,
+  skipQsReview = false,
 }: RequisitionTimelineProps) {
   const [progressLog, setProgressLog] = useState<ProgressLogEntry[]>([]);
   const [hasBoqReference, setHasBoqReference] = useState<boolean>(false);
@@ -218,7 +223,8 @@ export default function RequisitionTimeline({
     const fullStages = hasItemAvailable
       ? FULL_LPO_STAGES
       : FULL_LPO_STAGES.filter((id) => id !== 4);
-    baseStageIds = hasBoqReference ? fullStages : BASE_LPO_STAGES;
+    // Show QS stages (2, 9) unless the MR was created by manager/QS or has skip_approvals
+    baseStageIds = !skipQsReview ? fullStages : BASE_LPO_STAGES;
     stageLabels = STAGE_LABELS;
     rejectionIds = REJECTION_IDS;
   } else if (type === "payment") {
@@ -235,7 +241,8 @@ export default function RequisitionTimeline({
     // MR flow
     if (hasItemAvailable && !hasNeedOrder) {
       // All lines are item_available → shortened flow: stock transfer then completed
-      baseStageIds = hasBoqReference
+      // Show QS stages unless the MR was created by manager/QS or has skip_approvals
+      baseStageIds = !skipQsReview
         ? FULL_MR_STAGES_ALL_AVAILABLE
         : BASE_MR_STAGES_ALL_AVAILABLE;
     } else {
@@ -243,7 +250,8 @@ export default function RequisitionTimeline({
       const fullStages = hasItemAvailable
         ? FULL_MR_STAGES
         : FULL_MR_STAGES.filter((id) => id !== 4);
-      baseStageIds = hasBoqReference ? fullStages : BASE_MR_STAGES;
+      // Show QS stages unless the MR was created by manager/QS or has skip_approvals
+      baseStageIds = !skipQsReview ? fullStages : BASE_MR_STAGES;
     }
     stageLabels = STAGE_LABELS;
     rejectionIds = REJECTION_IDS;

@@ -690,6 +690,11 @@ export default async function MrWithID({
         mrNumber={`${mrHeader.type === "payment" ? "PR" : mrHeader.type === "job" ? "JO" : "MR"}-${String(mrHeader.id).padStart(5, "0")}`}
         projectName={mrHeader.project_name || undefined}
         requiredDate={new Date(mrHeader.required_date).toLocaleDateString("en-GB")}
+        skipQsReview={
+          !!mrHeader.skip_approvals ||
+          mrHeader.department_id === 8 ||
+          mrHeader.department_id === 16
+        }
       />
 
       <br />

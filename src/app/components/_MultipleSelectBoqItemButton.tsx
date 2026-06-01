@@ -344,57 +344,59 @@ export default function MultipleSelectBoqItemButton({
     setFilteredGroupedBoqLines(filtered);
   }, [searchQuery, groupedBoqLines, filterCategories, filterSubCategories]);
 
-  // Fetch BOQ lines when projectID is available
+  // Fetch BOQ lines when the popup opens (lazy — skip if already loaded)
   useEffect(() => {
-    if (projectID && projectID > 0) {
-      setIsFetchingItems(true);
-      fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            project_id: projectID,
-          }),
-        },
-      )
-        .then((res) => res.json())
-        .then(function (data) {
-          if (!data || !Array.isArray(data)) {
-            console.error("Invalid BOQ data:", data);
-            setBoqLineValues([]);
-            return;
-          }
+    if (!isOpen) return;
+    if (!projectID || projectID <= 0) return;
+    if (boqLineValues.length > 0) return; // already loaded, don't re-fetch
 
-          setBoqLineValues(data);
-
-          // Group BOQ lines by category and subcategory
-          const grouped: GroupedBoqLines = {};
-          data.forEach((boqLine: BoqLine) => {
-            const category = boqLine.category || "Uncategorized";
-            const subCategory = boqLine.sub_category || "General";
-
-            if (!grouped[category]) {
-              grouped[category] = {};
-            }
-            if (!grouped[category][subCategory]) {
-              grouped[category][subCategory] = [];
-            }
-            grouped[category][subCategory].push(boqLine);
-          });
-
-          setGroupedBoqLines(grouped);
-          setFilteredGroupedBoqLines(grouped);
-        })
-        .catch((err) => {
-          console.error("Error fetching BOQ lines:", err);
+    setIsFetchingItems(true);
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: projectID,
+        }),
+      },
+    )
+      .then((res) => res.json())
+      .then(function (data) {
+        if (!data || !Array.isArray(data)) {
+          console.error("Invalid BOQ data:", data);
           setBoqLineValues([]);
-          setGroupedBoqLines({});
-          setFilteredGroupedBoqLines({});
-        })
-        .finally(() => setIsFetchingItems(false));
-    }
-  }, [projectID, isOpen]);
+          return;
+        }
+
+        setBoqLineValues(data);
+
+        // Group BOQ lines by category and subcategory
+        const grouped: GroupedBoqLines = {};
+        data.forEach((boqLine: BoqLine) => {
+          const category = boqLine.category || "Uncategorized";
+          const subCategory = boqLine.sub_category || "General";
+
+          if (!grouped[category]) {
+            grouped[category] = {};
+          }
+          if (!grouped[category][subCategory]) {
+            grouped[category][subCategory] = [];
+          }
+          grouped[category][subCategory].push(boqLine);
+        });
+
+        setGroupedBoqLines(grouped);
+        setFilteredGroupedBoqLines(grouped);
+      })
+      .catch((err) => {
+        console.error("Error fetching BOQ lines:", err);
+        setBoqLineValues([]);
+        setGroupedBoqLines({});
+        setFilteredGroupedBoqLines({});
+      })
+      .finally(() => setIsFetchingItems(false));
+  }, [isOpen, projectID]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Set selectedBoqInfo when currentBoqLineIDs exist (for editing)
   useEffect(() => {
@@ -638,13 +640,13 @@ export default function MultipleSelectBoqItemButton({
     setTimeout(checkCatScroll, 50);
   }, [availableCategoryTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-check arrows after FormPopup's 500ms spinner clears
+  // Re-check arrows after the popup mounts and content renders
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(() => {
       checkCatScroll();
       checkTabScroll();
-    }, 600);
+    }, 100);
     return () => clearTimeout(timer);
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -787,6 +789,7 @@ export default function MultipleSelectBoqItemButton({
       setIsOpen={setIsOpen}
       handleSubmit={handleSubmit}
       addButtonLabel={"CONFIRM"}
+      haveLoadingState={true}
       style={{ width: "75dvw", height: "95dvh" }}
       stickyFooter={
         totalPages > 1 || tempSelectedBoqIDs.length > 0 ? (
@@ -845,6 +848,73 @@ export default function MultipleSelectBoqItemButton({
       }
     >
       <div style={{ width: "100%", overflow: "hidden" }}>
+        {/* Skeleton loading state */}
+        {isFetchingItems && (
+          <div>
+            {/* Search bar skeleton */}
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "24px" }}>
+              <div
+                className="skeleton-pulse"
+                style={{ width: "250px", height: "36px", borderRadius: "8px", backgroundColor: "rgba(230,230,230,1)" }}
+              />
+            </div>
+            {/* Category tabs skeleton */}
+            <div style={{ display: "flex", gap: "8px", marginBottom: "24px" }}>
+              {[80, 110, 90, 130, 100].map((w, i) => (
+                <div
+                  key={i}
+                  className="skeleton-pulse"
+                  style={{ width: `${w}px`, height: "30px", borderRadius: "6px", backgroundColor: "rgba(230,230,230,1)" }}
+                />
+              ))}
+            </div>
+            {/* Table skeleton */}
+            <div style={{ border: "1px solid rgba(223,223,223,1)", borderRadius: "8px", overflow: "hidden" }}>
+              {/* Header row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "50px 120px 1fr 130px",
+                  gap: "0",
+                  backgroundColor: "rgba(245,245,245,1)",
+                  padding: "12px 16px",
+                  borderBottom: "1px solid rgba(223,223,223,1)",
+                }}
+              >
+                {[20, 40, 70, 50].map((w, i) => (
+                  <div key={i} className="skeleton-pulse" style={{ height: "10px", borderRadius: "4px", width: `${w}%`, backgroundColor: "rgba(210,210,210,1)" }} />
+                ))}
+              </div>
+              {/* Skeleton rows */}
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "50px 120px 1fr 130px",
+                    gap: "0",
+                    padding: "14px 16px",
+                    borderBottom: i < 7 ? "1px solid rgba(235,235,235,1)" : "none",
+                    backgroundColor: i % 2 === 0 ? "white" : "rgba(250,250,250,1)",
+                    alignItems: "center",
+                  }}
+                >
+                  <div className="skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: "rgba(220,220,220,1)" }} />
+                  <div className="skeleton-pulse" style={{ width: "80px", height: "14px", borderRadius: "4px", backgroundColor: "rgba(220,220,220,1)" }} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div className="skeleton-pulse" style={{ width: `${60 + (i * 17) % 30}%`, height: "14px", borderRadius: "4px", backgroundColor: "rgba(220,220,220,1)" }} />
+                    <div className="skeleton-pulse" style={{ width: `${30 + (i * 11) % 20}%`, height: "12px", borderRadius: "4px", backgroundColor: "rgba(230,230,230,1)" }} />
+                  </div>
+                  <div className="skeleton-pulse" style={{ width: "70px", height: "14px", borderRadius: "4px", backgroundColor: "rgba(220,220,220,1)" }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main content — only shown when not loading */}
+        {!isFetchingItems && <>
+
         {/* Search bar */}
         <div
           style={{
@@ -1457,6 +1527,7 @@ export default function MultipleSelectBoqItemButton({
             </tbody>
           </table>
         )}
+        </>}
       </div>
     </FormPopUp>
   );
