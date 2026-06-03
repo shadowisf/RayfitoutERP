@@ -56,7 +56,9 @@ function SkeletonBlock({
 
 function SkeletonLayout() {
   const sidebarRows = [
-    "72%", "58%", "68%", "62%", "75%", "60%", "66%", "53%", "70%", "64%", "57%", "78%",
+    "72%", "58%", "68%", "62%", "75%", "60%", "66%", "53%",
+    "70%", "64%", "57%", "78%", "61%", "73%", "55%", "69%",
+    "76%", "59%", "67%", "71%", "54%", "80%", "63%", "56%",
   ];
   const dbTabs = ["110px", "130px", "95px", "120px", "105px"];
   const tableRows = [
@@ -66,6 +68,15 @@ function SkeletonLayout() {
     ["79%", "46%"], ["44%", "26%"], ["67%", "38%"],
   ];
   return (
+    <>
+      {/* Page header skeleton */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+        <SkeletonBlock w="200px" h={28} />
+        <div style={{ display: "flex", gap: "10px" }}>
+          <SkeletonBlock w="120px" h={36} style={{ borderRadius: "8px" }} />
+          <SkeletonBlock w="165px" h={36} style={{ borderRadius: "8px" }} />
+        </div>
+      </div>
     <div
       style={{
         display: "flex",
@@ -90,7 +101,7 @@ function SkeletonLayout() {
       </div>
 
       {/* CENTER */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden", backgroundColor: "white" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden", backgroundColor: "#f8f9fb", borderRadius: "10px" }}>
         <div style={{ padding: "12px 20px 15px", flexShrink: 0 }}>
           <SkeletonBlock w="45%" h={22} style={{ marginBottom: "10px" }} />
           <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "15px" }}>
@@ -112,7 +123,7 @@ function SkeletonLayout() {
               <div key={i} style={{ width: w, height: "36px", borderRadius: "6px 6px 0 0", backgroundColor: "rgba(221,221,221,1)", flexShrink: 0 }} />
             ))}
           </div>
-          <table style={{ tableLayout: "fixed", width: "100%", borderCollapse: "collapse" }}>
+          <table style={{ tableLayout: "fixed", width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <colgroup>
               <col style={{ width: "40px" }} />
               <col style={{ width: "200px" }} />
@@ -166,6 +177,7 @@ function SkeletonLayout() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -570,34 +582,21 @@ export default function MaterialArchivePage() {
         .material-db-table thead tr:first-child th:last-child { border-top-right-radius: 0 !important; }
       `}</style>
 
-      {/* ── Page header ──────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "24px",
-        }}
-      >
-        <h1>MATERIAL ARCHIVE</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Button
-            componentType="link"
-            bgColor="white"
-            borderColor="rgba(220,220,220,1)"
-            textColor="black"
-            href="/settings/manage/material"
-          >
-            <img src="/icons/database.svg" alt="" />
-            DATABASE
-          </Button>
-          <ExportMaterialListPDFButton allItems={allItems} />
-        </div>
-      </div>
-
       {isFetching ? (
         <SkeletonLayout />
       ) : (
+        <>
+        {/* ── Page header ────────────────────────────────────────────── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+          <h1>MATERIAL ARCHIVE</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Button componentType="link" bgColor="white" borderColor="rgba(220,220,220,1)" textColor="black" href="/settings/manage/material">
+              <img src="/icons/database.svg" alt="" />
+              DATABASE
+            </Button>
+            <ExportMaterialListPDFButton allItems={allItems} />
+          </div>
+        </div>
         <div
           style={{
             display: "flex",
@@ -1752,6 +1751,7 @@ export default function MaterialArchivePage() {
             )}
           </div>
         </div>
+        </>
       )}
 
     </div>
