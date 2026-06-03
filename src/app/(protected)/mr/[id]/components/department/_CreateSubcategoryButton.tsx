@@ -9,11 +9,13 @@ import { useRefresh } from "@/app/context/RefreshContext";
 type props = {
   onSuccess?: (newId: number) => void;
   materialCategoryID: number;
+  renderTrigger?: (open: () => void) => React.ReactNode;
 };
 
 export default function CreateSubCategoryButton({
   materialCategoryID,
   onSuccess,
+  renderTrigger,
 }: props) {
   const router = useRouter();
   const { refresh } = useRefresh();
@@ -63,16 +65,18 @@ export default function CreateSubCategoryButton({
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={"black"}
-        borderColor={"black"}
-        textColor={"white"}
-        onClick={() => openMenu()}
-        full
-      >
-        NEW SUBCATEGORY +
-      </Button>
+      {renderTrigger ? renderTrigger(() => openMenu()) : (
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
+          onClick={() => openMenu()}
+          full
+        >
+          NEW SUBCATEGORY +
+        </Button>
+      )}
 
       {isOpen && (
         <FormPopUp

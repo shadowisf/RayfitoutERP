@@ -1292,7 +1292,7 @@ label {
 
   .search-bar-icon {
     position: absolute;
-    left: 14px;
+    right: 14px;
     width: 14px;
     opacity: 0.5;
     pointer-events: none;
@@ -1302,7 +1302,7 @@ label {
     border-radius: 50px;
     background-color: white;
     border: none;
-    padding: 9px 80px 9px 36px;
+    padding: 9px 36px 9px 14px;
     color: black;
     width: 380px;
     font-size: 12px;
@@ -1410,7 +1410,12 @@ label {
 }
 
 .skeleton-pulse {
-  background: linear-gradient(90deg, rgba(220,220,220,1) 25%, rgba(240,240,240,1) 50%, rgba(220,220,220,1) 75%);
+  background: linear-gradient(
+    90deg,
+    rgba(220, 220, 220, 1) 25%,
+    rgba(240, 240, 240, 1) 50%,
+    rgba(220, 220, 220, 1) 75%
+  );
   background-size: 600px 100%;
   animation: shimmer 1.4s infinite linear;
 }
@@ -1430,7 +1435,7 @@ label {
     padding: 7px 14px;
     border-radius: 8px;
     border: 1px solid rgba(220, 220, 220, 1);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
@@ -1771,7 +1776,6 @@ tr:has(.tooltip-bar:hover) {
   background-color: white !important;
   border-bottom: none;
 }
-
 
 /* ── Three-dots dropdown menu hover ── */
 .three-dots-dropdown > * {
