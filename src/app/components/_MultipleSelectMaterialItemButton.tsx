@@ -21,6 +21,8 @@ export type PredefinedItem = {
   subcategory_name: string;
   added_by?: string | null;
   last_purchase?: string | null;
+  database?: string | null;
+  database_id?: number | null;
 };
 
 type GroupedItems = {
@@ -138,7 +140,8 @@ function SkeletonLayout() {
       {/* ── LEFT: sidebar skeleton ── */}
       <div
         style={{
-          width: 300,
+          width: 350,
+          alignSelf: "stretch",
           flexShrink: 0,
           overflow: "hidden",
           backgroundColor: "rgba(248,248,248,1)",
@@ -421,7 +424,8 @@ function SkeletonLayout() {
       {/* ── RIGHT: detail panel skeleton ── */}
       <div
         style={{
-          width: 290,
+          width: 350,
+          alignSelf: "stretch",
           flexShrink: 0,
           overflowY: "auto",
           padding: "15px",
@@ -562,6 +566,39 @@ export default function MultipleSelectMaterialItemButton({
   const [filterUnits, setFilterUnits] = useState<string[]>([]);
   const [tempFilterUnits, setTempFilterUnits] = useState<string[]>([]);
 
+  // ── Database tabs ────────────────────────────────────────────────────────
+  const [activeDatabaseTab, setActiveDatabaseTab] = useState("");
+  const [showLeftDbArrow, setShowLeftDbArrow] = useState(false);
+  const [showRightDbArrow, setShowRightDbArrow] = useState(false);
+  const dbScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const availableDatabaseTabs = [
+    ...new Set(
+      allItems.map((i) => i.database).filter((db): db is string => Boolean(db)),
+    ),
+  ].sort();
+
+  const checkDbScroll = () => {
+    if (dbScrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        dbScrollContainerRef.current;
+      setShowLeftDbArrow(scrollLeft > 0);
+      setShowRightDbArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+  const scrollDbTabs = (dir: "left" | "right") => {
+    dbScrollContainerRef.current?.scrollBy({
+      left: dir === "left" ? -300 : 300,
+      behavior: "smooth",
+    });
+  };
+
+  useEffect(() => {
+    if (isFetchingItems) return;
+    const id = requestAnimationFrame(checkDbScroll);
+    return () => cancelAnimationFrame(id);
+  }, [availableDatabaseTabs, isFetchingItems]); // eslint-disable-line
+
   // ── Pagination ───────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -572,11 +609,27 @@ export default function MultipleSelectMaterialItemButton({
   >(null);
   const [inventoryLoading, setInventoryLoading] = useState(false);
 
+  // ── Sidebar grouped items filtered by active database ────────────────────
+  const sidebarGrouped = (() => {
+    const source = activeDatabaseTab
+      ? allItems.filter((i) => (i.database ?? "") === activeDatabaseTab)
+      : allItems;
+    const grouped: GroupedItems = {};
+    source.forEach((item) => {
+      const cat = item.category_name || "Uncategorized";
+      const sub = item.subcategory_name || "General";
+      if (!grouped[cat]) grouped[cat] = {};
+      if (!grouped[cat][sub]) grouped[cat][sub] = [];
+      grouped[cat][sub].push(item);
+    });
+    return grouped;
+  })();
+
   // ── Derived: flat items for the center table (tab + search filters only) ───
   const flatItems = (() => {
     const q = searchQuery.trim().toLowerCase();
     let items: PredefinedItem[] = [];
-    Object.entries(groupedItems).forEach(([cat, subCats]) => {
+    Object.entries(sidebarGrouped).forEach(([cat, subCats]) => {
       if (activeCategoryTab && cat !== activeCategoryTab) return;
       Object.entries(subCats).forEach(([sub, subItems]) => {
         if (activeSubCategoryTab && sub !== activeSubCategoryTab) return;
@@ -654,6 +707,12 @@ export default function MultipleSelectMaterialItemButton({
           grouped[category][subCategory].push(item);
         });
         setGroupedItems(grouped);
+        const firstDb = [
+          ...new Set(
+            data.map((i: PredefinedItem) => i.database).filter(Boolean),
+          ),
+        ].sort()[0];
+        if (firstDb) setActiveDatabaseTab(firstDb);
       })
       .catch((err) => {
         console.error("Error fetching predefined items:", err);
@@ -690,6 +749,7 @@ export default function MultipleSelectMaterialItemButton({
       setActiveCategoryTab("");
       setExpandedCategoryTab("");
       setActiveSubCategoryTab("");
+      setActiveDatabaseTab("");
       setDetailItem(null);
       setInventoryMatches(null);
       setSidebarSearch("");
@@ -783,9 +843,9 @@ export default function MultipleSelectMaterialItemButton({
 
   // ── Sidebar category/subcategory bulk-select helpers ─────────────────────
   const getCatItems = (cat: string) =>
-    Object.values(groupedItems[cat] || {}).flat();
+    Object.values(sidebarGrouped[cat] || {}).flat();
   const getSubItems = (cat: string, sub: string): PredefinedItem[] =>
-    groupedItems[cat]?.[sub] || [];
+    sidebarGrouped[cat]?.[sub] || [];
   const isCatChecked = (cat: string) => {
     const items = getCatItems(cat);
     return (
@@ -824,17 +884,17 @@ export default function MultipleSelectMaterialItemButton({
   };
 
   // ── Sidebar category data ─────────────────────────────────────────────────
-  const sidebarCategories = Object.keys(groupedItems).sort();
+  const sidebarCategories = Object.keys(sidebarGrouped).sort();
   const sidebarQ = sidebarSearch.trim().toLowerCase();
   const visibleSidebarCategories = sidebarCategories.filter((cat) => {
     if (!sidebarQ) return true;
     if (cat.toLowerCase().includes(sidebarQ)) return true;
-    return Object.keys(groupedItems[cat] || {}).some((sub) =>
+    return Object.keys(sidebarGrouped[cat] || {}).some((sub) =>
       sub.toLowerCase().includes(sidebarQ),
     );
   });
   const totalFilteredCount = sidebarCategories.reduce(
-    (sum, cat) => sum + Object.values(groupedItems[cat] || {}).flat().length,
+    (sum, cat) => sum + Object.values(sidebarGrouped[cat] || {}).flat().length,
     0,
   );
 
@@ -1006,21 +1066,26 @@ export default function MultipleSelectMaterialItemButton({
         ) : undefined
       }
     >
+      <style>{`
+        .material-db-table { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+        .material-db-table thead tr:first-child th:first-child { border-top-left-radius: 0 !important; }
+        .material-db-table thead tr:first-child th:last-child { border-top-right-radius: 0 !important; }
+      `}</style>
       {/* ── 3-panel layout ── */}
       {isFetchingItems ? <SkeletonLayout /> : null}
       <div
         style={{
-          display: "flex",
-          height: "100%",
+          display: isFetchingItems ? "none" : "flex",
+          height: "calc(100dvh - 250px)",
           overflow: "hidden",
           gap: "16px",
-          ...(isFetchingItems && { display: "none" }),
         }}
       >
         {/* ── LEFT: category / subcategory sidebar ── */}
         <div
           style={{
-            width: 300,
+            width: 350,
+            alignSelf: "stretch",
             flexShrink: 0,
             overflow: "hidden",
             backgroundColor: "rgba(248,248,248,1)",
@@ -1037,22 +1102,23 @@ export default function MultipleSelectMaterialItemButton({
               fontSize: "11px",
               fontWeight: 600,
               color: "rgba(120,120,120,1)",
-              marginBottom: "8px",
               flexShrink: 0,
             }}
           >
             BROWSE CATEGORIES
           </p>
 
+          <br />
+
           {/* Sidebar search */}
-          <div style={{ paddingBottom: "8px", flexShrink: 0 }}>
+          <div style={{ flexShrink: 0 }}>
             <div style={{ position: "relative" }}>
               <img
                 src={searchIcon}
                 alt="search"
                 style={{
                   position: "absolute",
-                  left: "11px",
+                  right: "11px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   width: "14px",
@@ -1067,7 +1133,7 @@ export default function MultipleSelectMaterialItemButton({
                 onChange={(e) => setSidebarSearch(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "7px 12px 7px 34px",
+                  padding: "7px 34px 7px 12px",
                   borderRadius: "8px",
                   border: "1px solid rgba(220,220,220,1)",
                   fontSize: "12px",
@@ -1079,8 +1145,10 @@ export default function MultipleSelectMaterialItemButton({
             </div>
           </div>
 
+          <br />
+
           {/* Scrollable list */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "6px 8px 12px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "6px 0px 12px" }}>
             {/* All */}
             <button
               type="button"
@@ -1131,9 +1199,9 @@ export default function MultipleSelectMaterialItemButton({
               const isCatActive = activeCategoryTab === cat;
               const isCatExpanded = expandedCategoryTab === cat;
               const catChecked = isCatChecked(cat);
-              const catCount = Object.values(groupedItems[cat] || {}).flat()
+              const catCount = Object.values(sidebarGrouped[cat] || {}).flat()
                 .length;
-              const visibleSubs = Object.keys(groupedItems[cat] || {})
+              const visibleSubs = Object.keys(sidebarGrouped[cat] || {})
                 .sort()
                 .filter(
                   (sub) =>
@@ -1245,7 +1313,7 @@ export default function MultipleSelectMaterialItemButton({
                       {visibleSubs.map((sub) => {
                         const isSubActive = activeSubCategoryTab === sub;
                         const subChecked = isSubChecked(cat, sub);
-                        const subCount = (groupedItems[cat]?.[sub] || [])
+                        const subCount = (sidebarGrouped[cat]?.[sub] || [])
                           .length;
                         return (
                           <div
@@ -1342,7 +1410,7 @@ export default function MultipleSelectMaterialItemButton({
                     color: "rgba(120,120,120,1)",
                   }}
                 >
-                  RECENTLY USED
+                  RECENTLY REQUESTED
                 </span>
               </div>
               {allItems
@@ -1670,7 +1738,160 @@ export default function MultipleSelectMaterialItemButton({
           </div>
 
           {/* Scrollable table area */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px 20px 16px" }}>
+            {/* ── Database tabs ── */}
+            {availableDatabaseTabs.length > 0 && (
+              <div
+                style={{ display: "flex", alignItems: "flex-end", gap: "6px" }}
+              >
+                <div
+                  style={{
+                    flex: 1,
+                    position: "relative",
+                    overflow: "hidden",
+                    marginBottom: 0,
+                  }}
+                >
+                  {showLeftDbArrow && (
+                    <>
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: "80px",
+                          background:
+                            "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
+                          pointerEvents: "none",
+                          zIndex: 5,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => scrollDbTabs("left")}
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          zIndex: 10,
+                          backgroundColor: "black",
+                          border: "none",
+                          borderRadius: "10px",
+                          width: "28px",
+                          height: "28px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <img
+                          src="/icons/arrow-right.svg"
+                          style={{ transform: "rotate(180deg)" }}
+                          alt="left"
+                        />
+                      </button>
+                    </>
+                  )}
+                  <div
+                    ref={dbScrollContainerRef}
+                    onScroll={checkDbScroll}
+                    style={{
+                      display: "flex",
+                      gap: "6px",
+                      overflowX: "auto",
+                      scrollbarWidth: "none",
+                      msOverflowStyle: "none" as any,
+                      paddingLeft: showLeftDbArrow ? "36px" : "0",
+                      paddingRight: showRightDbArrow ? "36px" : "0",
+                    }}
+                  >
+                    {availableDatabaseTabs.map((db) => {
+                      const isActive = activeDatabaseTab === db;
+                      return (
+                        <div
+                          key={db}
+                          onClick={() => {
+                            setActiveDatabaseTab(isActive ? "" : db);
+                            setActiveCategoryTab("");
+                            setActiveSubCategoryTab("");
+                            setExpandedCategoryTab("");
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            padding: "7px 12px",
+                            borderRadius: "6px 6px 0 0",
+                            backgroundColor: isActive
+                              ? "rgba(239,239,239,1)"
+                              : "rgb(221,221,221)",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            flexShrink: 0,
+                            userSelect: "none",
+                            minWidth: "125px",
+                          }}
+                        >
+                          <span style={{ color: "black" }}>
+                            {db
+                              .split(" ")
+                              .map(
+                                (w) =>
+                                  w.charAt(0).toUpperCase() +
+                                  w.slice(1).toLowerCase(),
+                              )
+                              .join(" ")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {showRightDbArrow && (
+                    <>
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: "80px",
+                          background:
+                            "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
+                          pointerEvents: "none",
+                          zIndex: 5,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => scrollDbTabs("right")}
+                        style={{
+                          position: "absolute",
+                          right: 0,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          zIndex: 10,
+                          backgroundColor: "black",
+                          border: "none",
+                          borderRadius: "10px",
+                          width: "28px",
+                          height: "28px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <img src="/icons/arrow-right.svg" alt="right" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
             {flatItems.length === 0 ? (
               <div
                 className="no-items-container"
@@ -1716,7 +1937,7 @@ export default function MultipleSelectMaterialItemButton({
             ) : (
               <>
                 <table
-                  className="items-table"
+                  className={`items-table${availableDatabaseTabs.length > 0 ? " material-db-table" : ""}`}
                   style={{ tableLayout: "fixed", width: "100%" }}
                 >
                   <colgroup>
@@ -1836,7 +2057,7 @@ export default function MultipleSelectMaterialItemButton({
                                 <span>{item.subcategory_name || "—"}</span>
                               </div>
                             </td>
-                            <td>{item.unit || "-"}</td>
+                            <td>{item.unit || "N/A"}</td>
                           </tr>
                         </React.Fragment>
                       );
@@ -1851,7 +2072,8 @@ export default function MultipleSelectMaterialItemButton({
         {/* ── RIGHT: item detail + inventory mapping ── */}
         <div
           style={{
-            width: 290,
+            width: 350,
+            alignSelf: "stretch",
             flexShrink: 0,
             overflowY: "auto",
             padding: "15px",
@@ -1880,6 +2102,27 @@ export default function MultipleSelectMaterialItemButton({
                   >
                     {detailItem.material_description}
                   </h3>
+
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      color: "rgba(130,130,130,1)",
+                    }}
+                  >
+                    {detailItem.item_code}
+                  </span>
+
+                  {detailItem.brand && (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: "rgba(130,130,130,1)",
+                      }}
+                    >
+                      {" "}
+                      • {detailItem.brand}
+                    </span>
+                  )}
                 </div>
 
                 <hr
@@ -1964,7 +2207,7 @@ export default function MultipleSelectMaterialItemButton({
                         color: "#111",
                       }}
                     >
-                      {detailItem.unit || "-"}
+                      {detailItem.unit || "N/A"}
                     </p>
                   </div>
                   <div>

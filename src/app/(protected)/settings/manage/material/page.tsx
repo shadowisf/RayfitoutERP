@@ -71,118 +71,357 @@ function SkeletonLayout() {
     { w: "72%" }, { w: "58%" }, { w: "68%" }, { w: "62%" },
     { w: "75%" }, { w: "60%" }, { w: "66%" }, { w: "53%" },
     { w: "70%" }, { w: "64%" }, { w: "57%" }, { w: "78%" },
+    { w: "61%" }, { w: "73%" }, { w: "55%" }, { w: "69%" },
+    { w: "76%" }, { w: "59%" }, { w: "67%" }, { w: "71%" },
+    { w: "54%" }, { w: "80%" }, { w: "63%" }, { w: "56%" },
   ];
   const dbTabs = ["110px", "130px", "95px", "120px", "105px"];
   const tableRows = [
-    ["62%", "35%"], ["48%", "28%"], ["74%", "42%"], ["56%", "32%"],
-    ["68%", "39%"], ["51%", "29%"], ["77%", "45%"], ["60%", "34%"],
-    ["65%", "37%"], ["53%", "30%"], ["71%", "40%"], ["58%", "33%"],
-    ["79%", "46%"], ["44%", "26%"], ["67%", "38%"],
+    ["62%", "35%"],
+    ["48%", "28%"],
+    ["74%", "42%"],
+    ["56%", "32%"],
+    ["68%", "39%"],
+    ["51%", "29%"],
+    ["77%", "45%"],
+    ["60%", "34%"],
+    ["65%", "37%"],
+    ["53%", "30%"],
+    ["71%", "40%"],
+    ["58%", "33%"],
+    ["79%", "46%"],
+    ["44%", "26%"],
+    ["67%", "38%"],
   ];
 
   return (
-    <div style={{ display: "flex", height: "calc(100dvh - 250px)", overflow: "hidden", gap: "16px" }}>
-      {/* LEFT sidebar */}
-      <div style={{ width: 350, flexShrink: 0, overflow: "hidden", backgroundColor: "white", display: "flex", flexDirection: "column", padding: "15px", borderRadius: "10px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexShrink: 0 }}>
-          <SkeletonBlock w="58%" h={9} />
-          <SkeletonBlock w="80px" h={9} />
-        </div>
-        <div style={{ height: "33px", borderRadius: "8px", border: "1px solid rgba(220,220,220,1)", backgroundColor: "white", marginBottom: "12px", flexShrink: 0 }} />
-        <div style={{ height: "36px", borderRadius: "5px", backgroundColor: "rgba(0,0,0,0.10)", marginBottom: "6px", flexShrink: 0 }} />
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", gap: "2px" }}>
-          {sidebarRows.map((row, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 8px" }}>
-              <SkeletonBlock w={row.w} h={11} />
-              <div style={{ marginLeft: "auto", width: "30px", height: "17px", borderRadius: "50px", backgroundColor: "white", border: "1px solid rgba(220,220,220,1)", flexShrink: 0 }} />
-            </div>
-          ))}
-        </div>
-        <div style={{ flexShrink: 0, borderTop: "1px solid rgba(217,217,217,1)", paddingTop: "12px", marginTop: "10px" }}>
-          <SkeletonBlock w="42%" h={9} style={{ marginBottom: "10px" }} />
-          {["85%", "72%", "90%", "68%"].map((w, i) => (
-            <div key={i} style={{ padding: "5px 0" }}><SkeletonBlock w={w} h={11} /></div>
-          ))}
+    <>
+      {/* Page header skeleton */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "24px",
+        }}
+      >
+        <SkeletonBlock w="220px" h={28} />
+        <div style={{ display: "flex", gap: "10px" }}>
+          <SkeletonBlock w="100px" h={36} style={{ borderRadius: "8px" }} />
+          <SkeletonBlock w="165px" h={36} style={{ borderRadius: "8px" }} />
+          <SkeletonBlock w="90px" h={36} style={{ borderRadius: "8px" }} />
         </div>
       </div>
-
-      {/* CENTER */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden", backgroundColor: "white" }}>
-        <div style={{ padding: "12px 20px 15px", flexShrink: 0 }}>
-          <SkeletonBlock w="45%" h={22} style={{ marginBottom: "10px" }} />
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "15px" }}>
-            <div style={{ flex: 1, height: "37px", borderRadius: "8px", border: "1px solid rgba(223,223,223,1)", backgroundColor: "rgba(252,252,252,1)" }} />
-            <SkeletonBlock w="130px" h={37} style={{ borderRadius: "8px", flexShrink: 0 }} />
+      <div
+        style={{
+          display: "flex",
+          height: "calc(100dvh - 250px)",
+          overflow: "hidden",
+          gap: "16px",
+        }}
+      >
+        {/* LEFT sidebar */}
+        <div
+          style={{
+            width: 350,
+            flexShrink: 0,
+            overflow: "hidden",
+            backgroundColor: "white",
+            display: "flex",
+            flexDirection: "column",
+            padding: "15px",
+            borderRadius: "10px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "12px",
+              flexShrink: 0,
+            }}
+          >
+            <SkeletonBlock w="58%" h={9} />
+            <SkeletonBlock w="80px" h={9} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <SkeletonBlock w="68px" h={30} style={{ borderRadius: "50px" }} />
-              <SkeletonBlock w="90px" h={30} style={{ borderRadius: "8px" }} />
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <SkeletonBlock w="140px" h={10} />
-            </div>
-          </div>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 20px 16px" }}>
-          {/* DB tabs */}
-          <div style={{ display: "flex", gap: "6px", marginBottom: "0" }}>
-            {dbTabs.map((w, i) => (
-              <div key={i} style={{ width: w, height: "36px", borderRadius: "6px 6px 0 0", backgroundColor: "rgba(221,221,221,1)", flexShrink: 0 }} />
-            ))}
-          </div>
-          <table style={{ tableLayout: "fixed", width: "100%", borderCollapse: "collapse" }}>
-            <colgroup>
-              <col style={{ width: "40px" }} />
-              <col style={{ width: "200px" }} />
-              <col />
-              <col style={{ width: "150px" }} />
-              <col style={{ width: "48px" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th style={{ padding: "10px 0", borderBottom: "1px solid rgba(220,220,220,1)" }} />
-                <th style={{ padding: "10px 12px 10px 0", borderBottom: "1px solid rgba(220,220,220,1)" }}><SkeletonBlock w="40px" h={10} /></th>
-                <th style={{ padding: "10px 12px 10px 0", borderBottom: "1px solid rgba(220,220,220,1)" }}><SkeletonBlock w="60px" h={10} /></th>
-                <th style={{ padding: "10px 12px", borderBottom: "1px solid rgba(220,220,220,1)" }}><SkeletonBlock w="35px" h={10} /></th>
-                <th style={{ borderBottom: "1px solid rgba(220,220,220,1)" }} />
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.map(([nameW, subW], i) => (
-                <tr key={i} style={{ borderBottom: "1px solid rgba(239,239,239,1)" }}>
-                  <td style={{ padding: "10px 0" }}>
-                    <div style={{ width: "16px", height: "16px", borderRadius: "3px", border: "1px solid rgba(210,210,210,1)", margin: "0 auto" }} />
-                  </td>
-                  <td style={{ padding: "10px 12px 10px 0" }}><SkeletonBlock w="75%" h={11} /></td>
-                  <td style={{ padding: "10px 12px 10px 0" }}>
-                    <SkeletonBlock w={nameW} h={12} style={{ marginBottom: "5px" }} />
-                    <SkeletonBlock w={subW} h={9} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* RIGHT panel */}
-      <div style={{ width: 350, flexShrink: 0, overflowY: "auto", padding: "15px", borderRadius: "10px", backgroundColor: "white" }}>
-        <div style={{ backgroundColor: "white", padding: "15px", borderRadius: "10px" }}>
-          <SkeletonBlock w="88%" h={14} style={{ marginBottom: "6px" }} />
-          <SkeletonBlock w="60%" h={12} style={{ marginBottom: "20px" }} />
-          <div style={{ height: "1px", backgroundColor: "rgba(223,223,223,1)", marginBottom: "20px" }} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-            {[["42%","55%"],["52%","70%"],["30%","35%"],["45%","50%"]].map(([lW, vW], i) => (
-              <div key={i}>
-                <SkeletonBlock w={lW} h={8} style={{ marginBottom: "6px" }} />
-                <SkeletonBlock w={vW} h={13} />
+          <div
+            style={{
+              height: "33px",
+              borderRadius: "8px",
+              border: "1px solid rgba(220,220,220,1)",
+              backgroundColor: "white",
+              marginBottom: "12px",
+              flexShrink: 0,
+            }}
+          />
+          <div
+            style={{
+              height: "36px",
+              borderRadius: "5px",
+              backgroundColor: "rgba(0,0,0,0.10)",
+              marginBottom: "6px",
+              flexShrink: 0,
+            }}
+          />
+          <div
+            style={{
+              flex: 1,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              gap: "2px",
+            }}
+          >
+            {sidebarRows.map((row, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "7px 8px",
+                }}
+              >
+                <SkeletonBlock w={row.w} h={11} />
+                <div
+                  style={{
+                    marginLeft: "auto",
+                    width: "30px",
+                    height: "17px",
+                    borderRadius: "50px",
+                    backgroundColor: "white",
+                    border: "1px solid rgba(220,220,220,1)",
+                    flexShrink: 0,
+                  }}
+                />
               </div>
             ))}
           </div>
         </div>
+
+        {/* CENTER */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            overflow: "hidden",
+            backgroundColor: "#f8f9fb",
+            borderRadius: "10px",
+          }}
+        >
+          <div style={{ padding: "12px 20px 15px", flexShrink: 0 }}>
+            <SkeletonBlock w="45%" h={22} style={{ marginBottom: "10px" }} />
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                alignItems: "center",
+                marginBottom: "15px",
+              }}
+            >
+              <div
+                style={{
+                  flex: 1,
+                  height: "37px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(223,223,223,1)",
+                  backgroundColor: "rgba(252,252,252,1)",
+                }}
+              />
+              <SkeletonBlock
+                w="130px"
+                h={37}
+                style={{ borderRadius: "8px", flexShrink: 0 }}
+              />
+            </div>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "15px" }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <SkeletonBlock
+                  w="68px"
+                  h={30}
+                  style={{ borderRadius: "50px" }}
+                />
+                <SkeletonBlock
+                  w="90px"
+                  h={30}
+                  style={{ borderRadius: "8px" }}
+                />
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <SkeletonBlock w="140px" h={10} />
+              </div>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px 20px 16px" }}>
+            {/* DB tabs */}
+            <div style={{ display: "flex", gap: "6px", marginBottom: "0" }}>
+              {dbTabs.map((w, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: w,
+                    height: "36px",
+                    borderRadius: "6px 6px 0 0",
+                    backgroundColor: "rgba(221,221,221,1)",
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+            </div>
+            <table
+              style={{
+                tableLayout: "fixed",
+                width: "100%",
+                borderCollapse: "collapse",
+                backgroundColor: "white",
+              }}
+            >
+              <colgroup>
+                <col style={{ width: "40px" }} />
+                <col style={{ width: "200px" }} />
+                <col />
+                <col style={{ width: "150px" }} />
+                <col style={{ width: "48px" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      padding: "10px 0",
+                      borderBottom: "1px solid rgba(220,220,220,1)",
+                    }}
+                  />
+                  <th
+                    style={{
+                      padding: "10px 12px 10px 0",
+                      borderBottom: "1px solid rgba(220,220,220,1)",
+                    }}
+                  >
+                    <SkeletonBlock w="40px" h={10} />
+                  </th>
+                  <th
+                    style={{
+                      padding: "10px 12px 10px 0",
+                      borderBottom: "1px solid rgba(220,220,220,1)",
+                    }}
+                  >
+                    <SkeletonBlock w="60px" h={10} />
+                  </th>
+                  <th
+                    style={{
+                      padding: "10px 12px",
+                      borderBottom: "1px solid rgba(220,220,220,1)",
+                    }}
+                  >
+                    <SkeletonBlock w="35px" h={10} />
+                  </th>
+                  <th
+                    style={{ borderBottom: "1px solid rgba(220,220,220,1)" }}
+                  />
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map(([nameW, subW], i) => (
+                  <tr
+                    key={i}
+                    style={{ borderBottom: "1px solid rgba(239,239,239,1)" }}
+                  >
+                    <td style={{ padding: "10px 0" }}>
+                      <div
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          borderRadius: "3px",
+                          border: "1px solid rgba(210,210,210,1)",
+                          margin: "0 auto",
+                        }}
+                      />
+                    </td>
+                    <td style={{ padding: "10px 12px 10px 0" }}>
+                      <SkeletonBlock w="75%" h={11} />
+                    </td>
+                    <td style={{ padding: "10px 12px 10px 0" }}>
+                      <SkeletonBlock
+                        w={nameW}
+                        h={12}
+                        style={{ marginBottom: "5px" }}
+                      />
+                      <SkeletonBlock w={subW} h={9} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* RIGHT panel */}
+        <div
+          style={{
+            width: 350,
+            flexShrink: 0,
+            overflowY: "auto",
+            padding: "15px",
+            borderRadius: "10px",
+            backgroundColor: "white",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "15px",
+              borderRadius: "10px",
+            }}
+          >
+            <SkeletonBlock w="88%" h={14} style={{ marginBottom: "6px" }} />
+            <SkeletonBlock w="60%" h={12} style={{ marginBottom: "20px" }} />
+            <div
+              style={{
+                height: "1px",
+                backgroundColor: "rgba(223,223,223,1)",
+                marginBottom: "20px",
+              }}
+            />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "20px",
+              }}
+            >
+              {[
+                ["42%", "55%"],
+                ["52%", "70%"],
+                ["30%", "35%"],
+                ["45%", "50%"],
+              ].map(([lW, vW], i) => (
+                <div key={i}>
+                  <SkeletonBlock w={lW} h={8} style={{ marginBottom: "6px" }} />
+                  <SkeletonBlock w={vW} h={13} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -718,40 +957,6 @@ export default function MaterialDatabasePage() {
 
   return (
     <div className="dashboard">
-      {/* ── Page header ────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "24px",
-        }}
-      >
-        <h1>MATERIAL DATABASE</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Button
-            componentType="link"
-            bgColor="white"
-            borderColor="rgba(211,211,211,1)"
-            textColor="black"
-            href="/settings/manage/material/archive"
-          >
-            ARCHIVE
-            <img src="/icons/trash.svg" alt="archive" />
-          </Button>
-          <ExportMaterialListPDFButton allItems={allItems} />
-          <ImportMaterialButton
-            onSuccess={(newDbId, newDbName) => {
-              setRegistryDatabases((prev) => [
-                ...prev,
-                { id: newDbId, name: newDbName },
-              ]);
-              fetchItems(true);
-            }}
-          />
-        </div>
-      </div>
-
       <style>{`
         .items-table tbody tr.material-db-row-active td,
         .items-table tbody tr.material-db-row-active:hover td {
@@ -781,1931 +986,2011 @@ export default function MaterialDatabasePage() {
       {isFetching ? (
         <SkeletonLayout />
       ) : (
-        /* ── 3-panel layout ─────────────────────────────────────────────── */
-        <div
-          style={{
-            display: "flex",
-            height: "calc(100dvh - 250px)",
-            overflow: "hidden",
-            gap: "16px",
-          }}
-        >
-          {/* ── LEFT: category sidebar ──────────────────────────────────── */}
+        <>
+          {/* ── Page header ──────────────────────────────────────────────── */}
           <div
             style={{
-              width: 350,
-              flexShrink: 0,
-              overflow: "hidden",
-              backgroundColor: "white",
-              color: "black",
               display: "flex",
-              flexDirection: "column",
-              padding: "15px",
-              borderRadius: "10px",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "24px",
             }}
           >
-            {/* Browse label + new category */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "8px",
-                flexShrink: 0,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  color: "rgba(120,120,120,1)",
-                }}
+            <h1>MATERIAL DATABASE</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Button
+                componentType="link"
+                bgColor="white"
+                borderColor="rgba(211,211,211,1)"
+                textColor="black"
+                href="/settings/manage/material/archive"
               >
-                BROWSE CATEGORIES
-              </p>
-              <CreateCategoryButton
-                onSuccess={() => {
+                ARCHIVE
+                <img src="/icons/trash.svg" alt="archive" />
+              </Button>
+              <ExportMaterialListPDFButton allItems={allItems} />
+              <ImportMaterialButton
+                onSuccess={(newDbId, newDbName) => {
+                  setRegistryDatabases((prev) => [
+                    ...prev,
+                    { id: newDbId, name: newDbName },
+                  ]);
                   fetchItems(true);
-                  fetchCategories();
                 }}
-                renderTrigger={(open) => (
-                  <button
-                    type="button"
-                    onClick={open}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      cursor: "pointer",
-                      color: "rgba(0,123,255,1)",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      textDecoration: "underline",
-                    }}
-                  >
-                    New Category +
-                  </button>
-                )}
               />
-            </div>
-
-            <br />
-
-            {/* Sidebar search */}
-            <div style={{ paddingBottom: "8px", flexShrink: 0 }}>
-              <div style={{ position: "relative" }}>
-                <img
-                  src={searchIcon}
-                  alt="search"
-                  style={{
-                    position: "absolute",
-                    right: "11px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: "14px",
-                    opacity: 0.4,
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  type="text"
-                  placeholder="SEARCH CATEGORIES"
-                  value={sidebarSearch}
-                  onChange={(e) => setSidebarSearch(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "7px 34px 7px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(220,220,220,1)",
-                    fontSize: "12px",
-                    backgroundColor: "white",
-                    color: "black",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-            </div>
-
-            <br />
-
-            {/* Scrollable list */}
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              {/* All Materials */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveCategoryTab("");
-                  setActiveSubCategoryTab("");
-                  setExpandedCategoryTab("");
-                  setDetailItem(null);
-                }}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "9px 12px",
-                  marginBottom: "4px",
-                  borderRadius: "5px",
-                  background: !activeCategoryTab ? "black" : "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: !activeCategoryTab ? 600 : 400,
-                  fontSize: "13px",
-                  textAlign: "left",
-                  gap: "8px",
-                  color: !activeCategoryTab ? "white" : "black",
-                }}
-              >
-                <span style={{ flex: 1 }}>All Materials</span>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    backgroundColor: "white",
-                    color: "black",
-                    borderRadius: "50px",
-                    padding: "1px 7px",
-                    flexShrink: 0,
-                  }}
-                >
-                  {totalFilteredCount.toLocaleString()}
-                </span>
-              </button>
-
-              {/* Categories */}
-              {visibleSidebarCategories.map((cat) => {
-                const isCatActive = activeCategoryTab === cat;
-                const isCatExpanded = expandedCategoryTab === cat;
-                const catCount = Object.values(sidebarGrouped[cat] || {}).flat()
-                  .length;
-                // Resolve catId from items first, fall back to known categories list
-                const catId =
-                  Object.values(sidebarGrouped[cat] || {}).flat()[0]
-                    ?.category_id ??
-                  knownCategories.find((c) => c.value === cat)?.id;
-                // Merge item-derived subs with known subs so newly created empty
-                // subcategories appear immediately.
-                const itemSubs = Object.keys(sidebarGrouped[cat] || {});
-                const knownSubs = catId
-                  ? knownSubCategories
-                      .filter((s) => s.category_id === catId)
-                      .map((s) => s.value)
-                  : [];
-                const visibleSubs = [...new Set([...itemSubs, ...knownSubs])]
-                  .sort()
-                  .filter(
-                    (sub) =>
-                      !sidebarQ ||
-                      cat.toLowerCase().includes(sidebarQ) ||
-                      sub.toLowerCase().includes(sidebarQ),
-                  );
-
-                return (
-                  <div key={cat} style={{ marginBottom: "4px" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        borderRadius: "5px",
-                        backgroundColor: isCatActive ? "black" : "transparent",
-                        color: isCatActive ? "white" : "black",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isCatExpanded && !isCatActive) {
-                            setExpandedCategoryTab("");
-                          } else {
-                            setActiveCategoryTab(cat);
-                            setExpandedCategoryTab(cat);
-                            setActiveSubCategoryTab("");
-                          }
-                          setDetailItem(null);
-                        }}
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "9px 10px",
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          fontWeight: isCatActive ? 700 : 500,
-                          fontSize: "13px",
-                          textAlign: "left",
-                          gap: "8px",
-                          color: "inherit",
-                          whiteSpace: "normal",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        <span
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            flex: 1,
-                          }}
-                        >
-                          <span>{titleCase(cat)}</span>
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 12 12"
-                            fill="none"
-                            style={{
-                              flexShrink: 0,
-                              transition: "transform 0.15s",
-                              transform: isCatExpanded
-                                ? "rotate(0deg)"
-                                : "rotate(180deg)",
-                            }}
-                          >
-                            <path
-                              d="M2 8L6 4L10 8"
-                              stroke={isCatActive ? "white" : "black"}
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </span>
-                      </button>
-                      {isCatActive && catId && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <EditCategoryButton
-                            categoryId={catId}
-                            categoryName={cat}
-                            onDark
-                            onSuccess={(newName) => {
-                              fetchItems(true);
-                              setActiveCategoryTab(newName);
-                              setExpandedCategoryTab(newName);
-                            }}
-                          />
-                          <ArchiveCategoryButton
-                            categoryId={catId}
-                            categoryName={cat}
-                            itemCount={catCount}
-                            onDark
-                            onSuccess={() => {
-                              setActiveCategoryTab("");
-                              setExpandedCategoryTab("");
-                              fetchItems(true);
-                            }}
-                          />
-                        </div>
-                      )}
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          backgroundColor: "white",
-                          color: "black",
-                          borderRadius: "50px",
-                          padding: "1px 7px",
-                          flexShrink: 0,
-                          marginRight: "8px",
-                        }}
-                      >
-                        {catCount.toLocaleString()}
-                      </span>
-                    </div>
-
-                    {/* Subcategories */}
-                    {isCatExpanded && (
-                      <div
-                        style={{
-                          marginTop: "2px",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "2px",
-                        }}
-                      >
-                        {visibleSubs.map((sub) => {
-                          const isSubActive = activeSubCategoryTab === sub;
-                          const subCount = (sidebarGrouped[cat]?.[sub] || [])
-                            .length;
-                          const subId =
-                            (sidebarGrouped[cat]?.[sub] || [])[0]
-                              ?.subcategory_id ??
-                            knownSubCategories.find(
-                              (s) => s.category_id === catId && s.value === sub,
-                            )?.id;
-                          return (
-                            <div
-                              key={sub}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                marginLeft: "16px",
-                                borderRadius: "5px",
-                              }}
-                            >
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveSubCategoryTab(sub);
-                                  setDetailItem(null);
-                                }}
-                                style={{
-                                  flex: 1,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  padding: "7px 10px",
-                                  background: "transparent",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  fontWeight: 400,
-                                  fontSize: "12px",
-                                  textAlign: "left",
-                                  gap: "8px",
-                                  color: "black",
-                                  whiteSpace: "normal",
-                                  wordBreak: "break-word",
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    flex: 1,
-                                    textDecoration: isSubActive
-                                      ? "underline"
-                                      : "none",
-                                  }}
-                                >
-                                  {titleCase(sub)}
-                                </span>
-                              </button>
-                              {isSubActive && subId && catId && (
-                                <div
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <AddMaterialToSubCategoryButton
-                                    categoryId={catId}
-                                    subCategoryId={subId}
-                                    defaultDatabase={
-                                      activeDatabaseTab || undefined
-                                    }
-                                    onSuccess={(newItem) => {
-                                      handleNewMaterialCreated(newItem);
-                                    }}
-                                  />
-                                  <EditSubCategoryButton
-                                    subCategoryId={subId}
-                                    subCategoryName={sub}
-                                    onSuccess={() => fetchItems(true)}
-                                  />
-                                  <ArchiveSubCategoryButton
-                                    subCategoryId={subId}
-                                    subCategoryName={sub}
-                                    itemCount={subCount}
-                                    onSuccess={() => {
-                                      setActiveSubCategoryTab("");
-                                      fetchItems(true);
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              <span
-                                style={{
-                                  fontSize: "10px",
-                                  fontWeight: 600,
-                                  backgroundColor: "white",
-                                  color: "black",
-                                  borderRadius: "50px",
-                                  padding: "1px 6px",
-                                  flexShrink: 0,
-                                  marginRight: "6px",
-                                }}
-                              >
-                                {subCount.toLocaleString()}
-                              </span>
-                            </div>
-                          );
-                        })}
-                        {catId && (
-                          <div style={{ marginLeft: "16px" }}>
-                            <CreateSubCategoryButton
-                              materialCategoryID={catId}
-                              onSuccess={() => {
-                                fetchItems(true);
-                                fetchCategories();
-                              }}
-                              renderTrigger={(open) => (
-                                <button
-                                  type="button"
-                                  onClick={open}
-                                  style={{
-                                    background: "none",
-                                    border: "none",
-                                    padding: "7px 10px",
-                                    cursor: "pointer",
-                                    color: "rgba(0,123,255,1)",
-                                    fontSize: "12px",
-                                    fontWeight: 600,
-                                    textDecoration: "underline",
-                                    textAlign: "left",
-                                  }}
-                                >
-                                  New Subcategory +
-                                </button>
-                              )}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
             </div>
           </div>
 
-          {/* ── CENTER: search + table ───────────────────────────────────── */}
+          {/* ── 3-panel layout ─────────────────────────────────────────────── */}
           <div
             style={{
-              flex: 1,
               display: "flex",
-              flexDirection: "column",
-              minWidth: 0,
+              height: "calc(100dvh - 250px)",
               overflow: "hidden",
-              color: "black",
+              gap: "16px",
             }}
           >
-            {/* Sticky top bar */}
+            {/* ── LEFT: category sidebar ──────────────────────────────────── */}
             <div
               style={{
-                padding: "12px 20px 15px",
+                width: 350,
                 flexShrink: 0,
+                overflow: "hidden",
+                backgroundColor: "white",
+                color: "black",
+                display: "flex",
+                flexDirection: "column",
+                padding: "15px",
+                borderRadius: "10px",
               }}
             >
-              {/* Breadcrumb */}
-              <h2 style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                {!activeCategoryTab ? (
-                  "All Materials"
-                ) : activeSubCategoryTab ? (
-                  <>
-                    {titleCase(activeCategoryTab)}{" "}
-                    <span style={{ fontWeight: 400, color: "rgba(120,120,120,1)" }}>/</span>{" "}
-                    <span style={{ textDecoration: "underline" }}>{titleCase(activeSubCategoryTab)}</span>
-                    <EditSubCategoryButton
-                      subCategoryId={
-                        (sidebarGrouped[activeCategoryTab]?.[activeSubCategoryTab] || [])[0]?.subcategory_id ??
-                        knownSubCategories.find((s) => s.value === activeSubCategoryTab)?.id
-                      }
-                      subCategoryName={activeSubCategoryTab}
-                      onSuccess={(newName) => {
-                        fetchItems(true);
-                        setActiveSubCategoryTab(newName);
-                      }}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <span style={{ textDecoration: "underline" }}>{titleCase(activeCategoryTab)}</span>
-                    <EditCategoryButton
-                      categoryId={
-                        Object.values(sidebarGrouped[activeCategoryTab] || {}).flat()[0]?.category_id ??
-                        knownCategories.find((c) => c.value === activeCategoryTab)?.id
-                      }
-                      categoryName={activeCategoryTab}
-                      onSuccess={(newName) => {
-                        fetchItems(true);
-                        setActiveCategoryTab(newName);
-                        setExpandedCategoryTab(newName);
-                      }}
-                    />
-                  </>
-                )}
-              </h2>
-
-              {/* Search + NEW MATERIAL + EXPORT */}
+              {/* Browse label + new category */}
               <div
                 style={{
                   display: "flex",
-                  gap: "10px",
                   alignItems: "center",
-                  marginBottom: "15px",
+                  justifyContent: "space-between",
+                  marginBottom: "8px",
+                  flexShrink: 0,
                 }}
               >
-                <div style={{ position: "relative", flex: 1 }}>
-                  <input
-                    type="text"
-                    placeholder="SEARCH MATERIALS"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 40px 8px 14px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(223,223,223,1)",
-                      fontSize: "13px",
-                    }}
-                  />
+                <p
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "rgba(120,120,120,1)",
+                  }}
+                >
+                  BROWSE CATEGORIES
+                </p>
+                <CreateCategoryButton
+                  onSuccess={() => {
+                    fetchItems(true);
+                    fetchCategories();
+                  }}
+                  renderTrigger={(open) => (
+                    <button
+                      type="button"
+                      onClick={open}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        color: "rgba(0,123,255,1)",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      New Category +
+                    </button>
+                  )}
+                />
+              </div>
+
+              <br />
+
+              {/* Sidebar search */}
+              <div style={{ paddingBottom: "8px", flexShrink: 0 }}>
+                <div style={{ position: "relative" }}>
                   <img
                     src={searchIcon}
                     alt="search"
                     style={{
                       position: "absolute",
-                      right: "14px",
+                      right: "11px",
                       top: "50%",
                       transform: "translateY(-50%)",
-                      width: "15px",
+                      width: "14px",
                       opacity: 0.4,
+                      pointerEvents: "none",
                     }}
                   />
-                </div>
-                <CreateNewMaterialButton
-                  onSuccess={handleNewMaterialCreated}
-                  allItems={allItems}
-                  style={{ padding: "7px 16px", whiteSpace: "nowrap" }}
-                  defaultDatabase={activeDatabaseTab || undefined}
-                />
-              </div>
-
-              {/* Filter / Actions row */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "15px",
-                }}
-              >
-                {/* Row 1: FILTER (left) + ACTIONS (right) */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  {/* Left: filter button + chips */}
-                  <FilterButton
-                    filterUnits={filterUnits}
-                    onChange={setFilterUnits}
-                  />
-
-                  {/* Right: bulk actions */}
-                  <BulkActionsButton
-                    selectedItems={allItems.filter((i) =>
-                      selectedIds.has(i.id),
-                    )}
-                    databases={registryDatabases}
-                    onDatabaseCreated={(id, name) =>
-                      setRegistryDatabases((prev) => [...prev, { id, name }])
-                    }
-                    onCopySuccess={(newItems) => {
-                      newItems.forEach((newItem) => {
-                        const cat = newItem.category_name || "Uncategorized";
-                        const sub = newItem.subcategory_name || "General";
-                        setAllItems((prev) => [...prev, newItem]);
-                        setGroupedItems((prev) => ({
-                          ...prev,
-                          [cat]: {
-                            ...(prev[cat] || {}),
-                            [sub]: [...(prev[cat]?.[sub] || []), newItem],
-                          },
-                        }));
-                      });
-                    }}
-                    onMoveSuccess={() => fetchItems(true)}
-                    onArchiveSuccess={(ids) => {
-                      setAllItems((prev) =>
-                        prev.filter((i) => !ids.includes(i.id)),
-                      );
-                      setGroupedItems((prev) => {
-                        const next = { ...prev };
-                        Object.keys(next).forEach((cat) => {
-                          Object.keys(next[cat]).forEach((sub) => {
-                            next[cat][sub] = next[cat][sub].filter(
-                              (i) => !ids.includes(i.id),
-                            );
-                          });
-                        });
-                        return next;
-                      });
-                      if (detailItem && ids.includes(detailItem.id)) {
-                        setDetailItem(null);
-                      }
-                      setSelectedIds(new Set());
-                    }}
-                  />
-                </div>
-
-                {/* Row 2: info */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span
-                    style={{ fontSize: "12px", color: "rgba(120,120,120,1)" }}
-                  >
-                    {flatItems.length.toLocaleString()} materials found
-                  </span>
-                  <span
+                  <input
+                    type="text"
+                    placeholder="SEARCH CATEGORIES"
+                    value={sidebarSearch}
+                    onChange={(e) => setSidebarSearch(e.target.value)}
                     style={{
+                      width: "100%",
+                      padding: "7px 34px 7px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(220,220,220,1)",
                       fontSize: "12px",
-                      color: "rgba(120,120,120,1)",
-                      minHeight: "16px",
+                      backgroundColor: "white",
+                      color: "black",
+                      boxSizing: "border-box",
                     }}
-                  >
-                    {selectedIds.size > 0
-                      ? `${selectedIds.size} material${selectedIds.size !== 1 ? "s" : ""} selected`
-                      : ""}
-                  </span>
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Scrollable table area */}
-            <div
-              style={{ flex: 1, overflowY: "auto", padding: "8px 20px 16px" }}
-            >
-              {/* Database tabs — lives in same container as table so no gap */}
-              {(availableDatabaseTabs.length > 0 || true) && (
-                <div
+              <br />
+
+              {/* Scrollable list */}
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                {/* All Materials */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCategoryTab("");
+                    setActiveSubCategoryTab("");
+                    setExpandedCategoryTab("");
+                    setDetailItem(null);
+                  }}
                   style={{
+                    width: "100%",
                     display: "flex",
-                    alignItems: "flex-end",
-                    gap: "6px",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "9px 12px",
+                    marginBottom: "4px",
+                    borderRadius: "5px",
+                    background: !activeCategoryTab ? "black" : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: !activeCategoryTab ? 600 : 400,
+                    fontSize: "13px",
+                    textAlign: "left",
+                    gap: "8px",
+                    color: !activeCategoryTab ? "white" : "black",
                   }}
                 >
-                  <div
+                  <span style={{ flex: 1 }}>All Materials</span>
+                  <span
                     style={{
-                      flex: 1,
-                      position: "relative",
-                      overflow: "hidden",
-                      marginBottom: 0,
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      backgroundColor: "white",
+                      color: "black",
+                      borderRadius: "50px",
+                      padding: "1px 7px",
+                      flexShrink: 0,
                     }}
                   >
-                    {showLeftDbArrow && (
+                    {totalFilteredCount.toLocaleString()}
+                  </span>
+                </button>
+
+                {/* Categories */}
+                {visibleSidebarCategories.map((cat) => {
+                  const isCatActive = activeCategoryTab === cat;
+                  const isCatExpanded = expandedCategoryTab === cat;
+                  const catCount = Object.values(
+                    sidebarGrouped[cat] || {},
+                  ).flat().length;
+                  // Resolve catId from items first, fall back to known categories list
+                  const catId =
+                    Object.values(sidebarGrouped[cat] || {}).flat()[0]
+                      ?.category_id ??
+                    knownCategories.find((c) => c.value === cat)?.id;
+                  // Merge item-derived subs with known subs so newly created empty
+                  // subcategories appear immediately.
+                  const itemSubs = Object.keys(sidebarGrouped[cat] || {});
+                  const knownSubs = catId
+                    ? knownSubCategories
+                        .filter((s) => s.category_id === catId)
+                        .map((s) => s.value)
+                    : [];
+                  const visibleSubs = [...new Set([...itemSubs, ...knownSubs])]
+                    .sort()
+                    .filter(
+                      (sub) =>
+                        !sidebarQ ||
+                        cat.toLowerCase().includes(sidebarQ) ||
+                        sub.toLowerCase().includes(sidebarQ),
+                    );
+
+                  return (
+                    <div key={cat} style={{ marginBottom: "4px" }}>
                       <div
                         style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: "80px",
-                          background:
-                            "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
-                          pointerEvents: "none",
-                          zIndex: 5,
-                        }}
-                      />
-                    )}
-                    {showLeftDbArrow && (
-                      <button
-                        type="button"
-                        onClick={() => scrollDbTabs("left")}
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          zIndex: 10,
-                          backgroundColor: "black",
-                          border: "none",
-                          borderRadius: "10px",
-                          width: "28px",
-                          height: "28px",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
+                          gap: "6px",
+                          borderRadius: "5px",
+                          backgroundColor: isCatActive
+                            ? "black"
+                            : "transparent",
+                          color: isCatActive ? "white" : "black",
                         }}
                       >
-                        <img
-                          src="/icons/arrow-right.svg"
-                          style={{
-                            transform: "rotate(180deg)",
-                            marginRight: "3px",
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isCatExpanded && !isCatActive) {
+                              setExpandedCategoryTab("");
+                            } else {
+                              setActiveCategoryTab(cat);
+                              setExpandedCategoryTab(cat);
+                              setActiveSubCategoryTab("");
+                            }
+                            setDetailItem(null);
                           }}
-                          alt="left"
-                        />
-                      </button>
-                    )}
-                    <div
-                      ref={dbScrollContainerRef}
-                      onScroll={checkDbScroll}
-                      style={{
-                        display: "flex",
-                        gap: "6px",
-                        overflowX: "auto",
-                        scrollbarWidth: "none",
-                        msOverflowStyle: "none" as any,
-                        paddingLeft: showLeftDbArrow ? "36px" : "0",
-                        paddingRight: showRightDbArrow ? "36px" : "0",
-                      }}
-                    >
-                      {availableDatabaseTabs.map((db) => {
-                        const isActive = activeDatabaseTab === db;
-                        const dbEntry = registryDatabases.find(
-                          (d) => d.name === db,
-                        );
-                        const dbId = dbEntry?.id ?? 0;
-                        const dbItemCount = allItems.filter(
-                          (i) => (i.database ?? "") === db,
-                        ).length;
-                        return (
-                          <div
-                            key={db}
-                            onClick={() => {
-                              if (!isActive) setActiveDatabaseTab(db);
-                            }}
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "9px 10px",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            fontWeight: isCatActive ? 700 : 500,
+                            fontSize: "13px",
+                            textAlign: "left",
+                            gap: "8px",
+                            color: "inherit",
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          <span
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: "15px",
-                              padding: "7px 10px",
-                              borderRadius: "6px 6px 0 0",
-                              backgroundColor: isActive
-                                ? "rgba(239,239,239,1)"
-                                : "rgb(221,221,221)",
-                              cursor: "pointer",
-                              whiteSpace: "nowrap",
-                              fontSize: "12px",
-                              fontWeight: 600,
-                              flexShrink: 0,
-                              minWidth: "125px",
-                              userSelect: "none",
+                              gap: "8px",
+                              flex: 1,
                             }}
                           >
-                            {/* Checkbox + Name group */}
+                            <span>{titleCase(cat)}</span>
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 12 12"
+                              fill="none"
+                              style={{
+                                flexShrink: 0,
+                                transition: "transform 0.15s",
+                                transform: isCatExpanded
+                                  ? "rotate(0deg)"
+                                  : "rotate(180deg)",
+                              }}
+                            >
+                              <path
+                                d="M2 8L6 4L10 8"
+                                stroke={isCatActive ? "white" : "black"}
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        </button>
+                        {isCatActive && catId && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <EditCategoryButton
+                              categoryId={catId}
+                              categoryName={cat}
+                              onDark
+                              onSuccess={(newName) => {
+                                fetchItems(true);
+                                setActiveCategoryTab(newName);
+                                setExpandedCategoryTab(newName);
+                              }}
+                            />
+                            <ArchiveCategoryButton
+                              categoryId={catId}
+                              categoryName={cat}
+                              itemCount={catCount}
+                              onDark
+                              onSuccess={() => {
+                                setActiveCategoryTab("");
+                                setExpandedCategoryTab("");
+                                fetchItems(true);
+                              }}
+                            />
+                          </div>
+                        )}
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            backgroundColor: "white",
+                            color: "black",
+                            borderRadius: "50px",
+                            padding: "1px 7px",
+                            flexShrink: 0,
+                            marginRight: "8px",
+                          }}
+                        >
+                          {catCount.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Subcategories */}
+                      {isCatExpanded && (
+                        <div
+                          style={{
+                            marginTop: "2px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "2px",
+                          }}
+                        >
+                          {visibleSubs.map((sub) => {
+                            const isSubActive = activeSubCategoryTab === sub;
+                            const subCount = (sidebarGrouped[cat]?.[sub] || [])
+                              .length;
+                            const subId =
+                              (sidebarGrouped[cat]?.[sub] || [])[0]
+                                ?.subcategory_id ??
+                              knownSubCategories.find(
+                                (s) =>
+                                  s.category_id === catId && s.value === sub,
+                              )?.id;
+                            return (
+                              <div
+                                key={sub}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  marginLeft: "16px",
+                                  borderRadius: "5px",
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveSubCategoryTab(sub);
+                                    setDetailItem(null);
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    padding: "7px 10px",
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    fontWeight: 400,
+                                    fontSize: "12px",
+                                    textAlign: "left",
+                                    gap: "8px",
+                                    color: "black",
+                                    whiteSpace: "normal",
+                                    wordBreak: "break-word",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      flex: 1,
+                                      textDecoration: isSubActive
+                                        ? "underline"
+                                        : "none",
+                                    }}
+                                  >
+                                    {titleCase(sub)}
+                                  </span>
+                                </button>
+                                {isSubActive && subId && catId && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <AddMaterialToSubCategoryButton
+                                      categoryId={catId}
+                                      subCategoryId={subId}
+                                      defaultDatabase={
+                                        activeDatabaseTab || undefined
+                                      }
+                                      onSuccess={(newItem) => {
+                                        handleNewMaterialCreated(newItem);
+                                      }}
+                                    />
+                                    <EditSubCategoryButton
+                                      subCategoryId={subId}
+                                      subCategoryName={sub}
+                                      onSuccess={() => fetchItems(true)}
+                                    />
+                                    <ArchiveSubCategoryButton
+                                      subCategoryId={subId}
+                                      subCategoryName={sub}
+                                      itemCount={subCount}
+                                      onSuccess={() => {
+                                        setActiveSubCategoryTab("");
+                                        fetchItems(true);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <span
+                                  style={{
+                                    fontSize: "10px",
+                                    fontWeight: 600,
+                                    backgroundColor: "white",
+                                    color: "black",
+                                    borderRadius: "50px",
+                                    padding: "1px 6px",
+                                    flexShrink: 0,
+                                    marginRight: "6px",
+                                  }}
+                                >
+                                  {subCount.toLocaleString()}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {catId && (
+                            <div style={{ marginLeft: "16px" }}>
+                              <CreateSubCategoryButton
+                                materialCategoryID={catId}
+                                onSuccess={() => {
+                                  fetchItems(true);
+                                  fetchCategories();
+                                }}
+                                renderTrigger={(open) => (
+                                  <button
+                                    type="button"
+                                    onClick={open}
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      padding: "7px 10px",
+                                      cursor: "pointer",
+                                      color: "rgba(0,123,255,1)",
+                                      fontSize: "12px",
+                                      fontWeight: 600,
+                                      textDecoration: "underline",
+                                      textAlign: "left",
+                                    }}
+                                  >
+                                    New Subcategory +
+                                  </button>
+                                )}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── CENTER: search + table ───────────────────────────────────── */}
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                minWidth: 0,
+                overflow: "hidden",
+                color: "black",
+              }}
+            >
+              {/* Sticky top bar */}
+              <div
+                style={{
+                  padding: "12px 20px 15px",
+                  flexShrink: 0,
+                }}
+              >
+                {/* Breadcrumb */}
+                <h2
+                  style={{
+                    marginBottom: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  {!activeCategoryTab ? (
+                    "All Materials"
+                  ) : activeSubCategoryTab ? (
+                    <>
+                      {titleCase(activeCategoryTab)}{" "}
+                      <span
+                        style={{
+                          fontWeight: 400,
+                          color: "rgba(120,120,120,1)",
+                        }}
+                      >
+                        /
+                      </span>{" "}
+                      <span style={{ textDecoration: "underline" }}>
+                        {titleCase(activeSubCategoryTab)}
+                      </span>
+                      <EditSubCategoryButton
+                        subCategoryId={
+                          (sidebarGrouped[activeCategoryTab]?.[
+                            activeSubCategoryTab
+                          ] || [])[0]?.subcategory_id ??
+                          knownSubCategories.find(
+                            (s) => s.value === activeSubCategoryTab,
+                          )?.id
+                        }
+                        subCategoryName={activeSubCategoryTab}
+                        onSuccess={(newName) => {
+                          fetchItems(true);
+                          setActiveSubCategoryTab(newName);
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ textDecoration: "underline" }}>
+                        {titleCase(activeCategoryTab)}
+                      </span>
+                      <EditCategoryButton
+                        categoryId={
+                          Object.values(
+                            sidebarGrouped[activeCategoryTab] || {},
+                          ).flat()[0]?.category_id ??
+                          knownCategories.find(
+                            (c) => c.value === activeCategoryTab,
+                          )?.id
+                        }
+                        categoryName={activeCategoryTab}
+                        onSuccess={(newName) => {
+                          fetchItems(true);
+                          setActiveCategoryTab(newName);
+                          setExpandedCategoryTab(newName);
+                        }}
+                      />
+                    </>
+                  )}
+                </h2>
+
+                {/* Search + NEW MATERIAL + EXPORT */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                    marginBottom: "15px",
+                  }}
+                >
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <input
+                      type="text"
+                      placeholder="SEARCH MATERIALS"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 40px 8px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(223,223,223,1)",
+                        fontSize: "13px",
+                      }}
+                    />
+                    <img
+                      src={searchIcon}
+                      alt="search"
+                      style={{
+                        position: "absolute",
+                        right: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: "15px",
+                        opacity: 0.4,
+                      }}
+                    />
+                  </div>
+                  <CreateNewMaterialButton
+                    onSuccess={handleNewMaterialCreated}
+                    allItems={allItems}
+                    style={{ padding: "7px 16px", whiteSpace: "nowrap" }}
+                    defaultDatabase={activeDatabaseTab || undefined}
+                  />
+                </div>
+
+                {/* Filter / Actions row */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "15px",
+                  }}
+                >
+                  {/* Row 1: FILTER (left) + ACTIONS (right) */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    {/* Left: filter button + chips */}
+                    <FilterButton
+                      filterUnits={filterUnits}
+                      onChange={setFilterUnits}
+                    />
+
+                    {/* Right: bulk actions */}
+                    <BulkActionsButton
+                      selectedItems={allItems.filter((i) =>
+                        selectedIds.has(i.id),
+                      )}
+                      databases={registryDatabases}
+                      onDatabaseCreated={(id, name) =>
+                        setRegistryDatabases((prev) => [...prev, { id, name }])
+                      }
+                      onCopySuccess={(newItems) => {
+                        newItems.forEach((newItem) => {
+                          const cat = newItem.category_name || "Uncategorized";
+                          const sub = newItem.subcategory_name || "General";
+                          setAllItems((prev) => [...prev, newItem]);
+                          setGroupedItems((prev) => ({
+                            ...prev,
+                            [cat]: {
+                              ...(prev[cat] || {}),
+                              [sub]: [...(prev[cat]?.[sub] || []), newItem],
+                            },
+                          }));
+                        });
+                      }}
+                      onMoveSuccess={() => fetchItems(true)}
+                      onArchiveSuccess={(ids) => {
+                        setAllItems((prev) =>
+                          prev.filter((i) => !ids.includes(i.id)),
+                        );
+                        setGroupedItems((prev) => {
+                          const next = { ...prev };
+                          Object.keys(next).forEach((cat) => {
+                            Object.keys(next[cat]).forEach((sub) => {
+                              next[cat][sub] = next[cat][sub].filter(
+                                (i) => !ids.includes(i.id),
+                              );
+                            });
+                          });
+                          return next;
+                        });
+                        if (detailItem && ids.includes(detailItem.id)) {
+                          setDetailItem(null);
+                        }
+                        setSelectedIds(new Set());
+                      }}
+                    />
+                  </div>
+
+                  {/* Row 2: info */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span
+                      style={{ fontSize: "12px", color: "rgba(120,120,120,1)" }}
+                    >
+                      {flatItems.length.toLocaleString()} materials found
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "rgba(120,120,120,1)",
+                        minHeight: "16px",
+                      }}
+                    >
+                      {selectedIds.size > 0
+                        ? `${selectedIds.size} material${selectedIds.size !== 1 ? "s" : ""} selected`
+                        : ""}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable table area */}
+              <div
+                style={{ flex: 1, overflowY: "auto", padding: "8px 20px 16px" }}
+              >
+                {/* Database tabs — lives in same container as table so no gap */}
+                {(availableDatabaseTabs.length > 0 || true) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-end",
+                      gap: "6px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        flex: 1,
+                        position: "relative",
+                        overflow: "hidden",
+                        marginBottom: 0,
+                      }}
+                    >
+                      {showLeftDbArrow && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: "80px",
+                            background:
+                              "linear-gradient(to right, white 0%, rgba(255,255,255,0) 100%)",
+                            pointerEvents: "none",
+                            zIndex: 5,
+                          }}
+                        />
+                      )}
+                      {showLeftDbArrow && (
+                        <button
+                          type="button"
+                          onClick={() => scrollDbTabs("left")}
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            zIndex: 10,
+                            backgroundColor: "black",
+                            border: "none",
+                            borderRadius: "10px",
+                            width: "28px",
+                            height: "28px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <img
+                            src="/icons/arrow-right.svg"
+                            style={{
+                              transform: "rotate(180deg)",
+                              marginRight: "3px",
+                            }}
+                            alt="left"
+                          />
+                        </button>
+                      )}
+                      <div
+                        ref={dbScrollContainerRef}
+                        onScroll={checkDbScroll}
+                        style={{
+                          display: "flex",
+                          gap: "6px",
+                          overflowX: "auto",
+                          scrollbarWidth: "none",
+                          msOverflowStyle: "none" as any,
+                          paddingLeft: showLeftDbArrow ? "36px" : "0",
+                          paddingRight: showRightDbArrow ? "36px" : "0",
+                        }}
+                      >
+                        {availableDatabaseTabs.map((db) => {
+                          const isActive = activeDatabaseTab === db;
+                          const dbEntry = registryDatabases.find(
+                            (d) => d.name === db,
+                          );
+                          const dbId = dbEntry?.id ?? 0;
+                          const dbItemCount = allItems.filter(
+                            (i) => (i.database ?? "") === db,
+                          ).length;
+                          return (
                             <div
+                              key={db}
+                              onClick={() => {
+                                if (!isActive) setActiveDatabaseTab(db);
+                              }}
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                gap: "8px",
-                                flex: 1,
-                                minWidth: 0,
+                                gap: "15px",
+                                padding: "7px 10px",
+                                borderRadius: "6px 6px 0 0",
+                                backgroundColor: isActive
+                                  ? "rgba(239,239,239,1)"
+                                  : "rgb(221,221,221)",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                flexShrink: 0,
+                                minWidth: "125px",
+                                userSelect: "none",
                               }}
                             >
+                              {/* Checkbox + Name group */}
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  flex: 1,
+                                  minWidth: 0,
+                                }}
+                              >
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    flexShrink: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="manager-checkbox"
+                                    checked={selectedDatabaseIds.has(dbId)}
+                                    onChange={(e) => {
+                                      setSelectedDatabaseIds((prev) => {
+                                        const next = new Set(prev);
+                                        if (e.target.checked) next.add(dbId);
+                                        else next.delete(dbId);
+                                        return next;
+                                      });
+                                    }}
+                                  />
+                                </div>
+                                <span style={{ color: "black" }}>
+                                  {db
+                                    .split(" ")
+                                    .map(
+                                      (w) =>
+                                        w.charAt(0).toUpperCase() +
+                                        w.slice(1).toLowerCase(),
+                                    )
+                                    .join(" ")}
+                                </span>
+                              </div>
+
+                              {/* Action buttons */}
                               <div
                                 onClick={(e) => e.stopPropagation()}
                                 style={{
-                                  flexShrink: 0,
                                   display: "flex",
                                   alignItems: "center",
+                                  gap: "5px",
+                                  flexShrink: 0,
                                 }}
+                              >
+                                <RenameDatabaseButton
+                                  dbId={dbId}
+                                  dbName={db}
+                                  onSuccess={(newName) => {
+                                    // Patch registry
+                                    setRegistryDatabases((prev) =>
+                                      prev.map((d) =>
+                                        d.id === dbId
+                                          ? { ...d, name: newName }
+                                          : d,
+                                      ),
+                                    );
+                                    // Patch active tab
+                                    setActiveDatabaseTab((prev) =>
+                                      prev === db ? newName : prev,
+                                    );
+                                    // Patch database name on all affected items in local state
+                                    const patch = (item: MaterialItem) =>
+                                      item.database_id === dbId
+                                        ? { ...item, database: newName }
+                                        : item;
+                                    setAllItems((prev) => prev.map(patch));
+                                    setGroupedItems((prev) => {
+                                      const next = { ...prev };
+                                      Object.keys(next).forEach((cat) => {
+                                        Object.keys(next[cat]).forEach(
+                                          (sub) => {
+                                            next[cat][sub] =
+                                              next[cat][sub].map(patch);
+                                          },
+                                        );
+                                      });
+                                      return next;
+                                    });
+                                    setDetailItem((prev) =>
+                                      prev ? patch(prev) : prev,
+                                    );
+                                  }}
+                                />
+                                <ArchiveDatabaseButton
+                                  dbId={dbId}
+                                  dbName={db}
+                                  itemCount={
+                                    allItems.filter(
+                                      (i) => (i.database ?? "") === db,
+                                    ).length
+                                  }
+                                  onSuccess={() => {
+                                    // Remove from registry → tab disappears instantly
+                                    setRegistryDatabases((prev) =>
+                                      prev.filter((d) => d.id !== dbId),
+                                    );
+                                    // Switch away if this tab was active
+                                    setActiveDatabaseTab((prev) => {
+                                      if (prev !== db) return prev;
+                                      const remaining =
+                                        availableDatabaseTabs.filter(
+                                          (d) => d !== db,
+                                        );
+                                      return remaining[0] ?? "";
+                                    });
+                                    // If non-empty, remove archived items from local state
+                                    if (dbItemCount > 0) {
+                                      setAllItems((prev) =>
+                                        prev.filter(
+                                          (i) => i.database_id !== dbId,
+                                        ),
+                                      );
+                                      setGroupedItems((prev) => {
+                                        const next = { ...prev };
+                                        Object.keys(next).forEach((cat) => {
+                                          Object.keys(next[cat]).forEach(
+                                            (sub) => {
+                                              next[cat][sub] = next[cat][
+                                                sub
+                                              ].filter(
+                                                (i) => i.database_id !== dbId,
+                                              );
+                                            },
+                                          );
+                                        });
+                                        return next;
+                                      });
+                                      if (detailItem?.database_id === dbId) {
+                                        setDetailItem(null);
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {showRightDbArrow && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: "80px",
+                            background:
+                              "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
+                            pointerEvents: "none",
+                            zIndex: 5,
+                          }}
+                        />
+                      )}
+                      {showRightDbArrow && (
+                        <button
+                          type="button"
+                          onClick={() => scrollDbTabs("right")}
+                          style={{
+                            position: "absolute",
+                            right: 0,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            zIndex: 10,
+                            backgroundColor: "black",
+                            border: "none",
+                            borderRadius: "10px",
+                            width: "28px",
+                            height: "28px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <img
+                            src="/icons/arrow-right.svg"
+                            alt="right"
+                            style={{ marginLeft: "3px" }}
+                          />
+                        </button>
+                      )}
+                    </div>
+                    {selectedDatabaseIds.size >= 2 && (
+                      <MergeDatabasesButton
+                        selectedDatabases={registryDatabases
+                          .filter((d) => selectedDatabaseIds.has(d.id))
+                          .map((d) => ({
+                            ...d,
+                            itemCount: allItems.filter(
+                              (i) => i.database_id === d.id,
+                            ).length,
+                          }))}
+                        onSuccess={(targetId, removedIds, mergedName) => {
+                          setRegistryDatabases((prev) =>
+                            prev
+                              .filter((d) => !removedIds.includes(d.id))
+                              .map((d) =>
+                                d.id === targetId
+                                  ? { ...d, name: mergedName }
+                                  : d,
+                              ),
+                          );
+                          setActiveDatabaseTab((prev) => {
+                            const removedNames = registryDatabases
+                              .filter((d) => removedIds.includes(d.id))
+                              .map((d) => d.name);
+                            if (removedNames.includes(prev)) return mergedName;
+                            if (
+                              prev ===
+                              registryDatabases.find((d) => d.id === targetId)
+                                ?.name
+                            )
+                              return mergedName;
+                            return prev;
+                          });
+                          setSelectedDatabaseIds(new Set());
+                          fetchItems(true);
+                        }}
+                      />
+                    )}
+                    <CreateDatabaseButton
+                      selectedItems={allItems.filter((i) =>
+                        selectedIds.has(i.id),
+                      )}
+                      onSuccess={(id, name) => {
+                        setRegistryDatabases((prev) => [...prev, { id, name }]);
+                        setActiveDatabaseTab(name);
+                      }}
+                      onMoveSuccess={(id, name) => {
+                        setRegistryDatabases((prev) => [...prev, { id, name }]);
+                        setSelectedIds(new Set());
+                        fetchItems(true);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {flatItems.length === 0 ? (
+                  <div
+                    className="no-items-container"
+                    style={{ backgroundColor: "transparent" }}
+                  >
+                    <img src="/images/no-items.svg" alt="no items" />
+                    <br />
+                    <h2
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        marginTop: "8px",
+                      }}
+                    >
+                      NO MATERIAL FOUND
+                    </h2>
+                    <div style={{ marginTop: "16px" }}>
+                      <CreateNewMaterialButton
+                        onSuccess={handleNewMaterialCreated}
+                        allItems={allItems}
+                        defaultDatabase={activeDatabaseTab || undefined}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <table
+                      className="items-table material-db-table"
+                      style={{ tableLayout: "fixed", width: "100%" }}
+                    >
+                      <colgroup>
+                        <col style={{ width: "40px" }} />
+                        <col style={{ width: "200px" }} />
+                        <col />
+                        <col style={{ width: "150px" }} />
+                        <col style={{ width: "48px" }} />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                            <input
+                              type="checkbox"
+                              className="manager-checkbox"
+                              checked={
+                                paginatedItems.length > 0 &&
+                                paginatedItems.every((i) =>
+                                  selectedIds.has(i.id),
+                                )
+                              }
+                              onChange={(e) => {
+                                setSelectedIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (e.target.checked)
+                                    paginatedItems.forEach((i) =>
+                                      next.add(i.id),
+                                    );
+                                  else
+                                    paginatedItems.forEach((i) =>
+                                      next.delete(i.id),
+                                    );
+                                  return next;
+                                });
+                              }}
+                            />
+                          </th>
+                          <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                            CODE
+                          </th>
+                          <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                            MATERIAL
+                          </th>
+                          <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                            UNIT
+                          </th>
+                          <th
+                            style={{ position: "sticky", top: 0, zIndex: 1 }}
+                          />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedItems.map((item) => {
+                          const isDetailing = detailItem?.id === item.id;
+                          return (
+                            <tr
+                              key={item.id}
+                              onClick={() => {
+                                setDetailItem(item);
+                              }}
+                              className={
+                                isDetailing ? "material-db-row-active" : ""
+                              }
+                              style={{ cursor: "pointer" }}
+                            >
+                              <td
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ textAlign: "center" }}
                               >
                                 <input
                                   type="checkbox"
                                   className="manager-checkbox"
-                                  checked={selectedDatabaseIds.has(dbId)}
+                                  checked={selectedIds.has(item.id)}
                                   onChange={(e) => {
-                                    setSelectedDatabaseIds((prev) => {
+                                    setSelectedIds((prev) => {
                                       const next = new Set(prev);
-                                      if (e.target.checked) next.add(dbId);
-                                      else next.delete(dbId);
+                                      if (e.target.checked) next.add(item.id);
+                                      else next.delete(item.id);
                                       return next;
                                     });
                                   }}
                                 />
-                              </div>
-                              <span style={{ color: "black" }}>
-                                {db
-                                  .split(" ")
-                                  .map(
-                                    (w) =>
-                                      w.charAt(0).toUpperCase() +
-                                      w.slice(1).toLowerCase(),
-                                  )
-                                  .join(" ")}
-                              </span>
-                            </div>
-
-                            {/* Action buttons */}
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                flexShrink: 0,
-                              }}
-                            >
-                              <RenameDatabaseButton
-                                dbId={dbId}
-                                dbName={db}
-                                onSuccess={(newName) => {
-                                  // Patch registry
-                                  setRegistryDatabases((prev) =>
-                                    prev.map((d) =>
-                                      d.id === dbId
-                                        ? { ...d, name: newName }
-                                        : d,
-                                    ),
-                                  );
-                                  // Patch active tab
-                                  setActiveDatabaseTab((prev) =>
-                                    prev === db ? newName : prev,
-                                  );
-                                  // Patch database name on all affected items in local state
-                                  const patch = (item: MaterialItem) =>
-                                    item.database_id === dbId
-                                      ? { ...item, database: newName }
-                                      : item;
-                                  setAllItems((prev) => prev.map(patch));
-                                  setGroupedItems((prev) => {
-                                    const next = { ...prev };
-                                    Object.keys(next).forEach((cat) => {
-                                      Object.keys(next[cat]).forEach((sub) => {
-                                        next[cat][sub] =
-                                          next[cat][sub].map(patch);
-                                      });
-                                    });
-                                    return next;
-                                  });
-                                  setDetailItem((prev) =>
-                                    prev ? patch(prev) : prev,
-                                  );
-                                }}
-                              />
-                              <ArchiveDatabaseButton
-                                dbId={dbId}
-                                dbName={db}
-                                itemCount={
-                                  allItems.filter(
-                                    (i) => (i.database ?? "") === db,
-                                  ).length
-                                }
-                                onSuccess={() => {
-                                  // Remove from registry → tab disappears instantly
-                                  setRegistryDatabases((prev) =>
-                                    prev.filter((d) => d.id !== dbId),
-                                  );
-                                  // Switch away if this tab was active
-                                  setActiveDatabaseTab((prev) => {
-                                    if (prev !== db) return prev;
-                                    const remaining =
-                                      availableDatabaseTabs.filter(
-                                        (d) => d !== db,
-                                      );
-                                    return remaining[0] ?? "";
-                                  });
-                                  // If non-empty, remove archived items from local state
-                                  if (dbItemCount > 0) {
-                                    setAllItems((prev) =>
-                                      prev.filter(
-                                        (i) => i.database_id !== dbId,
-                                      ),
-                                    );
-                                    setGroupedItems((prev) => {
-                                      const next = { ...prev };
-                                      Object.keys(next).forEach((cat) => {
-                                        Object.keys(next[cat]).forEach(
-                                          (sub) => {
-                                            next[cat][sub] = next[cat][
-                                              sub
-                                            ].filter(
-                                              (i) => i.database_id !== dbId,
-                                            );
-                                          },
-                                        );
-                                      });
-                                      return next;
-                                    });
-                                    if (detailItem?.database_id === dbId) {
-                                      setDetailItem(null);
+                              </td>
+                              <td style={{ fontWeight: 600 }}>
+                                {item.item_code}
+                              </td>
+                              <td>
+                                <div
+                                  style={{
+                                    fontWeight: 600,
+                                    color: "rgba(0,123,255,1)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                  }}
+                                >
+                                  <span>{item.material_description}</span>
+                                  {duplicateMap.has(item.id) && (
+                                    <span
+                                      className="tooltip-bar"
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        flexShrink: 0,
+                                        zIndex: "auto",
+                                      }}
+                                    >
+                                      <img
+                                        src="/icons/database-duplicate-warning.svg"
+                                        alt="duplicate warning"
+                                        style={{ width: "16px" }}
+                                      />
+                                      <span
+                                        className="tooltip-label"
+                                        style={{
+                                          color: "rgba(248, 77, 77, 1)",
+                                        }}
+                                      >
+                                        {duplicateMap.get(item.id)} Duplicate
+                                        {duplicateMap.get(item.id) !== 1
+                                          ? "s"
+                                          : ""}{" "}
+                                        Found
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                                <div
+                                  style={{
+                                    marginTop: "3px",
+                                    fontSize: "10px",
+                                    color: "rgba(150,150,150,1)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <span>{item.category_name || "N/A"}</span>
+                                  <span>/</span>
+                                  <span>{item.subcategory_name || "N/A"}</span>
+                                </div>
+                              </td>
+                              <td>{item.unit || "N/A"}</td>
+                              <td
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ padding: "4px 0" }}
+                              >
+                                <ThreeDotsMenuButton>
+                                  <EditMaterialButton
+                                    item={item}
+                                    onOpen={() => setDetailItem(item)}
+                                    onSuccess={() => fetchItems(true, true)}
+                                    onDatabaseCreated={(id, name) =>
+                                      setRegistryDatabases((prev) => [
+                                        ...prev,
+                                        { id, name },
+                                      ])
                                     }
-                                  }
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {showRightDbArrow && (
-                      <div
+                                  />
+                                  <DuplicateMaterialButton
+                                    item={item}
+                                    onSuccess={(newItem) => {
+                                      const cat =
+                                        newItem.category_name ||
+                                        "Uncategorized";
+                                      const sub =
+                                        newItem.subcategory_name || "General";
+                                      setAllItems((prev) => [...prev, newItem]);
+                                      setGroupedItems((prev) => ({
+                                        ...prev,
+                                        [cat]: {
+                                          ...(prev[cat] || {}),
+                                          [sub]: [
+                                            ...(prev[cat]?.[sub] || []),
+                                            newItem,
+                                          ],
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                  <CopyMaterialButton
+                                    item={item}
+                                    databases={registryDatabases}
+                                    onDatabaseCreated={(id, name) =>
+                                      setRegistryDatabases((prev) => [
+                                        ...prev,
+                                        { id, name },
+                                      ])
+                                    }
+                                    onSuccess={(newItem) => {
+                                      const cat =
+                                        newItem.category_name ||
+                                        "Uncategorized";
+                                      const sub =
+                                        newItem.subcategory_name || "General";
+                                      setAllItems((prev) => [...prev, newItem]);
+                                      setGroupedItems((prev) => ({
+                                        ...prev,
+                                        [cat]: {
+                                          ...(prev[cat] || {}),
+                                          [sub]: [
+                                            ...(prev[cat]?.[sub] || []),
+                                            newItem,
+                                          ],
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                  <MoveMaterialButton
+                                    item={item}
+                                    databases={registryDatabases}
+                                    onDatabaseCreated={(id, name) =>
+                                      setRegistryDatabases((prev) => [
+                                        ...prev,
+                                        { id, name },
+                                      ])
+                                    }
+                                    onSuccess={(targetDbId, targetDbName) => {
+                                      const updated = {
+                                        ...item,
+                                        database_id: targetDbId,
+                                        database: targetDbName,
+                                      };
+                                      setAllItems((prev) =>
+                                        prev.map((i) =>
+                                          i.id === item.id ? updated : i,
+                                        ),
+                                      );
+                                      setGroupedItems((prev) => {
+                                        const next = { ...prev };
+                                        const cat =
+                                          item.category_name || "Uncategorized";
+                                        const sub =
+                                          item.subcategory_name || "General";
+                                        if (next[cat]?.[sub]) {
+                                          next[cat][sub] = next[cat][sub].map(
+                                            (i) =>
+                                              i.id === item.id ? updated : i,
+                                          );
+                                        }
+                                        return next;
+                                      });
+                                      if (detailItem?.id === item.id) {
+                                        setDetailItem(updated);
+                                      }
+                                      refreshChangelog();
+                                    }}
+                                  />
+                                  <ArchiveMaterialButton
+                                    item={item}
+                                    onSuccess={() => {
+                                      setAllItems((prev) =>
+                                        prev.filter((i) => i.id !== item.id),
+                                      );
+                                      setGroupedItems((prev) => {
+                                        const next = { ...prev };
+                                        Object.keys(next).forEach((cat) => {
+                                          Object.keys(next[cat]).forEach(
+                                            (sub) => {
+                                              next[cat][sub] = next[cat][
+                                                sub
+                                              ].filter((i) => i.id !== item.id);
+                                            },
+                                          );
+                                        });
+                                        return next;
+                                      });
+                                      if (detailItem?.id === item.id) {
+                                        setDetailItem(null);
+                                      }
+                                    }}
+                                  />
+                                </ThreeDotsMenuButton>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </div>
+
+              {/* Pagination — outside scroll so always visible */}
+              <div style={{ flexShrink: 0 }}>
+                <PaginationControls />
+              </div>
+            </div>
+
+            {/* ── RIGHT: detail panel ─────────────────────────────────────── */}
+            <div
+              style={{
+                width: 350,
+                flexShrink: 0,
+                overflowY: "auto",
+                padding: "15px",
+                borderRadius: "10px",
+                backgroundColor: "white",
+              }}
+            >
+              {detailItem ? (
+                /* ── Detail view ── */
+                <>
+                  <div
+                    style={{
+                      padding: "15px",
+                      backgroundColor: "rgba(248, 248, 248, 1)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <div style={{ marginBottom: "20px" }}>
+                      <h3
                         style={{
-                          position: "absolute",
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: "80px",
-                          background:
-                            "linear-gradient(to left, white 0%, rgba(255,255,255,0) 100%)",
-                          pointerEvents: "none",
-                          zIndex: 5,
-                        }}
-                      />
-                    )}
-                    {showRightDbArrow && (
-                      <button
-                        type="button"
-                        onClick={() => scrollDbTabs("right")}
-                        style={{
-                          position: "absolute",
-                          right: 0,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          zIndex: 10,
-                          backgroundColor: "black",
-                          border: "none",
-                          borderRadius: "10px",
-                          width: "28px",
-                          height: "28px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
+                          fontSize: "16px",
+                          fontWeight: 700,
+                          color: "#111",
+                          marginBottom: "4px",
                         }}
                       >
-                        <img
-                          src="/icons/arrow-right.svg"
-                          alt="right"
-                          style={{ marginLeft: "3px" }}
-                        />
-                      </button>
-                    )}
-                  </div>
-                  {selectedDatabaseIds.size >= 2 && (
-                    <MergeDatabasesButton
-                      selectedDatabases={registryDatabases
-                        .filter((d) => selectedDatabaseIds.has(d.id))
-                        .map((d) => ({
-                          ...d,
-                          itemCount: allItems.filter(
-                            (i) => i.database_id === d.id,
-                          ).length,
-                        }))}
-                      onSuccess={(targetId, removedIds, mergedName) => {
-                        setRegistryDatabases((prev) =>
-                          prev
-                            .filter((d) => !removedIds.includes(d.id))
-                            .map((d) =>
-                              d.id === targetId
-                                ? { ...d, name: mergedName }
-                                : d,
-                            ),
-                        );
-                        setActiveDatabaseTab((prev) => {
-                          const removedNames = registryDatabases
-                            .filter((d) => removedIds.includes(d.id))
-                            .map((d) => d.name);
-                          if (removedNames.includes(prev)) return mergedName;
-                          if (
-                            prev ===
-                            registryDatabases.find((d) => d.id === targetId)
-                              ?.name
-                          )
-                            return mergedName;
-                          return prev;
-                        });
-                        setSelectedDatabaseIds(new Set());
-                        fetchItems(true);
-                      }}
-                    />
-                  )}
-                  <CreateDatabaseButton
-                    selectedItems={allItems.filter((i) =>
-                      selectedIds.has(i.id),
-                    )}
-                    onSuccess={(id, name) => {
-                      setRegistryDatabases((prev) => [...prev, { id, name }]);
-                      setActiveDatabaseTab(name);
-                    }}
-                    onMoveSuccess={(id, name) => {
-                      setRegistryDatabases((prev) => [...prev, { id, name }]);
-                      setSelectedIds(new Set());
-                      fetchItems(true);
-                    }}
-                  />
-                </div>
-              )}
-
-              {flatItems.length === 0 ? (
-                <div
-                  className="no-items-container"
-                  style={{ backgroundColor: "transparent" }}
-                >
-                  <img src="/images/no-items.svg" alt="no items" />
-                  <br />
-                  <h2
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      marginTop: "8px",
-                    }}
-                  >
-                    NO MATERIAL FOUND
-                  </h2>
-                  <div style={{ marginTop: "16px" }}>
-                    <CreateNewMaterialButton
-                      onSuccess={handleNewMaterialCreated}
-                      allItems={allItems}
-                      defaultDatabase={activeDatabaseTab || undefined}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <table
-                    className="items-table material-db-table"
-                    style={{ tableLayout: "fixed", width: "100%" }}
-                  >
-                    <colgroup>
-                      <col style={{ width: "40px" }} />
-                      <col style={{ width: "200px" }} />
-                      <col />
-                      <col style={{ width: "150px" }} />
-                      <col style={{ width: "48px" }} />
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                          <input
-                            type="checkbox"
-                            className="manager-checkbox"
-                            checked={
-                              paginatedItems.length > 0 &&
-                              paginatedItems.every((i) => selectedIds.has(i.id))
-                            }
-                            onChange={(e) => {
-                              setSelectedIds((prev) => {
-                                const next = new Set(prev);
-                                if (e.target.checked)
-                                  paginatedItems.forEach((i) => next.add(i.id));
-                                else
-                                  paginatedItems.forEach((i) =>
-                                    next.delete(i.id),
-                                  );
-                                return next;
-                              });
-                            }}
-                          />
-                        </th>
-                        <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                          CODE
-                        </th>
-                        <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                          MATERIAL
-                        </th>
-                        <th style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                          UNIT
-                        </th>
-                        <th style={{ position: "sticky", top: 0, zIndex: 1 }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedItems.map((item) => {
-                        const isDetailing = detailItem?.id === item.id;
-                        return (
-                          <tr
-                            key={item.id}
-                            onClick={() => {
-                              setDetailItem(item);
-                            }}
-                            className={
-                              isDetailing ? "material-db-row-active" : ""
-                            }
-                            style={{ cursor: "pointer" }}
-                          >
-                            <td
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ textAlign: "center" }}
-                            >
-                              <input
-                                type="checkbox"
-                                className="manager-checkbox"
-                                checked={selectedIds.has(item.id)}
-                                onChange={(e) => {
-                                  setSelectedIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (e.target.checked) next.add(item.id);
-                                    else next.delete(item.id);
-                                    return next;
-                                  });
-                                }}
-                              />
-                            </td>
-                            <td style={{ fontWeight: 600 }}>
-                              {item.item_code}
-                            </td>
-                            <td>
-                              <div
-                                style={{
-                                  fontWeight: 600,
-                                  color: "rgba(0,123,255,1)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "5px",
-                                }}
-                              >
-                                <span>{item.material_description}</span>
-                                {duplicateMap.has(item.id) && (
-                                  <span
-                                    className="tooltip-bar"
-                                    style={{
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      flexShrink: 0,
-                                      zIndex: "auto",
-                                    }}
-                                  >
-                                    <img
-                                      src="/icons/database-duplicate-warning.svg"
-                                      alt="duplicate warning"
-                                      style={{ width: "16px" }}
-                                    />
-                                    <span
-                                      className="tooltip-label"
-                                      style={{ color: "rgba(248, 77, 77, 1)" }}
-                                    >
-                                      {duplicateMap.get(item.id)} Duplicate
-                                      {duplicateMap.get(item.id) !== 1
-                                        ? "s"
-                                        : ""}{" "}
-                                      Found
-                                    </span>
-                                  </span>
-                                )}
-                              </div>
-                              <div
-                                style={{
-                                  marginTop: "3px",
-                                  fontSize: "10px",
-                                  color: "rgba(150,150,150,1)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "4px",
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <span>{item.category_name || "N/A"}</span>
-                                <span>/</span>
-                                <span>{item.subcategory_name || "N/A"}</span>
-                              </div>
-                            </td>
-                            <td>{item.unit || "N/A"}</td>
-                            <td
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ padding: "4px 0" }}
-                            >
-                              <ThreeDotsMenuButton>
-                                <EditMaterialButton
-                                  item={item}
-                                  onOpen={() => setDetailItem(item)}
-                                  onSuccess={() => fetchItems(true, true)}
-                                  onDatabaseCreated={(id, name) =>
-                                    setRegistryDatabases((prev) => [
-                                      ...prev,
-                                      { id, name },
-                                    ])
-                                  }
-                                />
-                                <DuplicateMaterialButton
-                                  item={item}
-                                  onSuccess={(newItem) => {
-                                    const cat =
-                                      newItem.category_name || "Uncategorized";
-                                    const sub =
-                                      newItem.subcategory_name || "General";
-                                    setAllItems((prev) => [...prev, newItem]);
-                                    setGroupedItems((prev) => ({
-                                      ...prev,
-                                      [cat]: {
-                                        ...(prev[cat] || {}),
-                                        [sub]: [
-                                          ...(prev[cat]?.[sub] || []),
-                                          newItem,
-                                        ],
-                                      },
-                                    }));
-                                  }}
-                                />
-                                <CopyMaterialButton
-                                  item={item}
-                                  databases={registryDatabases}
-                                  onDatabaseCreated={(id, name) =>
-                                    setRegistryDatabases((prev) => [
-                                      ...prev,
-                                      { id, name },
-                                    ])
-                                  }
-                                  onSuccess={(newItem) => {
-                                    const cat =
-                                      newItem.category_name || "Uncategorized";
-                                    const sub =
-                                      newItem.subcategory_name || "General";
-                                    setAllItems((prev) => [...prev, newItem]);
-                                    setGroupedItems((prev) => ({
-                                      ...prev,
-                                      [cat]: {
-                                        ...(prev[cat] || {}),
-                                        [sub]: [
-                                          ...(prev[cat]?.[sub] || []),
-                                          newItem,
-                                        ],
-                                      },
-                                    }));
-                                  }}
-                                />
-                                <MoveMaterialButton
-                                  item={item}
-                                  databases={registryDatabases}
-                                  onDatabaseCreated={(id, name) =>
-                                    setRegistryDatabases((prev) => [
-                                      ...prev,
-                                      { id, name },
-                                    ])
-                                  }
-                                  onSuccess={(targetDbId, targetDbName) => {
-                                    const updated = {
-                                      ...item,
-                                      database_id: targetDbId,
-                                      database: targetDbName,
-                                    };
-                                    setAllItems((prev) =>
-                                      prev.map((i) =>
-                                        i.id === item.id ? updated : i,
-                                      ),
-                                    );
-                                    setGroupedItems((prev) => {
-                                      const next = { ...prev };
-                                      const cat =
-                                        item.category_name || "Uncategorized";
-                                      const sub =
-                                        item.subcategory_name || "General";
-                                      if (next[cat]?.[sub]) {
-                                        next[cat][sub] = next[cat][sub].map(
-                                          (i) =>
-                                            i.id === item.id ? updated : i,
-                                        );
-                                      }
-                                      return next;
-                                    });
-                                    if (detailItem?.id === item.id) {
-                                      setDetailItem(updated);
-                                    }
-                                    refreshChangelog();
-                                  }}
-                                />
-                                <ArchiveMaterialButton
-                                  item={item}
-                                  onSuccess={() => {
-                                    setAllItems((prev) =>
-                                      prev.filter((i) => i.id !== item.id),
-                                    );
-                                    setGroupedItems((prev) => {
-                                      const next = { ...prev };
-                                      Object.keys(next).forEach((cat) => {
-                                        Object.keys(next[cat]).forEach(
-                                          (sub) => {
-                                            next[cat][sub] = next[cat][
-                                              sub
-                                            ].filter((i) => i.id !== item.id);
-                                          },
-                                        );
-                                      });
-                                      return next;
-                                    });
-                                    if (detailItem?.id === item.id) {
-                                      setDetailItem(null);
-                                    }
-                                  }}
-                                />
-                              </ThreeDotsMenuButton>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </>
-              )}
-            </div>
-
-            {/* Pagination — outside scroll so always visible */}
-            <div style={{ flexShrink: 0 }}>
-              <PaginationControls />
-            </div>
-          </div>
-
-          {/* ── RIGHT: detail panel ─────────────────────────────────────── */}
-          <div
-            style={{
-              width: 350,
-              flexShrink: 0,
-              overflowY: "auto",
-              padding: "15px",
-              borderRadius: "10px",
-              backgroundColor: "white",
-            }}
-          >
-            {detailItem ? (
-              /* ── Detail view ── */
-              <>
-                <div
-                  style={{
-                    padding: "15px",
-                    backgroundColor: "rgba(248, 248, 248, 1)",
-                    borderRadius: "10px",
-                  }}
-                >
-                  <div style={{ marginBottom: "20px" }}>
-                    <h3
-                      style={{
-                        fontSize: "16px",
-                        fontWeight: 700,
-                        color: "#111",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      {detailItem.material_description}
-                    </h3>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: "rgba(130,130,130,1)",
-                      }}
-                    >
-                      {detailItem.item_code}
-                    </span>
-
-                    {detailItem.brand && (
+                        {detailItem.material_description}
+                      </h3>
                       <span
                         style={{
                           fontSize: "11px",
                           color: "rgba(130,130,130,1)",
                         }}
                       >
-                        {" "}
-                        • {detailItem.brand}
+                        {detailItem.item_code}
                       </span>
-                    )}
-                  </div>
 
-                  <hr
-                    style={{
-                      border: "none",
-                      borderTop: "1px solid rgba(223,223,223,1)",
-                      margin: "0 0 20px",
-                    }}
-                  />
+                      {detailItem.brand && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: "rgba(130,130,130,1)",
+                          }}
+                        >
+                          {" "}
+                          • {detailItem.brand}
+                        </span>
+                      )}
+                    </div>
 
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "20px",
-                    }}
-                  >
-                    <div>
-                      <InfoLabel label="CATEGORY" />
-                      <InfoValue value={detailItem.category_name} />
-                    </div>
-                    <div>
-                      <InfoLabel label="SUBCATEGORY" />
-                      <InfoValue value={detailItem.subcategory_name} />
-                    </div>
-                    <div>
-                      <InfoLabel label="UNIT" />
-                      <InfoValue value={detailItem.unit} />
-                    </div>
-                    <div>
-                      <InfoLabel label="ADDED BY" />
-                      <InfoValue value={detailItem.added_by ?? "SYSTEM"} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Changelog ──────────────────────────────── */}
-                <div style={{ marginTop: "20px" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      marginBottom: "3px",
-                    }}
-                  >
-                    <img
-                      src="/icons/database-clock.svg"
-                      alt=""
-                      style={{ width: "15px", flexShrink: 0 }}
+                    <hr
+                      style={{
+                        border: "none",
+                        borderTop: "1px solid rgba(223,223,223,1)",
+                        margin: "0 0 20px",
+                      }}
                     />
-                    <h4 style={{ fontWeight: 600, fontSize: "13px" }}>
-                      Changelog
-                    </h4>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: "11px",
-                      color: "rgba(120,120,120,1)",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    A history of changes made to this material
-                  </p>
 
-                  {changelogLoading ? (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "20px",
+                      }}
+                    >
+                      <div>
+                        <InfoLabel label="CATEGORY" />
+                        <InfoValue value={detailItem.category_name} />
+                      </div>
+                      <div>
+                        <InfoLabel label="SUBCATEGORY" />
+                        <InfoValue value={detailItem.subcategory_name} />
+                      </div>
+                      <div>
+                        <InfoLabel label="UNIT" />
+                        <InfoValue value={detailItem.unit} />
+                      </div>
+                      <div>
+                        <InfoLabel label="ADDED BY" />
+                        <InfoValue value={detailItem.added_by ?? "SYSTEM"} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Changelog ──────────────────────────────── */}
+                  <div style={{ marginTop: "20px" }}>
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "8px",
-                        color: "rgba(130,130,130,1)",
-                        fontSize: "12px",
+                        gap: "6px",
+                        marginBottom: "3px",
                       }}
                     >
+                      <img
+                        src="/icons/database-clock.svg"
+                        alt=""
+                        style={{ width: "15px", flexShrink: 0 }}
+                      />
+                      <h4 style={{ fontWeight: 600, fontSize: "13px" }}>
+                        Changelog
+                      </h4>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "11px",
+                        color: "rgba(120,120,120,1)",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      A history of changes made to this material
+                    </p>
+
+                    {changelogLoading ? (
                       <div
                         style={{
-                          width: "14px",
-                          height: "14px",
-                          border: "2px solid rgba(0,0,0,0.1)",
-                          borderTop: "2px solid black",
-                          borderRadius: "50%",
-                          animation: "spin 0.6s linear infinite",
-                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          color: "rgba(130,130,130,1)",
+                          fontSize: "12px",
                         }}
-                      />
-                      Loading changelog…
-                    </div>
-                  ) : changelog.length === 0 ? (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "4px 12px",
-                        borderRadius: "50px",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        backgroundColor: "rgba(220,220,220,1)",
-                        color: "rgba(80,80,80,1)",
-                      }}
-                    >
-                      No changes recorded
-                    </span>
-                  ) : (
-                    <div
-                      style={{
-                        border: "1px solid rgba(230,230,230,1)",
-                        borderRadius: "10px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {changelog.map((entry, idx) => (
+                      >
                         <div
-                          key={entry.id}
                           style={{
-                            padding: "12px",
-                            borderBottom:
-                              idx < changelog.length - 1
-                                ? "1px solid rgba(230,230,230,1)"
-                                : "none",
+                            width: "14px",
+                            height: "14px",
+                            border: "2px solid rgba(0,0,0,0.1)",
+                            borderTop: "2px solid black",
+                            borderRadius: "50%",
+                            animation: "spin 0.6s linear infinite",
+                            flexShrink: 0,
                           }}
-                        >
+                        />
+                        Loading changelog…
+                      </div>
+                    ) : changelog.length === 0 ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "4px 12px",
+                          borderRadius: "50px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          backgroundColor: "rgba(220,220,220,1)",
+                          color: "rgba(80,80,80,1)",
+                        }}
+                      >
+                        No changes recorded
+                      </span>
+                    ) : (
+                      <div
+                        style={{
+                          border: "1px solid rgba(230,230,230,1)",
+                          borderRadius: "10px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {changelog.map((entry, idx) => (
+                          <div
+                            key={entry.id}
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                idx < changelog.length - 1
+                                  ? "1px solid rgba(230,230,230,1)"
+                                  : "none",
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                color: "rgba(214,184,16,1)",
+                                marginBottom: "6px",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {CHANGELOG_ACTION_LABELS[entry.action] ??
+                                entry.action}
+                            </p>
+
+                            {(entry.old_value || entry.new_value) && (
+                              <p
+                                style={{
+                                  fontSize: "13px",
+                                  fontWeight: 600,
+                                  color: "#111",
+                                  marginBottom: "4px",
+                                }}
+                              >
+                                {entry.old_value && (
+                                  <span>{entry.old_value}</span>
+                                )}
+                                {entry.old_value && entry.new_value && (
+                                  <span style={{ margin: "0 6px" }}>→</span>
+                                )}
+                                {entry.new_value && (
+                                  <span>{entry.new_value}</span>
+                                )}
+                              </p>
+                            )}
+
+                            <p
+                              style={{
+                                fontSize: "10px",
+                                color: "rgba(150,150,150,1)",
+                                marginBottom: "10px",
+                              }}
+                            >
+                              {detailItem?.item_code}
+                              {detailItem?.brand
+                                ? ` • ${detailItem.brand}`
+                                : ""}
+                            </p>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: "8px",
+                              }}
+                            >
+                              <div>
+                                <p
+                                  style={{
+                                    fontSize: "9px",
+                                    color: "rgba(150,150,150,1)",
+                                    textTransform: "uppercase",
+                                    fontWeight: 600,
+                                    marginBottom: "3px",
+                                  }}
+                                >
+                                  Date
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "12px",
+                                    fontWeight: 600,
+                                    color: "#111",
+                                  }}
+                                >
+                                  {formatChangelogDate(entry.changed_at)}
+                                </p>
+                              </div>
+                              <div>
+                                <p
+                                  style={{
+                                    fontSize: "9px",
+                                    color: "rgba(150,150,150,1)",
+                                    textTransform: "uppercase",
+                                    fontWeight: 600,
+                                    marginBottom: "3px",
+                                  }}
+                                >
+                                  Changed By
+                                </p>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                  }}
+                                >
+                                  <UserAvatar name={entry.changed_by} />
+                                  <span
+                                    style={{
+                                      fontSize: "11px",
+                                      fontWeight: 600,
+                                      color: "#111",
+                                    }}
+                                  >
+                                    {entry.changed_by ?? "Unknown"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Duplicates ──────────────────────────────── */}
+                  {duplicateMap.has(detailItem.id) &&
+                    (() => {
+                      const normalize = (s: string) =>
+                        s.toLowerCase().replace(/\s+/g, " ").trim();
+                      const duplicates = allItems.filter(
+                        (i) =>
+                          i.id !== detailItem.id &&
+                          (i.database ?? "") === (detailItem.database ?? "") &&
+                          normalize(i.material_description || "") ===
+                            normalize(detailItem.material_description || ""),
+                      );
+                      if (duplicates.length === 0) return null;
+                      return (
+                        <div style={{ marginTop: "20px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              marginBottom: "3px",
+                            }}
+                          >
+                            <img
+                              src="/icons/database-duplicate-warning.svg"
+                              alt=""
+                              style={{ width: "15px", flexShrink: 0 }}
+                            />
+                            <h4 style={{ fontWeight: 600, fontSize: "13px" }}>
+                              Duplicates
+                            </h4>
+                          </div>
                           <p
                             style={{
                               fontSize: "11px",
-                              fontWeight: 700,
-                              color: "rgba(214,184,16,1)",
-                              marginBottom: "6px",
-                              textTransform: "uppercase",
+                              color: "rgba(120,120,120,1)",
+                              marginBottom: "12px",
                             }}
                           >
-                            {CHANGELOG_ACTION_LABELS[entry.action] ??
-                              entry.action}
+                            {duplicates.length} duplicate
+                            {duplicates.length !== 1 ? "s" : ""} found for this
+                            material
                           </p>
-
-                          {(entry.old_value || entry.new_value) && (
-                            <p
-                              style={{
-                                fontSize: "13px",
-                                fontWeight: 600,
-                                color: "#111",
-                                marginBottom: "4px",
-                              }}
-                            >
-                              {entry.old_value && (
-                                <span>{entry.old_value}</span>
-                              )}
-                              {entry.old_value && entry.new_value && (
-                                <span style={{ margin: "0 6px" }}>→</span>
-                              )}
-                              {entry.new_value && (
-                                <span>{entry.new_value}</span>
-                              )}
-                            </p>
-                          )}
-
-                          <p
-                            style={{
-                              fontSize: "10px",
-                              color: "rgba(150,150,150,1)",
-                              marginBottom: "10px",
-                            }}
-                          >
-                            {detailItem?.item_code}
-                            {detailItem?.brand ? ` • ${detailItem.brand}` : ""}
-                          </p>
-
                           <div
                             style={{
-                              display: "grid",
-                              gridTemplateColumns: "1fr 1fr",
-                              gap: "8px",
+                              border: "1px solid rgba(230,230,230,1)",
+                              borderRadius: "10px",
+                              overflow: "hidden",
                             }}
                           >
-                            <div>
-                              <p
+                            {duplicates.map((dup, idx) => (
+                              <div
+                                key={dup.id}
                                 style={{
-                                  fontSize: "9px",
-                                  color: "rgba(150,150,150,1)",
-                                  textTransform: "uppercase",
-                                  fontWeight: 600,
-                                  marginBottom: "3px",
+                                  padding: "12px",
+                                  borderBottom:
+                                    idx < duplicates.length - 1
+                                      ? "1px solid rgba(230,230,230,1)"
+                                      : "none",
                                 }}
                               >
-                                Date
-                              </p>
-                              <p
-                                style={{
-                                  fontSize: "12px",
-                                  fontWeight: 600,
-                                  color: "#111",
-                                }}
-                              >
-                                {formatChangelogDate(entry.changed_at)}
-                              </p>
-                            </div>
-                            <div>
-                              <p
-                                style={{
-                                  fontSize: "9px",
-                                  color: "rgba(150,150,150,1)",
-                                  textTransform: "uppercase",
-                                  fontWeight: 600,
-                                  marginBottom: "3px",
-                                }}
-                              >
-                                Changed By
-                              </p>
+                                <p
+                                  style={{
+                                    fontWeight: 600,
+                                    fontSize: "13px",
+                                    color: "#111",
+                                    marginBottom: "2px",
+                                  }}
+                                >
+                                  {dup.material_description}
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "10px",
+                                    color: "rgba(150,150,150,1)",
+                                    marginBottom: "8px",
+                                  }}
+                                >
+                                  {dup.item_code}
+                                  {dup.brand ? ` • ${dup.brand}` : ""}
+                                </p>
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  <div>
+                                    <p
+                                      style={{
+                                        fontSize: "9px",
+                                        color: "rgba(150,150,150,1)",
+                                        textTransform: "uppercase",
+                                        fontWeight: 600,
+                                        marginBottom: "2px",
+                                      }}
+                                    >
+                                      Category
+                                    </p>
+                                    <p
+                                      style={{
+                                        fontSize: "12px",
+                                        fontWeight: 600,
+                                        color: "#111",
+                                      }}
+                                    >
+                                      {dup.category_name || "N/A"}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p
+                                      style={{
+                                        fontSize: "9px",
+                                        color: "rgba(150,150,150,1)",
+                                        textTransform: "uppercase",
+                                        fontWeight: 600,
+                                        marginBottom: "2px",
+                                      }}
+                                    >
+                                      Subcategory
+                                    </p>
+                                    <p
+                                      style={{
+                                        fontSize: "12px",
+                                        fontWeight: 600,
+                                        color: "#111",
+                                      }}
+                                    >
+                                      {dup.subcategory_name || "N/A"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                  {/* ── Inventory Mapping ───────────────────────── */}
+                  <div style={{ marginTop: "20px" }}>
+                    <h4
+                      style={{
+                        fontWeight: 600,
+                        fontSize: "13px",
+                        marginBottom: "3px",
+                      }}
+                    >
+                      Inventory Mapping
+                    </h4>
+                    <p
+                      style={{
+                        fontSize: "11px",
+                        color: "rgba(120,120,120,1)",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      Available Items
+                    </p>
+
+                    {inventoryLoading ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          color: "rgba(130,130,130,1)",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "14px",
+                            height: "14px",
+                            border: "2px solid rgba(0,0,0,0.1)",
+                            borderTop: "2px solid black",
+                            borderRadius: "50%",
+                            animation: "spin 0.6s linear infinite",
+                            flexShrink: 0,
+                          }}
+                        />
+                        Checking inventory…
+                      </div>
+                    ) : inventoryMatches ===
+                      null ? null : inventoryMatches.length === 0 ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "4px 12px",
+                          borderRadius: "50px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          backgroundColor: "rgba(220,220,220,1)",
+                          color: "rgba(80,80,80,1)",
+                        }}
+                      >
+                        No Match
+                      </span>
+                    ) : (
+                      <div
+                        style={{
+                          border: "1px solid rgba(230,230,230,1)",
+                          borderRadius: "10px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {inventoryMatches.map((m, i) => (
+                          <div
+                            key={`${m.inventory_item_id}-${i}`}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              justifyContent: "space-between",
+                              gap: "12px",
+                              padding: "12px",
+                              borderBottom:
+                                i < inventoryMatches.length - 1
+                                  ? "1px solid rgba(230,230,230,1)"
+                                  : "none",
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
                               <div
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
                                   gap: "6px",
+                                  marginBottom: "6px",
                                 }}
                               >
-                                <UserAvatar name={entry.changed_by} />
                                 <span
                                   style={{
-                                    fontSize: "11px",
                                     fontWeight: 600,
-                                    color: "#111",
+                                    fontSize: "12px",
+                                    color: "black",
                                   }}
                                 >
-                                  {entry.changed_by ?? "Unknown"}
+                                  {m.inventory_description}
                                 </span>
+                                <a
+                                  href={`/inventory/${m.inventory_item_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <img
+                                    src={externalLinkIcon}
+                                    alt="open"
+                                    style={{ marginBottom: "4px" }}
+                                  />
+                                </a>
                               </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Duplicates ──────────────────────────────── */}
-                {duplicateMap.has(detailItem.id) &&
-                  (() => {
-                    const normalize = (s: string) =>
-                      s.toLowerCase().replace(/\s+/g, " ").trim();
-                    const duplicates = allItems.filter(
-                      (i) =>
-                        i.id !== detailItem.id &&
-                        (i.database ?? "") === (detailItem.database ?? "") &&
-                        normalize(i.material_description || "") ===
-                          normalize(detailItem.material_description || ""),
-                    );
-                    if (duplicates.length === 0) return null;
-                    return (
-                      <div style={{ marginTop: "20px" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            marginBottom: "3px",
-                          }}
-                        >
-                          <img
-                            src="/icons/database-duplicate-warning.svg"
-                            alt=""
-                            style={{ width: "15px", flexShrink: 0 }}
-                          />
-                          <h4 style={{ fontWeight: 600, fontSize: "13px" }}>
-                            Duplicates
-                          </h4>
-                        </div>
-                        <p
-                          style={{
-                            fontSize: "11px",
-                            color: "rgba(120,120,120,1)",
-                            marginBottom: "12px",
-                          }}
-                        >
-                          {duplicates.length} duplicate
-                          {duplicates.length !== 1 ? "s" : ""} found for this
-                          material
-                        </p>
-                        <div
-                          style={{
-                            border: "1px solid rgba(230,230,230,1)",
-                            borderRadius: "10px",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {duplicates.map((dup, idx) => (
-                            <div
-                              key={dup.id}
-                              style={{
-                                padding: "12px",
-                                borderBottom:
-                                  idx < duplicates.length - 1
-                                    ? "1px solid rgba(230,230,230,1)"
-                                    : "none",
-                              }}
-                            >
-                              <p
+                              <span
                                 style={{
-                                  fontWeight: 600,
-                                  fontSize: "13px",
-                                  color: "#111",
-                                  marginBottom: "2px",
-                                }}
-                              >
-                                {dup.material_description}
-                              </p>
-                              <p
-                                style={{
+                                  display: "inline-block",
+                                  padding: "3px 10px",
+                                  borderRadius: "50px",
                                   fontSize: "10px",
-                                  color: "rgba(150,150,150,1)",
-                                  marginBottom: "8px",
+                                  fontWeight: 600,
+                                  backgroundColor:
+                                    m.match_type === "exact"
+                                      ? "rgba(6,95,70,1)"
+                                      : "rgba(209,250,229,1)",
+                                  color:
+                                    m.match_type === "exact"
+                                      ? "rgba(209,250,229,1)"
+                                      : "rgba(6,95,70,1)",
                                 }}
                               >
-                                {dup.item_code}
-                                {dup.brand ? ` • ${dup.brand}` : ""}
-                              </p>
-                              <div
-                                style={{
-                                  display: "grid",
-                                  gridTemplateColumns: "1fr 1fr",
-                                  gap: "8px",
-                                }}
-                              >
-                                <div>
-                                  <p
-                                    style={{
-                                      fontSize: "9px",
-                                      color: "rgba(150,150,150,1)",
-                                      textTransform: "uppercase",
-                                      fontWeight: 600,
-                                      marginBottom: "2px",
-                                    }}
-                                  >
-                                    Category
-                                  </p>
-                                  <p
-                                    style={{
-                                      fontSize: "12px",
-                                      fontWeight: 600,
-                                      color: "#111",
-                                    }}
-                                  >
-                                    {dup.category_name || "N/A"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p
-                                    style={{
-                                      fontSize: "9px",
-                                      color: "rgba(150,150,150,1)",
-                                      textTransform: "uppercase",
-                                      fontWeight: 600,
-                                      marginBottom: "2px",
-                                    }}
-                                  >
-                                    Subcategory
-                                  </p>
-                                  <p
-                                    style={{
-                                      fontSize: "12px",
-                                      fontWeight: 600,
-                                      color: "#111",
-                                    }}
-                                  >
-                                    {dup.subcategory_name || "N/A"}
-                                  </p>
-                                </div>
-                              </div>
+                                {m.match_type === "exact"
+                                  ? "Exact Match"
+                                  : "Similar Match"}
+                              </span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                {/* ── Inventory Mapping ───────────────────────── */}
-                <div style={{ marginTop: "20px" }}>
-                  <h4
-                    style={{
-                      fontWeight: 600,
-                      fontSize: "13px",
-                      marginBottom: "3px",
-                    }}
-                  >
-                    Inventory Mapping
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: "11px",
-                      color: "rgba(120,120,120,1)",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    Available Items
-                  </p>
-
-                  {inventoryLoading ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        color: "rgba(130,130,130,1)",
-                        fontSize: "12px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "14px",
-                          height: "14px",
-                          border: "2px solid rgba(0,0,0,0.1)",
-                          borderTop: "2px solid black",
-                          borderRadius: "50%",
-                          animation: "spin 0.6s linear infinite",
-                          flexShrink: 0,
-                        }}
-                      />
-                      Checking inventory…
-                    </div>
-                  ) : inventoryMatches ===
-                    null ? null : inventoryMatches.length === 0 ? (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "4px 12px",
-                        borderRadius: "50px",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        backgroundColor: "rgba(220,220,220,1)",
-                        color: "rgba(80,80,80,1)",
-                      }}
-                    >
-                      No Match
-                    </span>
-                  ) : (
-                    <div
-                      style={{
-                        border: "1px solid rgba(230,230,230,1)",
-                        borderRadius: "10px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {inventoryMatches.map((m, i) => (
-                        <div
-                          key={`${m.inventory_item_id}-${i}`}
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            justifyContent: "space-between",
-                            gap: "12px",
-                            padding: "12px",
-                            borderBottom:
-                              i < inventoryMatches.length - 1
-                                ? "1px solid rgba(230,230,230,1)"
-                                : "none",
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                marginBottom: "6px",
-                              }}
-                            >
+                            <div style={{ textAlign: "right", flexShrink: 0 }}>
                               <span
                                 style={{
                                   fontWeight: 600,
-                                  fontSize: "12px",
+                                  fontSize: "13px",
                                   color: "black",
                                 }}
                               >
-                                {m.inventory_description}
+                                {m.total_qty} {m.unit}
                               </span>
-                              <a
-                                href={`/inventory/${m.inventory_item_id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                <img
-                                  src={externalLinkIcon}
-                                  alt="open"
-                                  style={{ marginBottom: "4px" }}
-                                />
-                              </a>
                             </div>
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "3px 10px",
-                                borderRadius: "50px",
-                                fontSize: "10px",
-                                fontWeight: 600,
-                                backgroundColor:
-                                  m.match_type === "exact"
-                                    ? "rgba(6,95,70,1)"
-                                    : "rgba(209,250,229,1)",
-                                color:
-                                  m.match_type === "exact"
-                                    ? "rgba(209,250,229,1)"
-                                    : "rgba(6,95,70,1)",
-                              }}
-                            >
-                              {m.match_type === "exact"
-                                ? "Exact Match"
-                                : "Similar Match"}
-                            </span>
                           </div>
-                          <div style={{ textAlign: "right", flexShrink: 0 }}>
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                fontSize: "13px",
-                                color: "black",
-                              }}
-                            >
-                              {m.total_qty} {m.unit}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    color: "rgba(160,160,160,1)",
+                    fontSize: "12px",
+                    textAlign: "center",
+                    padding: "20px",
+                  }}
+                >
+                  Click any row to see item details
                 </div>
-              </>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                  color: "rgba(160,160,160,1)",
-                  fontSize: "12px",
-                  textAlign: "center",
-                  padding: "20px",
-                }}
-              >
-                Click any row to see item details
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
