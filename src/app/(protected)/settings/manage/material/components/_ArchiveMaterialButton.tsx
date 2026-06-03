@@ -1,0 +1,89 @@
+"use client";
+
+import { useState } from "react";
+import { createPortal } from "react-dom";
+import FormPopUp from "@/app/components/FormPopup";
+import Button from "@/app/components/Button";
+import { toast } from "@/app/components/Toast";
+import { PredefinedItem } from "@/app/components/_MultipleSelectMaterialItemButton";
+import { useAuth } from "@/app/context/AuthContext";
+
+type MaterialItem = PredefinedItem & {
+  database?: string | null;
+  is_archived?: number | null;
+};
+
+type Props = {
+  item: MaterialItem;
+  onSuccess: () => void;
+};
+
+export default function ArchiveMaterialButton({ item, onSuccess }: Props) {
+  const { userInfo } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: item.id, is_archived: 1, changed_by: userInfo?.name ?? null }),
+        },
+      );
+      if (!res.ok) throw new Error();
+      toast("Material archived", "success");
+      setIsOpen(false);
+      onSuccess();
+    } catch {
+      toast("Failed to archive material", "error");
+    }
+  };
+
+  const modal = isOpen && (
+    <FormPopUp
+      header="ARCHIVE MATERIAL"
+      setIsOpen={setIsOpen}
+      handleSubmit={handleSubmit}
+      addButtonLabel="CONFIRM"
+    >
+      <p>
+        Are you sure you want to archive{" "}
+        <strong>{item.material_description}</strong>?
+      </p>
+
+      <br />
+
+      <p
+        style={{
+          color: "rgba(200,60,60,1)",
+          fontWeight: 600,
+        }}
+      >
+        This action cannot be undone.
+      </p>
+    </FormPopUp>
+  );
+
+  return (
+    <>
+      <Button
+        componentType="button"
+        bgColor="transparent"
+        borderColor="transparent"
+        textColor="black"
+        full
+        style={{ justifyContent: "flex-start" }}
+        onClick={() => setIsOpen(true)}
+      >
+        <img src="/icons/trash.svg" alt="" /> Archive
+      </Button>
+
+      {typeof window !== "undefined" &&
+        modal &&
+        createPortal(modal, document.body)}
+    </>
+  );
+}

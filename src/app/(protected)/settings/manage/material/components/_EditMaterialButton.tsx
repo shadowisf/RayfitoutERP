@@ -4,147 +4,114 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
-import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import Button from "@/app/components/Button";
+import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { UNIT_OPTIONS } from "@/constants/units";
 import { PredefinedItem } from "@/app/components/_MultipleSelectMaterialItemButton";
 import CreateCategoryButton from "@/app/(protected)/mr/[id]/components/department/_CreateCategoryButton";
 import CreateSubCategoryButton from "@/app/(protected)/mr/[id]/components/department/_CreateSubcategoryButton";
-import ExportMaterialListPDFButton from "@/app/components/_ExportMaterialListPDFButton";
+import CreateDatabaseInlineButton from "./_CreateDatabaseInlineButton";
 import { toast } from "@/app/components/Toast";
 import { useAuth } from "@/app/context/AuthContext";
-import CreateDatabaseInlineButton from "../(protected)/settings/manage/material/components/_CreateDatabaseInlineButton";
 
-type CreateNewMaterialButtonProps = {
-  onSuccess?: (newItem: PredefinedItem) => void;
-  allItems?: PredefinedItem[];
-  style?: React.CSSProperties;
-  defaultCategoryId?: number;
-  defaultSubCategoryId?: number;
-  defaultDatabase?: string;
-  renderTrigger?: (open: () => void) => React.ReactNode;
+type MaterialItem = PredefinedItem & {
+  database?: string | null;
+  database_id?: number | null;
+  is_archived?: number | null;
 };
 
-export default function CreateNewMaterialButton({
+type EditMaterialButtonProps = {
+  item: MaterialItem;
+  onOpen?: () => void;
+  onSuccess?: () => void;
+  onDatabaseCreated?: (id: number, name: string) => void;
+};
+
+export default function EditMaterialButton({
+  item,
+  onOpen,
   onSuccess,
-  allItems,
-  style,
-  defaultCategoryId,
-  defaultSubCategoryId,
-  defaultDatabase,
-  renderTrigger,
-}: CreateNewMaterialButtonProps) {
+  onDatabaseCreated,
+}: EditMaterialButtonProps) {
   const { userInfo } = useAuth();
-  const [showNewMaterial, setShowNewMaterial] = useState(false);
-  const [newMatDescription, setNewMatDescription] = useState("");
-  const [newMatCategoryID, setNewMatCategoryID] = useState<string | number>("");
-  const [newMatSubCategoryID, setNewMatSubCategoryID] = useState<
-    string | number
-  >("");
-  const [newMatItemCode, setNewMatItemCode] = useState("");
-  const [newMatUnit, setNewMatUnit] = useState("");
-  const [newMatBrand, setNewMatBrand] = useState("");
-  const [newMatDatabaseId, setNewMatDatabaseId] = useState<string | number>("");
-  const [databases, setDatabases] = useState<{ id: number; name: string }[]>(
-    [],
-  );
-  const [materialCategoryValues, setMaterialCategoryValues] = useState<any[]>(
-    [],
-  );
-  const [materialSubCategoryValues, setMaterialSubCategoryValues] = useState<
-    any[]
-  >([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [categoryID, setCategoryID] = useState<string | number>("");
+  const [subCategoryID, setSubCategoryID] = useState<string | number>("");
+  const [unit, setUnit] = useState("");
+  const [brand, setBrand] = useState("");
+  const [databaseId, setDatabaseId] = useState<string | number>("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [categoryValues, setCategoryValues] = useState<any[]>([]);
+  const [subCategoryValues, setSubCategoryValues] = useState<any[]>([]);
+  const [databases, setDatabases] = useState<{ id: number; name: string }[]>([]);
 
   type InventorySuggestion = { id: number; description: string };
   const [inventorySuggestions, setInventorySuggestions] = useState<
     InventorySuggestion[]
   >([]);
 
-  // When allItems is not passed (e.g. Navbar), fetch them internally for the export button
-  const [internalItems, setInternalItems] = useState<PredefinedItem[]>([]);
+  // Pre-fill form whenever the popup opens
   useEffect(() => {
-    if (allItems !== undefined) return;
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setInternalItems(data);
-      })
-      .catch(console.error);
-  }, [allItems]);
+    if (isOpen && item) {
+      setDescription(item.material_description ?? "");
+      setCategoryID(item.category_id ?? "");
+      setSubCategoryID(item.subcategory_id ?? "");
+      setUnit(item.unit ?? "");
+      setBrand(item.brand ?? "");
+      setDatabaseId(item.database_id ?? "");
+      setInventorySuggestions([]);
+    }
+  }, [isOpen, item]);
 
-  const exportItems = allItems ?? internalItems;
-
-  // Fetch categories, subcategories, and databases on mount
+  // Fetch categories and databases on mount
   useEffect(() => {
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
     )
-      .then((res) => res.json())
-      .then(setMaterialCategoryValues)
-      .catch(console.error);
-
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
-      { method: "GET", headers: { "Content-Type": "application/json" } },
-    )
-      .then((res) => res.json())
-      .then(setMaterialSubCategoryValues)
+      .then((r) => r.json())
+      .then(setCategoryValues)
       .catch(console.error);
 
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getDatabases`)
-      .then((res) => res.json())
-      .then((data: { id: number; name: string }[]) => {
-        if (Array.isArray(data)) setDatabases(data);
-      })
+      .then((r) => r.json())
+      .then((data: { id: number; name: string }[]) => { if (Array.isArray(data)) setDatabases(data); })
       .catch(console.error);
   }, []);
 
-  // When category is selected, filter subcategories by category
+  // Re-fetch subcategories when category changes
   useEffect(() => {
-    if (newMatCategoryID) {
+    if (categoryID) {
       fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ category_id: newMatCategoryID }),
+          body: JSON.stringify({ category_id: categoryID }),
         },
       )
-        .then((res) => res.json())
-        .then(setMaterialSubCategoryValues)
+        .then((r) => r.json())
+        .then(setSubCategoryValues)
         .catch(console.error);
     } else {
-      // If category is reset, load all subcategories
       fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`,
         { method: "GET", headers: { "Content-Type": "application/json" } },
       )
-        .then((res) => res.json())
-        .then(setMaterialSubCategoryValues)
+        .then((r) => r.json())
+        .then(setSubCategoryValues)
         .catch(console.error);
     }
-  }, [newMatCategoryID]);
+  }, [categoryID]);
 
-  // Pre-fill fields when opened with defaults
+  // Debounced inventory suggestions as user types
   useEffect(() => {
-    if (showNewMaterial) {
-      if (defaultCategoryId) setNewMatCategoryID(defaultCategoryId);
-      if (defaultSubCategoryId) setNewMatSubCategoryID(defaultSubCategoryId);
-      if (defaultDatabase) {
-        const match = databases.find((d) => d.name === defaultDatabase);
-        if (match) setNewMatDatabaseId(match.id);
-      }
-    }
-  }, [showNewMaterial]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Debounced inventory match search as user types the material name
-  useEffect(() => {
-    const trimmed = newMatDescription.trim();
+    const trimmed = description.trim();
     if (trimmed.length < 3) {
       setInventorySuggestions([]);
       return;
     }
-
     const timer = setTimeout(() => {
       fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/inventory/searchByDescription`,
@@ -168,104 +135,88 @@ export default function CreateNewMaterialButton({
         })
         .catch(() => setInventorySuggestions([]));
     }, 350);
-
     return () => clearTimeout(timer);
-  }, [newMatDescription]);
+  }, [description]);
 
-  // Handle subcategory selection — always sync category
-  const handleNewMatSubCategoryChange = (val: string | number) => {
-    setNewMatSubCategoryID(val);
-    if (val && materialSubCategoryValues.length > 0) {
-      const subCat = materialSubCategoryValues.find((sc: any) => sc.id === val);
+  // Sync category when subcategory is selected
+  const handleSubCategoryChange = (val: string | number) => {
+    setSubCategoryID(val);
+    if (val && subCategoryValues.length > 0) {
+      const subCat = subCategoryValues.find((sc: any) => sc.id === val);
       if (subCat?.category_id) {
-        setNewMatCategoryID(subCat.category_id);
+        setCategoryID(subCat.category_id);
       }
     }
   };
 
-  // Handle submit
-  const handleNewMaterialSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newMatDescription.trim()) {
+    if (!description.trim()) {
       toast("Material name is required.", "error");
       return;
     }
-    if (!newMatCategoryID) {
+    if (!categoryID) {
       toast("Category is required.", "error");
       return;
     }
-    if (!newMatSubCategoryID) {
+    if (!subCategoryID) {
       toast("Subcategory is required.", "error");
       return;
     }
-    if (!newMatDatabaseId) {
-      toast("Database is required.", "error");
-      return;
-    }
 
+    setIsSaving(true);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getPredefinedItems`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            item_code: newMatItemCode.trim() || null,
-            material_description: newMatDescription.trim(),
-            category_id: Number(newMatCategoryID),
-            subcategory_id: Number(newMatSubCategoryID),
-            unit: newMatUnit || null,
-            brand: newMatBrand || null,
-            added_by: userInfo?.name || null,
-            database_id: newMatDatabaseId ? Number(newMatDatabaseId) : null,
+            id: item.id,
+            material_description: description.trim(),
+            category_id: Number(categoryID),
+            subcategory_id: Number(subCategoryID),
+            unit: unit || null,
+            brand: brand || null,
+            database_id: databaseId ? Number(databaseId) : null,
+            changed_by: userInfo?.name ?? null,
           }),
         },
       );
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast(err?.error || "Failed to create material.", "error");
+        toast(err?.error || "Failed to update material.", "error");
         return;
       }
 
-      const newItem: PredefinedItem = await res.json();
-
-      onSuccess && onSuccess(newItem);
-
-      // Reset and close
-      setShowNewMaterial(false);
-      setNewMatItemCode("");
-      setNewMatDescription("");
-      setNewMatCategoryID("");
-      setNewMatSubCategoryID("");
-      setNewMatUnit("");
-      setNewMatBrand("");
-      setNewMatDatabaseId("");
-      setInventorySuggestions([]);
+      toast("Material updated successfully", "success");
+      setIsOpen(false);
+      onSuccess?.();
     } catch (err: any) {
       toast(err?.message || "Something went wrong.", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const newMaterialModal = showNewMaterial && (
+  const modal = isOpen && (
     <FormPopUp
-      header={"CREATE NEW MATERIAL"}
-      setIsOpen={setShowNewMaterial}
-      handleSubmit={handleNewMaterialSubmit}
+      header="EDIT MATERIAL"
+      setIsOpen={setIsOpen}
+      handleSubmit={handleSubmit}
       addButtonLabel={"CONFIRM"}
-      secondButton={
-        exportItems.length > 0 ? (
-          <ExportMaterialListPDFButton allItems={exportItems} />
-        ) : undefined
-      }
     >
       <div className="input-row half">
         <SingleSelectDropdown
           label={"CATEGORY"}
-          dbData={materialCategoryValues}
-          selectedValue={newMatCategoryID}
-          onChange={(val) => setNewMatCategoryID(val)}
+          dbData={categoryValues}
+          selectedValue={categoryID}
+          onChange={(val) => {
+            setCategoryID(val);
+            setSubCategoryID("");
+          }}
           placeholder="SELECT CATEGORY"
           required
           style={{ width: "350px" }}
@@ -275,10 +226,10 @@ export default function CreateNewMaterialButton({
                 fetch(
                   `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialCategoryValues`,
                 )
-                  .then((res) => res.json())
+                  .then((r) => r.json())
                   .then((data) => {
-                    setMaterialCategoryValues(data);
-                    setNewMatCategoryID(newId);
+                    setCategoryValues(data);
+                    setCategoryID(newId);
                   })
                   .catch(console.error);
               }}
@@ -287,34 +238,34 @@ export default function CreateNewMaterialButton({
         />
         <SingleSelectDropdown
           label={"SUBCATEGORY"}
-          dbData={materialSubCategoryValues}
-          selectedValue={newMatSubCategoryID}
-          onChange={handleNewMatSubCategoryChange}
+          dbData={subCategoryValues}
+          selectedValue={subCategoryID}
+          onChange={handleSubCategoryChange}
           placeholder="SELECT SUBCATEGORY"
           required
           style={{ width: "350px" }}
           bottomButtonComponent={
             <CreateSubCategoryButton
-              materialCategoryID={Number(newMatCategoryID)}
+              materialCategoryID={Number(categoryID)}
               onSuccess={(newId) => {
-                const url = newMatCategoryID
+                const url = categoryID
                   ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValuesByCategoryID`
                   : `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialSubCategoryValues`;
-                const opts = newMatCategoryID
+                const opts = categoryID
                   ? {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ category_id: newMatCategoryID }),
+                      body: JSON.stringify({ category_id: categoryID }),
                     }
                   : {
                       method: "GET",
                       headers: { "Content-Type": "application/json" },
                     };
                 fetch(url, opts)
-                  .then((res) => res.json())
+                  .then((r) => r.json())
                   .then((data) => {
-                    setMaterialSubCategoryValues(data);
-                    setNewMatSubCategoryID(newId);
+                    setSubCategoryValues(data);
+                    setSubCategoryID(newId);
                   })
                   .catch(console.error);
               }}
@@ -326,10 +277,10 @@ export default function CreateNewMaterialButton({
       <div className="input-row full">
         <InputItem
           label={"NAME"}
-          value={newMatDescription}
+          value={description}
           type={"text"}
           required
-          onChange={(e) => setNewMatDescription(e.target.value)}
+          onChange={(e) => setDescription(e.target.value)}
           itooltip={
             <p>
               Use standardized naming format.
@@ -359,7 +310,11 @@ export default function CreateNewMaterialButton({
           {inventorySuggestions.map((suggestion) => (
             <div key={suggestion.id} style={{ marginTop: "4px" }}>
               <span
-                style={{ fontWeight: 600, color: "black", fontStyle: "normal" }}
+                style={{
+                  fontWeight: 600,
+                  color: "black",
+                  fontStyle: "normal",
+                }}
               >
                 &ldquo;{suggestion.description}&rdquo;
               </span>
@@ -383,7 +338,7 @@ export default function CreateNewMaterialButton({
               &nbsp;&nbsp;
               <button
                 type="button"
-                onClick={() => setNewMatDescription(suggestion.description)}
+                onClick={() => setDescription(suggestion.description)}
                 style={{
                   background: "none",
                   border: "none",
@@ -406,16 +361,16 @@ export default function CreateNewMaterialButton({
       <div className="input-row half">
         <InputItem
           label={"BRAND"}
-          value={newMatBrand}
+          value={brand}
           type={"text"}
-          onChange={(e) => setNewMatBrand(e.target.value)}
+          onChange={(e) => setBrand(e.target.value)}
         />
         <InputItem
           label={"UNIT"}
-          value={newMatUnit}
+          value={unit}
           type={"select"}
           placeholder={"SELECT UNIT"}
-          onChange={(e) => setNewMatUnit(e.target.value)}
+          onChange={(e) => setUnit(e.target.value)}
           selectOptions={[...UNIT_OPTIONS]}
         />
       </div>
@@ -424,8 +379,8 @@ export default function CreateNewMaterialButton({
         <SingleSelectDropdown
           label={"DATABASE"}
           dbData={databases.map((db) => ({ id: db.id, value: db.name }))}
-          selectedValue={newMatDatabaseId}
-          onChange={(val) => setNewMatDatabaseId(val)}
+          selectedValue={databaseId}
+          onChange={(val) => setDatabaseId(val)}
           placeholder="SELECT DATABASE"
           required
           style={{ width: "350px" }}
@@ -433,7 +388,8 @@ export default function CreateNewMaterialButton({
             <CreateDatabaseInlineButton
               onSuccess={(id, name) => {
                 setDatabases((prev) => [...prev, { id, name }]);
-                setNewMatDatabaseId(id);
+                setDatabaseId(id);
+                onDatabaseCreated?.(id, name);
               }}
             />
           }
@@ -444,27 +400,24 @@ export default function CreateNewMaterialButton({
 
   return (
     <>
-      {renderTrigger ? (
-        renderTrigger(() => setShowNewMaterial(true))
-      ) : (
-        <Button
-          componentType={"button"}
-          bgColor={"black"}
-          borderColor={"black"}
-          textColor={"white"}
-          onClick={(e) => {
-            e.preventDefault();
-            setShowNewMaterial(true);
-          }}
-          style={style}
-        >
-          NEW MATERIAL +
-        </Button>
-      )}
+      <Button
+        componentType="button"
+        bgColor="transparent"
+        borderColor="transparent"
+        textColor="black"
+        full
+        style={{ justifyContent: "flex-start" }}
+        onClick={() => {
+          onOpen?.();
+          setIsOpen(true);
+        }}
+      >
+        <img src="/icons/pencil.svg" alt="" /> Edit
+      </Button>
 
       {typeof window !== "undefined" &&
-        newMaterialModal &&
-        createPortal(newMaterialModal, document.body)}
+        modal &&
+        createPortal(modal, document.body)}
     </>
   );
 }

@@ -8,9 +8,10 @@ import { useRefresh } from "@/app/context/RefreshContext";
 
 type props = {
   onSuccess?: (newId: number) => void;
+  renderTrigger?: (open: () => void) => React.ReactNode;
 };
 
-export default function CreateCategoryButton({ onSuccess }: props) {
+export default function CreateCategoryButton({ onSuccess, renderTrigger }: props) {
   const router = useRouter();
   const { refresh } = useRefresh();
 
@@ -50,16 +51,18 @@ export default function CreateCategoryButton({ onSuccess }: props) {
 
   return (
     <>
-      <Button
-        componentType={"button"}
-        bgColor={"black"}
-        borderColor={"black"}
-        textColor={"white"}
-        onClick={() => setIsOpen(true)}
-        full
-      >
-        NEW CATEGORY +
-      </Button>
+      {renderTrigger ? renderTrigger(() => setIsOpen(true)) : (
+        <Button
+          componentType={"button"}
+          bgColor={"black"}
+          borderColor={"black"}
+          textColor={"white"}
+          onClick={() => setIsOpen(true)}
+          full
+        >
+          NEW CATEGORY +
+        </Button>
+      )}
 
       {isOpen && (
         <FormPopUp

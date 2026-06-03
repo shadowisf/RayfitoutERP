@@ -42,11 +42,7 @@ export default function ThreeDotsMenuButton({ children }: props) {
       if (hasOpenModal) return;
 
       // Don't close if clicking inside dropdown portal
-      if (
-        dropdownRef.current &&
-        dropdownRef.current.contains(target)
-      )
-        return;
+      if (dropdownRef.current && dropdownRef.current.contains(target)) return;
 
       const isClickOnDropdown = target.closest(".select-dropdown-portal");
       if (isClickOnDropdown) return;

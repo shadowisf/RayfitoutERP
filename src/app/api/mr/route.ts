@@ -414,6 +414,139 @@ export async function POST(req: Request) {
       }
     }
 
+    if (body.action === "createDatabase") {
+      const name = body.name?.trim();
+      if (!name) {
+        return NextResponse.json({ error: "Database name is required." }, { status: 400 });
+      }
+      try {
+        const [result] = await db.query<ResultSetHeader>(
+          "INSERT INTO lut_predefined_databases (name) VALUES (?)",
+          [name],
+        );
+        return NextResponse.json({ success: true, id: result.insertId, name });
+      } catch (err: any) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return NextResponse.json({ error: "A database with this name already exists." }, { status: 409 });
+        }
+        throw err;
+      }
+    }
+
+    if (body.action === "importDatabaseWithItems") {
+      const name = body.name?.trim();
+      const { category_id, subcategory_id, items } = body;
+      if (!name) {
+        return NextResponse.json({ error: "Database name is required." }, { status: 400 });
+      }
+      if (!category_id || !subcategory_id) {
+        return NextResponse.json({ error: "Category and subcategory are required." }, { status: 400 });
+      }
+      if (!Array.isArray(items) || items.length === 0) {
+        return NextResponse.json({ error: "At least one material name is required." }, { status: 400 });
+      }
+      let dbId: number;
+      try {
+        const [dbResult] = await db.query<ResultSetHeader>(
+          "INSERT INTO lut_predefined_databases (name) VALUES (?)",
+          [name],
+        );
+        dbId = dbResult.insertId;
+      } catch (err: any) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return NextResponse.json({ error: "A database with this name already exists." }, { status: 409 });
+        }
+        throw err;
+      }
+      // Get base ID for item code generation
+      const [maxRows]: any = await db.query(
+        "SELECT COALESCE(MAX(id), 0) AS max_id FROM lut_predefined_items",
+      );
+      let nextId = (maxRows[0]?.max_id || 0) + 1;
+      const placeholders = items.map(() => "(?, ?, ?, ?, ?)").join(", ");
+      const insertValues: any[] = [];
+      for (const name of items) {
+        const desc = String(name)
+          .trim()
+          .split(/\s+/)
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+        const itemCode = `MAT-${String(nextId).padStart(5, "0")}`;
+        insertValues.push(itemCode, Number(category_id), Number(subcategory_id), desc, dbId);
+        nextId++;
+      }
+      await db.query(
+        `INSERT INTO lut_predefined_items (item_code, category_id, subcategory_id, material_description, database_id) VALUES ${placeholders}`,
+        insertValues,
+      );
+      return NextResponse.json({ success: true, id: dbId, name });
+    }
+
+    if (body.action === "createDatabaseFromSelected") {
+      const name = body.name?.trim();
+      const item_ids: number[] = body.item_ids;
+      if (!name) {
+        return NextResponse.json({ error: "Database name is required." }, { status: 400 });
+      }
+      if (!Array.isArray(item_ids) || item_ids.length === 0) {
+        return NextResponse.json({ error: "No items selected." }, { status: 400 });
+      }
+      let dbId: number;
+      try {
+        const [dbResult] = await db.query<ResultSetHeader>(
+          "INSERT INTO lut_predefined_databases (name) VALUES (?)",
+          [name],
+        );
+        dbId = dbResult.insertId;
+      } catch (err: any) {
+        if (err.code === "ER_DUP_ENTRY") {
+          return NextResponse.json({ error: "A database with this name already exists." }, { status: 409 });
+        }
+        throw err;
+      }
+      const placeholders = item_ids.map(() => "?").join(", ");
+      await db.query(
+        `UPDATE lut_predefined_items SET database_id = ? WHERE id IN (${placeholders})`,
+        [dbId, ...item_ids],
+      );
+      return NextResponse.json({ success: true, id: dbId, name });
+    }
+
+    if (body.action === "mergeDatabases") {
+      const { target_id, source_ids, merged_name } = body;
+      if (!target_id || !Array.isArray(source_ids) || source_ids.length === 0) {
+        return NextResponse.json({ error: "Missing target or source databases." }, { status: 400 });
+      }
+      const srcPlaceholders = source_ids.map(() => "?").join(", ");
+      // Move all items from source databases into the target
+      await db.query(
+        `UPDATE lut_predefined_items SET database_id = ? WHERE database_id IN (${srcPlaceholders})`,
+        [Number(target_id), ...source_ids.map(Number)],
+      );
+      // Delete the now-empty source databases
+      await db.query(
+        `DELETE FROM lut_predefined_databases WHERE id IN (${srcPlaceholders})`,
+        source_ids.map(Number),
+      );
+      // Rename the target database to the combined name
+      if (merged_name) {
+        await db.query(
+          `UPDATE lut_predefined_databases SET name = ? WHERE id = ?`,
+          [String(merged_name).trim(), Number(target_id)],
+        );
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "deleteDatabase") {
+      const { id } = body;
+      if (!id) {
+        return NextResponse.json({ error: "Missing id." }, { status: 400 });
+      }
+      await db.query("DELETE FROM lut_predefined_databases WHERE id = ?", [id]);
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "createCategory") {
       const [result] = await db.query<ResultSetHeader>(
         "INSERT INTO lut_material_categories (level_1, level_2, value) VALUES ('', '', ?)",
@@ -428,6 +561,38 @@ export async function POST(req: Request) {
         [body.category_id, toTitleCase(body.value)],
       );
       return NextResponse.json({ success: true, id: result.insertId });
+    }
+
+    if (body.action === "updateCategory") {
+      await db.query(
+        "UPDATE lut_material_categories SET value = ? WHERE id = ?",
+        [toTitleCase(body.value), body.id],
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "archiveCategory") {
+      await db.query(
+        "UPDATE lut_predefined_items SET is_archived = 1 WHERE category_id = ?",
+        [body.id],
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "updateSubCategory") {
+      await db.query(
+        "UPDATE lut_material_subcategories SET value = ? WHERE id = ?",
+        [toTitleCase(body.value), body.id],
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "archiveSubCategory") {
+      await db.query(
+        "UPDATE lut_predefined_items SET is_archived = 1 WHERE subcategory_id = ?",
+        [body.id],
+      );
+      return NextResponse.json({ success: true });
     }
 
     if (body.action === "getRecentlyUsedItems") {

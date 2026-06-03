@@ -6,7 +6,7 @@ import FormPopUp from "@/app/components/FormPopup";
 import Button from "./Button";
 import CreateNewMaterialButton from "./_CreateNewMaterialButton";
 import { InventoryMatch } from "../(protected)/mr/[id]/components/department/_InventoryStatusCell";
-import ExportMaterialListPDFButton from "../(protected)/mr/[id]/components/_ExportMaterialListPDFButton";
+import ExportMaterialListPDFButton from "./_ExportMaterialListPDFButton";
 import { UNIT_OPTIONS } from "@/constants/units";
 
 export type PredefinedItem = {
@@ -53,6 +53,14 @@ const SHIMMER: React.CSSProperties = {
   animation: "shimmer 1.4s ease infinite",
   borderRadius: "6px",
 };
+
+function titleCase(str: string) {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 function SkeletonBlock({
   w = "100%",
@@ -941,55 +949,59 @@ export default function MultipleSelectMaterialItemButton({
       }}
       stickyFooter={
         totalPages > 1 || tempSelectedIDs.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "15px" }}
+          >
             {totalPages > 1 && <PaginationControls />}
-            {tempSelectedIDs.length > 0 && <div>
-            <span
-              style={{
-                fontSize: "13px",
-                fontWeight: 600,
-                marginBottom: "10px",
-                display: "block",
-              }}
-            >
-              ITEM SELECTED ({tempSelectedIDs.length})
-            </span>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {tempSelectedIDs.map((id) => {
-                const item = allItems.find((i) => i.id === id);
-                if (!item) return null;
-                return (
-                  <Button
-                    key={id}
-                    componentType="button"
-                    bgColor="rgba(239,239,239,1)"
-                    borderColor="transparent"
-                    textColor="black"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setTempSelectedIDs((prev) =>
-                        prev.filter((i) => i !== id),
-                      );
-                    }}
-                    style={{
-                      borderRadius: "50px",
-                      fontWeight: 600,
-                      textWrap: "nowrap",
-                      fontSize: "10px",
-                      padding: "4px 10px",
-                    }}
-                  >
-                    {item.material_description}{" "}
-                    <img
-                      src={crossSmallIcon}
-                      style={{ width: "10px", marginBottom: "2px" }}
-                    />
-                  </Button>
-                );
-              })}
-            </div>
-            </div>}
+            {tempSelectedIDs.length > 0 && (
+              <div>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    marginBottom: "10px",
+                    display: "block",
+                  }}
+                >
+                  ITEM SELECTED ({tempSelectedIDs.length})
+                </span>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {tempSelectedIDs.map((id) => {
+                    const item = allItems.find((i) => i.id === id);
+                    if (!item) return null;
+                    return (
+                      <Button
+                        key={id}
+                        componentType="button"
+                        bgColor="rgba(239,239,239,1)"
+                        borderColor="transparent"
+                        textColor="black"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTempSelectedIDs((prev) =>
+                            prev.filter((i) => i !== id),
+                          );
+                        }}
+                        style={{
+                          borderRadius: "50px",
+                          fontWeight: 600,
+                          textWrap: "nowrap",
+                          fontSize: "10px",
+                          padding: "4px 10px",
+                        }}
+                      >
+                        {item.material_description}{" "}
+                        <img
+                          src={crossSmallIcon}
+                          style={{ width: "10px", marginBottom: "2px" }}
+                        />
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         ) : undefined
       }
@@ -1075,6 +1087,7 @@ export default function MultipleSelectMaterialItemButton({
               onClick={() => {
                 setActiveCategoryTab("");
                 setActiveSubCategoryTab("");
+                setExpandedCategoryTab("");
                 setDetailItem(null);
               }}
               style={{
@@ -1145,7 +1158,7 @@ export default function MultipleSelectMaterialItemButton({
                     <button
                       type="button"
                       onClick={() => {
-                        if (isCatExpanded) {
+                        if (isCatExpanded && !isCatActive) {
                           setExpandedCategoryTab("");
                         } else {
                           setActiveCategoryTab(cat);
@@ -1180,7 +1193,7 @@ export default function MultipleSelectMaterialItemButton({
                           flex: 1,
                         }}
                       >
-                        <span>{cat}</span>
+                        <span>{titleCase(cat)}</span>
                         <svg
                           width="12"
                           height="12"
@@ -1243,10 +1256,6 @@ export default function MultipleSelectMaterialItemButton({
                               gap: "6px",
                               marginLeft: "16px",
                               borderRadius: "5px",
-                              backgroundColor: isSubActive
-                                ? "black"
-                                : "transparent",
-                              color: isSubActive ? "white" : "black",
                             }}
                           >
                             <button
@@ -1265,16 +1274,25 @@ export default function MultipleSelectMaterialItemButton({
                                 background: "transparent",
                                 border: "none",
                                 cursor: "pointer",
-                                fontWeight: isSubActive ? 700 : 400,
+                                fontWeight: 400,
                                 fontSize: "12px",
                                 textAlign: "left",
                                 gap: "8px",
-                                color: "inherit",
+                                color: "black",
                                 whiteSpace: "normal",
                                 wordBreak: "break-word",
                               }}
                             >
-                              <span style={{ flex: 1 }}>{sub}</span>
+                              <span
+                                style={{
+                                  flex: 1,
+                                  textDecoration: isSubActive
+                                    ? "underline"
+                                    : "none",
+                                }}
+                              >
+                                {titleCase(sub)}
+                              </span>
                               <span
                                 style={{
                                   fontSize: "10px",
