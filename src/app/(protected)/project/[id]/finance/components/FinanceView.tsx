@@ -74,7 +74,7 @@ type Props = {
 };
 
 const formatAED = (n: number) =>
-  `${n < 0 ? "- " : "+ "}${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`;
+  `AED ${n < 0 ? "-" : "+"} ${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const formatMoney = (n: number) =>
   n.toLocaleString(undefined, {
@@ -93,6 +93,13 @@ export default function FinanceView({ projectId, projectName }: Props) {
   const [statusSort, setStatusSort] = useState<"none" | "asc" | "desc">("none");
   const [lpoFilterOpen, setLpoFilterOpen] = useState(false);
   const [tempStatusFilter, setTempStatusFilter] = useState<string[]>([]);
+
+  const [joStatusFilter, setJoStatusFilter] = useState<string[]>([]);
+  const [joStatusSort, setJoStatusSort] = useState<"none" | "asc" | "desc">(
+    "none",
+  );
+  const [joFilterOpen, setJoFilterOpen] = useState(false);
+  const [tempJoStatusFilter, setTempJoStatusFilter] = useState<string[]>([]);
 
   const filterIcon = "/icons/filter.svg";
   const crossIcon = "/icons/cross-small.svg";
@@ -168,8 +175,36 @@ export default function FinanceView({ projectId, projectName }: Props) {
     return rows;
   })();
 
+  const displayedJoRows = (() => {
+    let rows =
+      joStatusFilter.length > 0
+        ? joRows.filter((r) => joStatusFilter.includes(r.payment_status))
+        : joRows;
+    if (joStatusSort !== "none") {
+      rows = [...rows].sort((a, b) => {
+        const order = joStatusSort === "asc" ? 1 : -1;
+        return a.payment_status.localeCompare(b.payment_status) * order;
+      });
+    }
+    return rows;
+  })();
+
+  const mrDisplayedTotal = displayedLpoRows.reduce(
+    (s, r) => s + Number(r.lpo_total),
+    0,
+  );
+  const joDisplayedTotal = displayedJoRows.reduce(
+    (s, r) => s + Number(r.total_with_vat),
+    0,
+  );
+
   const cycleStatusSort = () =>
     setStatusSort((s) =>
+      s === "none" ? "asc" : s === "asc" ? "desc" : "none",
+    );
+
+  const cycleJoStatusSort = () =>
+    setJoStatusSort((s) =>
       s === "none" ? "asc" : s === "asc" ? "desc" : "none",
     );
 
@@ -188,6 +223,24 @@ export default function FinanceView({ projectId, projectName }: Props) {
 
   const toggleTempStatus = (val: string) =>
     setTempStatusFilter((prev) =>
+      prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val],
+    );
+
+  const openJoFilter = () => {
+    setTempJoStatusFilter([...joStatusFilter]);
+    setJoFilterOpen(true);
+  };
+
+  const applyJoFilter = (e: React.FormEvent) => {
+    e.preventDefault();
+    setJoStatusFilter([...tempJoStatusFilter]);
+    setJoFilterOpen(false);
+  };
+
+  const resetJoFilter = () => setTempJoStatusFilter([]);
+
+  const toggleTempJoStatus = (val: string) =>
+    setTempJoStatusFilter((prev) =>
       prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val],
     );
 
@@ -477,7 +530,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                         borderRadius: "50px",
                       }}
                     >
-                      + {formatMoney(totalRevenue)} AED
+                      AED + {formatMoney(totalRevenue)}
                     </span>
                   </div>
 
@@ -514,7 +567,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                           color: "rgba(0,163,93,1)",
                         }}
                       >
-                        + {formatMoney(projectValue)} AED
+                        AED + {formatMoney(projectValue)}
                       </span>
                     </div>
 
@@ -573,7 +626,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                               color: "rgba(0,163,93,1)",
                             }}
                           >
-                            + {formatMoney(e.effective_amount)} AED
+                            AED + {formatMoney(e.effective_amount)}
                           </span>
                           <ThreeDotsDeleteMenu id={e.id} />
                         </div>
@@ -617,7 +670,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                         borderRadius: "50px",
                       }}
                     >
-                      - {formatMoney(totalExpenses)} AED
+                      AED - {formatMoney(totalExpenses)}
                     </span>
                   </div>
 
@@ -654,7 +707,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                             color: "rgba(220,38,38,1)",
                           }}
                         >
-                          - {formatMoney(mrTotal)} AED
+                          AED - {formatMoney(mrTotal)}
                         </span>
                       </div>
                     )}
@@ -684,7 +737,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                             color: "rgba(220,38,38,1)",
                           }}
                         >
-                          - {formatMoney(joTotal)} AED
+                          AED - {formatMoney(joTotal)}
                         </span>
                       </div>
                     )}
@@ -743,7 +796,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                               color: "rgba(220,38,38,1)",
                             }}
                           >
-                            - {formatMoney(e.effective_amount)} AED
+                            AED - {formatMoney(e.effective_amount)}
                           </span>
                           <ThreeDotsDeleteMenu id={e.id} />
                         </div>
@@ -780,7 +833,10 @@ export default function FinanceView({ projectId, projectName }: Props) {
                   style={{
                     fontSize: "20px",
                     fontWeight: 600,
-                    color: pnl >= 0 ? "rgba(0,163,93,1)" : "rgba(220,38,38,1)",
+                    color: "rgba(0,163,93,1)",
+                    backgroundColor: "rgba(207,255,235,1)",
+                    borderRadius: "10px",
+                    padding: "6px 20px",
                   }}
                 >
                   {formatAED(pnl)}
@@ -793,79 +849,121 @@ export default function FinanceView({ projectId, projectName }: Props) {
           {/* MR Table */}
           {activeTab === "material" && (
             <div>
-              {/* Title */}
-              <h3 style={{ margin: "0 0 10px", textTransform: "uppercase" }}>
-                Material requests (paid + unpaid)
-              </h3>
-
-              {/* Showing count */}
-              <p
-                style={{
-                  margin: "0 0 12px",
-                  fontSize: "13px",
-                  color: "rgba(120,120,120,1)",
-                }}
-              >
-                Showing {displayedLpoRows.length}
-                {statusFilter.length > 0 ? ` of ${lpoRows.length}` : ""} LPOs
-              </p>
-
-              {/* Filter row */}
+              {/* Title row with Total Spent */}
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  flexWrap: "wrap",
-                  marginBottom: "8px",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "10px",
                 }}
               >
-                <Button
-                  componentType="button"
-                  bgColor="white"
-                  borderColor="rgba(241,244,246,1)"
-                  textColor="black"
-                  onClick={openLpoFilter}
-                  style={{ borderRadius: "50px" }}
-                >
-                  FILTER <img src={filterIcon} alt="filter" />
-                </Button>
+                <div>
+                  <h3 style={{ margin: "0 0 4px", textTransform: "uppercase" }}>
+                    Material requests (paid + unpaid)
+                  </h3>
 
-                {statusFilter.length > 0 && (
-                  <Button
-                    componentType="button"
-                    bgColor="rgba(239,239,239,1)"
-                    borderColor="transparent"
-                    textColor="black"
-                    onClick={() => setStatusFilter([])}
+                  <p
                     style={{
-                      borderRadius: "50px",
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
+                      margin: 0,
+                      fontSize: "13px",
+                      color: "rgba(120,120,120,1)",
                     }}
                   >
-                    STATUS:{" "}
-                    <span
-                      style={{
-                        color: "rgba(16,185,129,1)",
-                        textWrap: "nowrap",
-                      }}
+                    Showing {displayedLpoRows.length}
+                    {statusFilter.length > 0
+                      ? ` of ${lpoRows.length}`
+                      : ""}{" "}
+                    LPOs
+                  </p>
+
+                  <br />
+
+                  {/* Filter row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Button
+                      componentType="button"
+                      bgColor="white"
+                      borderColor="rgba(241,244,246,1)"
+                      textColor="black"
+                      onClick={openLpoFilter}
+                      style={{ borderRadius: "50px" }}
                     >
-                      {statusFilter.join(", ")}
-                    </span>
-                    <img
-                      src={crossIcon}
-                      alt="remove"
-                      style={{
-                        width: "10px",
-                        opacity: 0.6,
-                        marginBottom: "2px",
-                      }}
-                    />
-                  </Button>
-                )}
+                      FILTER <img src={filterIcon} alt="filter" />
+                    </Button>
+
+                    {statusFilter.length > 0 && (
+                      <Button
+                        componentType="button"
+                        bgColor="rgba(239,239,239,1)"
+                        borderColor="transparent"
+                        textColor="black"
+                        onClick={() => setStatusFilter([])}
+                        style={{
+                          borderRadius: "50px",
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        STATUS:{" "}
+                        <span
+                          style={{
+                            color: "rgba(16,185,129,1)",
+                            textWrap: "nowrap",
+                          }}
+                        >
+                          {statusFilter.join(", ")}
+                        </span>
+                        <img
+                          src={crossIcon}
+                          alt="remove"
+                          style={{
+                            width: "10px",
+                            opacity: 0.6,
+                            marginBottom: "2px",
+                          }}
+                        />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    textAlign: "right",
+                    backgroundColor: "white",
+                    borderRadius: "10px",
+                    padding: "10px 16px",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0 0 2px",
+                      fontSize: "12px",
+                      color: "rgba(120,120,120,1)",
+                    }}
+                  >
+                    Total Spent
+                  </p>
+                  <span
+                    style={{
+                      fontSize: "20px",
+                      fontWeight: 600,
+                      color: "black",
+                    }}
+                  >
+                    AED - {formatMoney(mrDisplayedTotal)}
+                  </span>
+                </div>
               </div>
 
               {/* LPO Filter Popup */}
@@ -1087,42 +1185,186 @@ export default function FinanceView({ projectId, projectName }: Props) {
           )}
           {activeTab === "jo" && (
             <div>
-              {/* Title */}
-              <h3 style={{ margin: "0 0 10px", textTransform: "uppercase" }}>
-                Job Orders (paid + unpaid)
-              </h3>
-
-              {/* Showing count */}
-              <p
-                style={{
-                  margin: "0 0 12px",
-                  fontSize: "13px",
-                  color: "rgba(120,120,120,1)",
-                }}
-              >
-                Showing {joRows.length} payment requests
-              </p>
-
-              {/* Filter row */}
+              {/* Title row with Total Spent */}
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "8px",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "10px",
                 }}
               >
-                <Button
-                  componentType="button"
-                  bgColor="white"
-                  borderColor="rgba(241,244,246,1)"
-                  textColor="black"
-                  onClick={() => {}}
-                  style={{ borderRadius: "50px" }}
+                <div>
+                  <h3 style={{ margin: "0 0 4px", textTransform: "uppercase" }}>
+                    Job Orders (paid + unpaid)
+                  </h3>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "13px",
+                      color: "rgba(120,120,120,1)",
+                    }}
+                  >
+                    Showing {displayedJoRows.length}
+                    {joStatusFilter.length > 0
+                      ? ` of ${joRows.length}`
+                      : ""}{" "}
+                    payment requests
+                  </p>
+
+                  <br />
+
+                  {/* Filter row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <Button
+                      componentType="button"
+                      bgColor="white"
+                      borderColor="rgba(241,244,246,1)"
+                      textColor="black"
+                      onClick={openJoFilter}
+                      style={{ borderRadius: "50px" }}
+                    >
+                      FILTER <img src={filterIcon} alt="filter" />
+                    </Button>
+
+                    {joStatusFilter.length > 0 && (
+                      <Button
+                        componentType="button"
+                        bgColor="rgba(239,239,239,1)"
+                        borderColor="transparent"
+                        textColor="black"
+                        onClick={() => setJoStatusFilter([])}
+                        style={{
+                          borderRadius: "50px",
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        STATUS:{" "}
+                        <span
+                          style={{
+                            color: "rgba(16,185,129,1)",
+                            textWrap: "nowrap",
+                          }}
+                        >
+                          {joStatusFilter.join(", ")}
+                        </span>
+                        <img
+                          src={crossIcon}
+                          alt="remove"
+                          style={{
+                            width: "10px",
+                            opacity: 0.6,
+                            marginBottom: "2px",
+                          }}
+                        />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    textAlign: "right",
+                    backgroundColor: "white",
+                    borderRadius: "10px",
+                    padding: "10px 16px",
+                  }}
                 >
-                  FILTER <img src={filterIcon} alt="filter" />
-                </Button>
+                  <p
+                    style={{
+                      margin: "0 0 2px",
+                      fontSize: "12px",
+                      color: "rgba(120,120,120,1)",
+                    }}
+                  >
+                    Total Spent
+                  </p>
+                  <span
+                    style={{
+                      fontSize: "20px",
+                      fontWeight: 600,
+                      color: "black",
+                    }}
+                  >
+                    AED - {formatMoney(joDisplayedTotal)}
+                  </span>
+                </div>
               </div>
+
+              {/* JO Filter Popup */}
+              {joFilterOpen &&
+                typeof window !== "undefined" &&
+                createPortal(
+                  <FormPopUp
+                    header="FILTER"
+                    setIsOpen={setJoFilterOpen}
+                    handleSubmit={applyJoFilter}
+                    addButtonLabel="CONFIRM"
+                    secondButton={
+                      <Button
+                        componentType="button"
+                        bgColor="white"
+                        borderColor="black"
+                        textColor="black"
+                        type="button"
+                        onClick={resetJoFilter}
+                      >
+                        RESET
+                      </Button>
+                    }
+                    style={{ minWidth: "400px" }}
+                  >
+                    <div style={{ marginBottom: "30px" }}>
+                      <h3
+                        style={{
+                          marginBottom: "15px",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        STATUS
+                      </h3>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "20px",
+                        }}
+                      >
+                        {["Paid", "Unpaid"].map((s) => (
+                          <label
+                            key={s}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              className="filter-checkbox"
+                              checked={tempJoStatusFilter.includes(s)}
+                              onChange={() => toggleTempJoStatus(s)}
+                            />
+                            <h4>{s}</h4>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </FormPopUp>,
+                  document.body,
+                )}
 
               {joRows.length === 0 ? (
                 <div
@@ -1155,11 +1397,29 @@ export default function FinanceView({ projectId, projectName }: Props) {
                       <th>PAYMENT REQUEST</th>
                       <th>SUBCONTRACTOR</th>
                       <th>AMOUNT (AFTER VAT)</th>
-                      <th>STATUS</th>
+                      <th
+                        onClick={cycleJoStatusSort}
+                        style={{ cursor: "pointer", userSelect: "none" }}
+                      >
+                        STATUS
+                        <span
+                          style={{
+                            marginLeft: 4,
+                            fontSize: 10,
+                            opacity: joStatusSort !== "none" ? 1 : 0.35,
+                          }}
+                        >
+                          {joStatusSort === "asc"
+                            ? "↑"
+                            : joStatusSort === "desc"
+                              ? "↓"
+                              : "↕"}
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {joRows.map((row) => {
+                    {displayedJoRows.map((row) => {
                       const isPaid = row.payment_status === "Paid";
                       return (
                         <tr key={row.pr_id}>
