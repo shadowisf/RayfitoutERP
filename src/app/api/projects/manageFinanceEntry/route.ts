@@ -20,6 +20,7 @@ import { db } from "@/lib/db";
 */
 
 // POST  { action:"create", project_id, entry_type, name, amount, is_recurring, frequency?, start_date?, end_date? }
+// POST  { action:"update", id, name, amount, is_recurring, frequency?, start_date?, end_date? }
 // POST  { action:"delete", id }
 export async function POST(req: NextRequest) {
   try {
@@ -28,6 +29,28 @@ export async function POST(req: NextRequest) {
     if (body.action === "delete") {
       if (!body.id) return NextResponse.json({ error: "id required" }, { status: 400 });
       await db.query("DELETE FROM project_finance_entries WHERE id = ?", [Number(body.id)]);
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "update") {
+      const { id, name, amount, is_recurring, frequency, start_date, end_date } = body;
+      if (!id || !name || amount == null) {
+        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      }
+      await db.query(
+        `UPDATE project_finance_entries
+         SET name=?, amount=?, is_recurring=?, frequency=?, start_date=?, end_date=?
+         WHERE id=?`,
+        [
+          name,
+          Number(amount),
+          is_recurring ? 1 : 0,
+          frequency ?? null,
+          start_date ?? null,
+          end_date ?? null,
+          Number(id),
+        ],
+      );
       return NextResponse.json({ success: true });
     }
 
