@@ -69,7 +69,11 @@ function MobileMaterialSkeletonLayout() {
               gap: 6,
             }}
           >
-            <SkeletonBlock w={14} h={14} style={{ borderRadius: "3px", flexShrink: 0 }} />
+            <SkeletonBlock
+              w={14}
+              h={14}
+              style={{ borderRadius: "3px", flexShrink: 0 }}
+            />
             <SkeletonBlock w={w} h={10} />
           </div>
         ))}
@@ -402,18 +406,9 @@ export default function MobileMaterialSelect({
       if (!res.ok) throw new Error("Failed to create material");
       const newItem: PredefinedItem = await res.json();
 
-      setAllItems((prev) => [newItem, ...prev]);
-      setSelectedItems((prev) => [...prev, newItem]);
-
-      // Reset form
-      setNewMatDescription("");
-      setNewMatCategoryID("");
-      setNewMatSubCategoryID("");
-      setNewMatUnit("");
-      setInventorySuggestion(null);
-
-      setTab("library");
-      toast("Material created and added to selection.", "success");
+      toast("Material created and added.", "success");
+      onSelectItems([newItem]);
+      onClose();
     } catch {
       toast("Failed to create material", "error");
     } finally {
@@ -548,7 +543,7 @@ export default function MobileMaterialSelect({
   return (
     <>
       <FormPopUp
-        header="SELECT MATERIAL(S)"
+        header="SELECT MATERIALS"
         setIsOpen={(open) => {
           if (!open) onClose();
         }}
@@ -584,107 +579,107 @@ export default function MobileMaterialSelect({
         {allItems.length === 0 ? (
           <MobileMaterialSkeletonLayout />
         ) : (
-        <>
-        {/* Tab bar */}
-        <div
-          style={{
-            display: "flex",
-            borderBottom: `1px solid ${BORDER_COLOR}`,
-            marginBottom: 4,
-          }}
-        >
-          {(["library", "quickadd"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
+          <>
+            {/* Tab bar */}
+            <div
               style={{
-                flex: 1,
-                background: "none",
-                border: "none",
-                borderBottom:
-                  tab === t ? "2px solid #000" : "2px solid transparent",
-                marginBottom: -1,
-                padding: "10px 0",
-                fontSize: 12,
-                fontWeight: tab === t ? 600 : 500,
-                color: "#000",
-                cursor: "pointer",
+                display: "flex",
+                borderBottom: `1px solid ${BORDER_COLOR}`,
+                marginBottom: 4,
               }}
             >
-              {t === "library" ? (
-                <span
+              {(["library", "quickadd"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
+                    flex: 1,
+                    background: "none",
+                    border: "none",
+                    borderBottom:
+                      tab === t ? "2px solid #000" : "2px solid transparent",
+                    marginBottom: -1,
+                    padding: "10px 0",
+                    fontSize: 12,
+                    fontWeight: tab === t ? 600 : 500,
+                    color: "#000",
+                    cursor: "pointer",
                   }}
                 >
-                  <img
-                    src="/icons/mr-library-mobile.svg"
-                    alt=""
-                    style={{ marginBottom: "2px" }}
-                  />
-                  LIBRARY
-                </span>
-              ) : (
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  <img
-                    src="/icons/mr-rocket-mobile.svg"
-                    alt=""
-                    style={{ marginBottom: "2px" }}
-                  />
-                  QUICK ADD
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+                  {t === "library" ? (
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <img
+                        src="/icons/mr-library-mobile.svg"
+                        alt=""
+                        style={{ marginBottom: "2px" }}
+                      />
+                      LIBRARY
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <img
+                        src="/icons/mr-rocket-mobile.svg"
+                        alt=""
+                        style={{ marginBottom: "2px" }}
+                      />
+                      QUICK ADD
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
 
-        {/* Content */}
-        {tab === "library" ? (
-          <LibraryTab
-            allItems={libraryItems}
-            recentItems={recentItems}
-            selectedItems={selectedItems}
-            onToggle={toggleItem}
-            search={search}
-            hasActiveFilter={selectedSubcategoryIDs.size > 0}
-            onQuickAdd={() => setTab("quickadd")}
-            singleSelect={singleSelect}
-          />
-        ) : (
-          <QuickAddTab
-            categories={categories}
-            quickAddSubcategories={quickAddSubcategories}
-            newMatDescription={newMatDescription}
-            setNewMatDescription={setNewMatDescription}
-            newMatCategoryID={newMatCategoryID}
-            setNewMatCategoryID={setNewMatCategoryID}
-            newMatSubCategoryID={newMatSubCategoryID}
-            setNewMatSubCategoryID={setNewMatSubCategoryID}
-            newMatUnit={newMatUnit}
-            setNewMatUnit={setNewMatUnit}
-            inventorySuggestion={inventorySuggestion}
-            onUseSuggestion={(desc) => {
-              setNewMatDescription(desc);
-              setInventorySuggestion(null);
-            }}
-            isSubmitting={isSubmittingNew}
-            onSubmit={handleQuickAddSubmit}
-            GREY_TEXT={GREY_TEXT}
-            BORDER_COLOR={BORDER_COLOR}
-          />
-        )}
-        </>
+            {/* Content */}
+            {tab === "library" ? (
+              <LibraryTab
+                allItems={libraryItems}
+                recentItems={recentItems}
+                selectedItems={selectedItems}
+                onToggle={toggleItem}
+                search={search}
+                hasActiveFilter={selectedSubcategoryIDs.size > 0}
+                onQuickAdd={() => setTab("quickadd")}
+                singleSelect={singleSelect}
+              />
+            ) : (
+              <QuickAddTab
+                categories={categories}
+                quickAddSubcategories={quickAddSubcategories}
+                newMatDescription={newMatDescription}
+                setNewMatDescription={setNewMatDescription}
+                newMatCategoryID={newMatCategoryID}
+                setNewMatCategoryID={setNewMatCategoryID}
+                newMatSubCategoryID={newMatSubCategoryID}
+                setNewMatSubCategoryID={setNewMatSubCategoryID}
+                newMatUnit={newMatUnit}
+                setNewMatUnit={setNewMatUnit}
+                inventorySuggestion={inventorySuggestion}
+                onUseSuggestion={(desc) => {
+                  setNewMatDescription(desc);
+                  setInventorySuggestion(null);
+                }}
+                isSubmitting={isSubmittingNew}
+                onSubmit={handleQuickAddSubmit}
+                GREY_TEXT={GREY_TEXT}
+                BORDER_COLOR={BORDER_COLOR}
+              />
+            )}
+          </>
         )}
       </FormPopUp>
 

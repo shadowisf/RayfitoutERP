@@ -51,6 +51,8 @@ export default function FormPopUp({
   const touchStartTime = useRef(0);
 
   const formRef = useRef<HTMLFormElement>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsOpening(false), haveLoadingState ? 25 : 1000);
@@ -160,12 +162,21 @@ export default function FormPopUp({
 
     setIsLoading(true);
 
+    // On mobile, start the dismiss animation immediately — it reverses if the
+    // API fails (parent didn't close us).
+    if (isMobile) setIsDismissing(true);
+
     try {
       await handleSubmit(e);
+      // If we're still mounted here the parent didn't close — reverse animation.
+      if (isMountedRef.current && isMobile) {
+        setIsDismissing(false);
+      }
     } catch (error) {
       console.error("Form submission error:", error);
+      if (isMountedRef.current && isMobile) setIsDismissing(false);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) setIsLoading(false);
     }
   };
 

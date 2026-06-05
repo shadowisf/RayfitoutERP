@@ -87,7 +87,11 @@ function MobileBoqSkeletonLayout() {
           marginBottom: 8,
         }}
       >
-        {[["50px", "60px"], ["48px", "55px"], ["46px", "52px"]].map(([lW, vW], i) => (
+        {[
+          ["50px", "60px"],
+          ["48px", "55px"],
+          ["46px", "52px"],
+        ].map(([lW, vW], i) => (
           <div key={i}>
             <SkeletonBlock w={lW} h={8} style={{ marginBottom: 5 }} />
             <SkeletonBlock w={vW} h={11} />
@@ -109,7 +113,11 @@ function MobileBoqSkeletonLayout() {
       </div>
 
       {/* Category header */}
-      <SkeletonBlock w="40%" h={12} style={{ marginBottom: 12, marginTop: 16 }} />
+      <SkeletonBlock
+        w="40%"
+        h={12}
+        style={{ marginBottom: 12, marginTop: 16 }}
+      />
 
       {/* Subcategory header */}
       <SkeletonBlock w="55%" h={9} style={{ marginBottom: 10 }} />
@@ -141,8 +149,14 @@ function MobileBoqSkeletonLayout() {
           {/* Content */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <SkeletonBlock w="28px" h={8} style={{ marginBottom: 5 }} />
-            <SkeletonBlock w={nameW} h={12} style={{ marginBottom: twoLine ? 4 : 0 }} />
-            {twoLine && <SkeletonBlock w="50%" h={12} style={{ marginBottom: 4 }} />}
+            <SkeletonBlock
+              w={nameW}
+              h={12}
+              style={{ marginBottom: twoLine ? 4 : 0 }}
+            />
+            {twoLine && (
+              <SkeletonBlock w="50%" h={12} style={{ marginBottom: 4 }} />
+            )}
             <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
               <SkeletonBlock w="42px" h={9} />
               <SkeletonBlock w="50px" h={9} />
@@ -269,17 +283,41 @@ const BoqItemRow = memo(function BoqItemRow({
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: GREY_TEXT, marginBottom: 2 }} onClick={() => onToggle(line.id)}>
+        <div
+          style={{ fontSize: 10, color: GREY_TEXT, marginBottom: 2 }}
+          onClick={() => onToggle(line.id)}
+        >
           Item
         </div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#000" }} onClick={() => onToggle(line.id)}>
+        <div
+          style={{ fontSize: 13, fontWeight: 600, color: "#000" }}
+          onClick={() => onToggle(line.id)}
+        >
           {line.item_number} {line.item_name}
         </div>
 
         {line.location && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }} onClick={() => onToggle(line.id)}>
-            <img src="/icons/location-boq.svg" alt="" style={{ marginTop: "-4px" }} />
-            <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(105,105,105,1)" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 4,
+            }}
+            onClick={() => onToggle(line.id)}
+          >
+            <img
+              src="/icons/location-boq.svg"
+              alt=""
+              style={{ marginTop: "-4px" }}
+            />
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                color: "rgba(105,105,105,1)",
+              }}
+            >
               {line.location}
             </span>
           </div>
@@ -303,28 +341,53 @@ const BoqItemRow = memo(function BoqItemRow({
           </span>
         )}
 
-        <div style={{ display: "flex", gap: 24, marginTop: 8 }} onClick={() => onToggle(line.id)}>
+        <div
+          style={{ display: "flex", gap: 24, marginTop: 8 }}
+          onClick={() => onToggle(line.id)}
+        >
           <div>
-            <div style={{ fontSize: 9, color: GREY_TEXT, textTransform: "uppercase", marginBottom: 1 }}>
+            <div
+              style={{
+                fontSize: 9,
+                color: GREY_TEXT,
+                textTransform: "uppercase",
+                marginBottom: 1,
+              }}
+            >
               QTY
             </div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
               {formatQty(line.quantity)} {line.unit}
             </div>
           </div>
-          {line.rate_per_quantity != null && Number(line.rate_per_quantity) > 0 && (
-            <div>
-              <div style={{ fontSize: 9, color: GREY_TEXT, textTransform: "uppercase", marginBottom: 1 }}>
-                Rate
+          {line.rate_per_quantity != null &&
+            Number(line.rate_per_quantity) > 0 && (
+              <div>
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: GREY_TEXT,
+                    textTransform: "uppercase",
+                    marginBottom: 1,
+                  }}
+                >
+                  Rate
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
+                  {formatCurrency(line.rate_per_quantity)}
+                </div>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
-                {formatCurrency(line.rate_per_quantity)}
-              </div>
-            </div>
-          )}
+            )}
           {line.total_cost != null && Number(line.total_cost) > 0 && (
             <div>
-              <div style={{ fontSize: 9, color: GREY_TEXT, textTransform: "uppercase", marginBottom: 1 }}>
+              <div
+                style={{
+                  fontSize: 9,
+                  color: GREY_TEXT,
+                  textTransform: "uppercase",
+                  marginBottom: 1,
+                }}
+              >
                 Total Cost
               </div>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
@@ -336,11 +399,15 @@ const BoqItemRow = memo(function BoqItemRow({
 
         {/* Allocated qty input — shown only when selected */}
         {isSelected && (
-          <div
-            style={{ marginTop: 10 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ fontSize: 9, color: GREY_TEXT, textTransform: "uppercase", marginBottom: 4 }}>
+          <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+            <div
+              style={{
+                fontSize: 9,
+                color: GREY_TEXT,
+                textTransform: "uppercase",
+                marginBottom: 4,
+              }}
+            >
               Allocated Qty
             </div>
             <div style={{ position: "relative", maxWidth: 160 }}>
@@ -380,9 +447,22 @@ const BoqItemRow = memo(function BoqItemRow({
               </span>
             </div>
             {hasOverAlloc && (
-              <div style={{ display: "flex", gap: 4, alignItems: "center", marginTop: 3 }}>
-                <img src="/icons/warning.svg" alt="warning" style={{ width: 11, flexShrink: 0 }} />
-                <span style={{ color: "rgba(248,77,77,1)", fontSize: 10 }}>Overallocated</span>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 4,
+                  alignItems: "center",
+                  marginTop: 3,
+                }}
+              >
+                <img
+                  src="/icons/warning.svg"
+                  alt="warning"
+                  style={{ width: 11, flexShrink: 0 }}
+                />
+                <span style={{ color: "rgba(248,77,77,1)", fontSize: 10 }}>
+                  Overallocated
+                </span>
               </div>
             )}
           </div>
@@ -394,7 +474,14 @@ const BoqItemRow = memo(function BoqItemRow({
           src={thumb}
           alt=""
           onClick={() => onToggle(line.id)}
-          style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, flexShrink: 0, cursor: "pointer" }}
+          style={{
+            width: 56,
+            height: 56,
+            objectFit: "cover",
+            borderRadius: 6,
+            flexShrink: 0,
+            cursor: "pointer",
+          }}
         />
       )}
     </div>
@@ -425,13 +512,20 @@ export default function MobileBoqSelectWithAllocation({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showFilter, setShowFilter] = useState(false);
 
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
-  const [selectedSubcategoryKeys, setSelectedSubcategoryKeys] = useState<Set<string>>(new Set());
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<
+    string | null
+  >(null);
+  const [selectedSubcategoryKeys, setSelectedSubcategoryKeys] = useState<
+    Set<string>
+  >(new Set());
 
-  const [tempSelectedIDs, setTempSelectedIDs] = useState<number[]>(currentBoqLineIDs);
+  const [tempSelectedIDs, setTempSelectedIDs] =
+    useState<number[]>(currentBoqLineIDs);
 
   // Allocation state
-  const [allocatedQtys, setAllocatedQtys] = useState<Record<number, number>>({});
+  const [allocatedQtys, setAllocatedQtys] = useState<Record<number, number>>(
+    {},
+  );
   const [allocatedRaw, setAllocatedRaw] = useState<Record<number, string>>({});
 
   // Chunked rendering
@@ -477,24 +571,32 @@ export default function MobileBoqSelectWithAllocation({
       fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "getMrLineBoqAllocations", mr_line_id: mrLineId }),
+        body: JSON.stringify({
+          action: "getMrLineBoqAllocations",
+          mr_line_id: mrLineId,
+        }),
       })
         .then((r) => r.json())
-        .then((data: { boq_line_id: number; allocated_qty: number | null }[]) => {
-          const qtys: Record<number, number> = {};
-          const raw: Record<number, string> = {};
-          for (const row of data) {
-            if (row.allocated_qty !== null && row.allocated_qty !== undefined) {
-              const num = Number(row.allocated_qty);
-              if (!isNaN(num)) {
-                qtys[row.boq_line_id] = num;
-                raw[row.boq_line_id] = formatQty(num);
+        .then(
+          (data: { boq_line_id: number; allocated_qty: number | null }[]) => {
+            const qtys: Record<number, number> = {};
+            const raw: Record<number, string> = {};
+            for (const row of data) {
+              if (
+                row.allocated_qty !== null &&
+                row.allocated_qty !== undefined
+              ) {
+                const num = Number(row.allocated_qty);
+                if (!isNaN(num)) {
+                  qtys[row.boq_line_id] = num;
+                  raw[row.boq_line_id] = formatQty(num);
+                }
               }
             }
-          }
-          setAllocatedQtys(qtys);
-          setAllocatedRaw(raw);
-        })
+            setAllocatedQtys(qtys);
+            setAllocatedRaw(raw);
+          },
+        )
         .catch(() => {});
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -513,7 +615,11 @@ export default function MobileBoqSelectWithAllocation({
       const sub = line.sub_category || "General";
       const subKey = `${cat}::${sub}`;
 
-      if (selectedSubcategoryKeys.size > 0 && !selectedSubcategoryKeys.has(subKey)) return;
+      if (
+        selectedSubcategoryKeys.size > 0 &&
+        !selectedSubcategoryKeys.has(subKey)
+      )
+        return;
 
       if (debouncedSearch.trim()) {
         const q = debouncedSearch.toLowerCase();
@@ -559,7 +665,8 @@ export default function MobileBoqSelectWithAllocation({
     if (!sentinel) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) setVisibleCount((prev) => prev + CHUNK_SIZE);
+        if (entries[0].isIntersecting)
+          setVisibleCount((prev) => prev + CHUNK_SIZE);
       },
       { threshold: 0.1 },
     );
@@ -577,24 +684,40 @@ export default function MobileBoqSelectWithAllocation({
     cats.forEach((cat) => {
       const subcats = Object.keys(groupedFiltered[cat] ?? {});
       subs += subcats.length;
-      subcats.forEach((sub) => { items += (groupedFiltered[cat][sub] ?? []).length; });
+      subcats.forEach((sub) => {
+        items += (groupedFiltered[cat][sub] ?? []).length;
+      });
     });
-    return { filteredCount: items, categoryCount: cats.length, subcategoryCount: subs };
+    return {
+      filteredCount: items,
+      categoryCount: cats.length,
+      subcategoryCount: subs,
+    };
   }, [groupedFiltered]);
 
   // ── Applied filter label ─────────────────────────────────────────────────────
   const appliedFilterLabel = useMemo(() => {
     if (selectedSubcategoryKeys.size === 0) return null;
-    const cats = [...new Set(Array.from(selectedSubcategoryKeys).map((k) => k.split("::")[0]))];
-    const subs = Array.from(selectedSubcategoryKeys).map((k) => k.split("::")[1]);
+    const cats = [
+      ...new Set(
+        Array.from(selectedSubcategoryKeys).map((k) => k.split("::")[0]),
+      ),
+    ];
+    const subs = Array.from(selectedSubcategoryKeys).map(
+      (k) => k.split("::")[1],
+    );
     return { cats, subs };
   }, [selectedSubcategoryKeys]);
 
   // ── Allocation derived values ────────────────────────────────────────────────
-  const totalAllocated = tempSelectedIDs.reduce((sum, id) => sum + (allocatedQtys[id] || 0), 0);
+  const totalAllocated = tempSelectedIDs.reduce(
+    (sum, id) => sum + (allocatedQtys[id] || 0),
+    0,
+  );
   const remaining = mrQty - totalAllocated;
   const isOverAllocated = mrQty > 0 && totalAllocated > mrQty;
-  const isFullyAllocated = mrQty > 0 && !isOverAllocated && totalAllocated >= mrQty;
+  const isFullyAllocated =
+    mrQty > 0 && !isOverAllocated && totalAllocated >= mrQty;
   const allocatedColor = isOverAllocated
     ? "rgba(248,77,77,1)"
     : isFullyAllocated
@@ -631,8 +754,16 @@ export default function MobileBoqSelectWithAllocation({
       setTempSelectedIDs((prev) => {
         if (prev.includes(id)) {
           // Deselect — clear allocation
-          setAllocatedQtys((q) => { const n = { ...q }; delete n[id]; return n; });
-          setAllocatedRaw((r) => { const n = { ...r }; delete n[id]; return n; });
+          setAllocatedQtys((q) => {
+            const n = { ...q };
+            delete n[id];
+            return n;
+          });
+          setAllocatedRaw((r) => {
+            const n = { ...r };
+            delete n[id];
+            return n;
+          });
           return prev.filter((i) => i !== id);
         }
         return [...prev, id];
@@ -644,7 +775,11 @@ export default function MobileBoqSelectWithAllocation({
   const handleAllocatedChange = useCallback((id: number, raw: string) => {
     setAllocatedRaw((prev) => ({ ...prev, [id]: raw }));
     if (raw === "") {
-      setAllocatedQtys((prev) => { const n = { ...prev }; delete n[id]; return n; });
+      setAllocatedQtys((prev) => {
+        const n = { ...prev };
+        delete n[id];
+        return n;
+      });
     } else {
       const num = parseFloat(raw);
       if (!isNaN(num)) setAllocatedQtys((prev) => ({ ...prev, [id]: num }));
@@ -653,15 +788,23 @@ export default function MobileBoqSelectWithAllocation({
 
   const handleConfirm = () => {
     if (mrQty > 0 && isOverAllocated) {
-      toast("Total allocated quantity exceeds the requested quantity. Please adjust before confirming.", "error");
+      toast(
+        "Total allocated quantity exceeds the requested quantity. Please adjust before confirming.",
+        "error",
+      );
       return;
     }
     if (mrQty > 0 && !isFullyAllocated) {
-      toast("Please allocate the full requested quantity across selected BOQ items before confirming.", "error");
+      toast(
+        "Please allocate the full requested quantity across selected BOQ items before confirming.",
+        "error",
+      );
       return;
     }
 
-    const selectedLines = allLines.filter((l) => tempSelectedIDs.includes(l.id));
+    const selectedLines = allLines.filter((l) =>
+      tempSelectedIDs.includes(l.id),
+    );
     const infoText =
       selectedLines.length === 1
         ? `${selectedLines[0].item_number} ${selectedLines[0].item_name}`
@@ -671,7 +814,10 @@ export default function MobileBoqSelectWithAllocation({
   };
 
   // ── Memoised selected IDs set ────────────────────────────────────────────────
-  const selectedIDsSet = useMemo(() => new Set(tempSelectedIDs), [tempSelectedIDs]);
+  const selectedIDsSet = useMemo(
+    () => new Set(tempSelectedIDs),
+    [tempSelectedIDs],
+  );
 
   // ── Allocation summary strip ─────────────────────────────────────────────────
   const allocationSummary = mrQty > 0 && (
@@ -687,7 +833,14 @@ export default function MobileBoqSelectWithAllocation({
       }}
     >
       <div>
-        <div style={{ fontSize: 9, color: GREY_TEXT, textTransform: "uppercase", marginBottom: 1 }}>
+        <div
+          style={{
+            fontSize: 9,
+            color: GREY_TEXT,
+            textTransform: "uppercase",
+            marginBottom: 1,
+          }}
+        >
           Requested
         </div>
         <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
@@ -695,7 +848,14 @@ export default function MobileBoqSelectWithAllocation({
         </div>
       </div>
       <div>
-        <div style={{ fontSize: 9, color: GREY_TEXT, textTransform: "uppercase", marginBottom: 1 }}>
+        <div
+          style={{
+            fontSize: 9,
+            color: GREY_TEXT,
+            textTransform: "uppercase",
+            marginBottom: 1,
+          }}
+        >
           Allocated
         </div>
         <div style={{ fontSize: 12, fontWeight: 600, color: allocatedColor }}>
@@ -703,7 +863,14 @@ export default function MobileBoqSelectWithAllocation({
         </div>
       </div>
       <div>
-        <div style={{ fontSize: 9, color: GREY_TEXT, textTransform: "uppercase", marginBottom: 1 }}>
+        <div
+          style={{
+            fontSize: 9,
+            color: GREY_TEXT,
+            textTransform: "uppercase",
+            marginBottom: 1,
+          }}
+        >
           Remaining
         </div>
         <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
@@ -726,16 +893,31 @@ export default function MobileBoqSelectWithAllocation({
             marginBottom: 8,
           }}
         >
-          {tempSelectedIDs.length} ITEM{tempSelectedIDs.length !== 1 ? "S" : ""} SELECTED
+          {tempSelectedIDs.length} ITEM{tempSelectedIDs.length !== 1 ? "S" : ""}{" "}
+          SELECTED
         </div>
       )}
       {/* Search + filter */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+        <div
+          style={{
+            flex: 1,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
           <img
             src="/icons/search.svg"
             alt=""
-            style={{ position: "absolute", left: 10, width: 14, height: 14, opacity: 0.4, pointerEvents: "none" }}
+            style={{
+              position: "absolute",
+              left: 10,
+              width: 14,
+              height: 14,
+              opacity: 0.4,
+              pointerEvents: "none",
+            }}
           />
           <input
             type="text"
@@ -776,7 +958,11 @@ export default function MobileBoqSelectWithAllocation({
             <img
               src="/icons/mr-filter-mobile.svg"
               alt="Filter"
-              style={{ width: 18, height: 18, filter: selectedSubcategoryKeys.size > 0 ? "invert(1)" : "none" }}
+              style={{
+                width: 18,
+                height: 18,
+                filter: selectedSubcategoryKeys.size > 0 ? "invert(1)" : "none",
+              }}
             />
           </button>
           {selectedSubcategoryKeys.size > 0 && (
@@ -802,8 +988,10 @@ export default function MobileBoqSelectWithAllocation({
   return (
     <>
       <FormPopUp
-        header="SELECT BOQ ITEM(S)"
-        setIsOpen={(open) => { if (!open) onClose(); }}
+        header="SELECT BOQ ITEMS"
+        setIsOpen={(open) => {
+          if (!open) onClose();
+        }}
         handleSubmit={handleConfirm}
         addButtonLabel="CONFIRM"
         stickyFooter={footer}
@@ -816,38 +1004,28 @@ export default function MobileBoqSelectWithAllocation({
           readOnly
           value={tempSelectedIDs.length > 0 ? "x" : ""}
           tabIndex={-1}
-          style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
+          style={{
+            position: "absolute",
+            opacity: 0,
+            width: 0,
+            height: 0,
+            pointerEvents: "none",
+          }}
         />
 
         {/* Allocation summary */}
         {!isFetching && allocationSummary}
 
-        {/* Filter summary bar */}
-        {!isFetching && allLines.length > 0 && (
-          <div
-            style={{
-              background: LIGHT_BG,
-              borderRadius: 8,
-              padding: "10px 12px",
-              marginBottom: 4,
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
-              Showing {categoryCount} {categoryCount === 1 ? "Category" : "Categories"} &amp;{" "}
-              {subcategoryCount} {subcategoryCount === 1 ? "Subcategory" : "Subcategories"}
-            </div>
-            <div style={{ fontSize: 11, color: GREY_TEXT, marginTop: 2 }}>
-              {filteredCount} {filteredCount === 1 ? "item" : "items"}
-            </div>
-          </div>
-        )}
-
         {/* Applied filter label */}
         {appliedFilterLabel && (
           <div style={{ fontSize: 11, color: GREY_TEXT, marginBottom: 8 }}>
-            <span style={{ fontWeight: 600, color: "#000" }}>Filters applied: </span>
+            <span style={{ fontWeight: 600, color: "#000" }}>
+              Filters applied:{" "}
+            </span>
             {appliedFilterLabel.cats.join(", ")}
-            {appliedFilterLabel.subs.length > 0 && <> &mdash; {appliedFilterLabel.subs.join(", ")}</>}
+            {appliedFilterLabel.subs.length > 0 && (
+              <> &mdash; {appliedFilterLabel.subs.join(", ")}</>
+            )}
           </div>
         )}
 
@@ -855,8 +1033,17 @@ export default function MobileBoqSelectWithAllocation({
         {isFetching ? (
           <MobileBoqSkeletonLayout />
         ) : flatRows.length === 0 ? (
-          <div style={{ padding: 32, textAlign: "center", color: GREY_TEXT, fontSize: 13 }}>
-            {debouncedSearch.trim() ? `No results for "${debouncedSearch}"` : "No BOQ items found."}
+          <div
+            style={{
+              padding: 32,
+              textAlign: "center",
+              color: GREY_TEXT,
+              fontSize: 13,
+            }}
+          >
+            {debouncedSearch.trim()
+              ? `No results for "${debouncedSearch}"`
+              : "No BOQ items found."}
           </div>
         ) : (
           <div>
@@ -944,7 +1131,9 @@ export default function MobileBoqSelectWithAllocation({
 type BoqFilterSheetProps = {
   groupedLines: GroupedBoqLines;
   selectedSubcategoryKeys: Set<string>;
-  setSelectedSubcategoryKeys: (s: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  setSelectedSubcategoryKeys: (
+    s: Set<string> | ((prev: Set<string>) => Set<string>),
+  ) => void;
   activeCategoryFilter: string | null;
   setActiveCategoryFilter: (cat: string) => void;
   onClose: () => void;
@@ -964,15 +1153,28 @@ function BoqFilterSheet({
   GREY_TEXT,
   LIGHT_BG,
 }: BoqFilterSheetProps) {
-  const [tempKeys, setTempKeys] = useState<Set<string>>(() => new Set(selectedSubcategoryKeys));
+  const [tempKeys, setTempKeys] = useState<Set<string>>(
+    () => new Set(selectedSubcategoryKeys),
+  );
+  const [subSearch, setSubSearch] = useState("");
 
   const allCategories = Object.keys(groupedLines);
-  const activeSubcats = activeCategoryFilter
+
+  const allSubcats = activeCategoryFilter
     ? Object.keys(groupedLines[activeCategoryFilter] ?? {})
     : [];
 
+  const activeSubcats = subSearch.trim()
+    ? allSubcats.filter((s) =>
+        s.toLowerCase().includes(subSearch.toLowerCase()),
+      )
+    : allSubcats;
+
   const countForCategory = (cat: string) =>
-    Object.values(groupedLines[cat] ?? {}).reduce((sum, lines) => sum + lines.length, 0);
+    Object.values(groupedLines[cat] ?? {}).reduce(
+      (sum, lines) => sum + lines.length,
+      0,
+    );
 
   const countForSubcategory = (cat: string, sub: string) =>
     (groupedLines[cat]?.[sub] ?? []).length;
@@ -994,12 +1196,30 @@ function BoqFilterSheet({
     onClose();
   };
 
+  const showCount = useMemo(() => {
+    if (tempKeys.size === 0)
+      return Object.values(groupedLines)
+        .flatMap((subs) => Object.values(subs))
+        .reduce((s, lines) => s + lines.length, 0);
+    let count = 0;
+    tempKeys.forEach((key) => {
+      const [cat, sub] = key.split("::");
+      count += (groupedLines[cat]?.[sub] ?? []).length;
+    });
+    return count;
+  }, [tempKeys, groupedLines]);
+
+  const selectedChips = Array.from(tempKeys).map((key) => ({
+    key,
+    label: key.split("::")[1],
+  }));
+
   const resetButton = (
     <Button
-      componentType={"button"}
-      bgColor={"white"}
-      borderColor={"black"}
-      textColor={"black"}
+      componentType="button"
+      bgColor="white"
+      borderColor="black"
+      textColor="black"
       onClick={resetAll}
     >
       RESET
@@ -1008,12 +1228,95 @@ function BoqFilterSheet({
 
   return (
     <FormPopUp
-      header="FILTER BOQ ITEM(S)"
-      setIsOpen={(open) => { if (!open) onClose(); }}
+      header="FILTER BOQ ITEMS"
+      setIsOpen={(open) => {
+        if (!open) onClose();
+      }}
       handleSubmit={handleConfirm}
-      addButtonLabel="CONFIRM"
+      addButtonLabel={"CONFIRM"}
       secondButton={resetButton}
     >
+      {/* Search bar */}
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          marginBottom: 10,
+        }}
+      >
+        <img
+          src="/icons/search.svg"
+          alt=""
+          style={{
+            position: "absolute",
+            left: 12,
+            width: 15,
+            height: 15,
+            opacity: 0.4,
+            pointerEvents: "none",
+          }}
+        />
+        <input
+          type="text"
+          placeholder="Search for Material Subcategory"
+          value={subSearch}
+          onChange={(e) => setSubSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "10px 14px 10px 36px",
+            borderRadius: 50,
+            border: `1.5px solid ${subSearch ? GREEN : BORDER_COLOR}`,
+            fontSize: 13,
+            outline: "none",
+            boxSizing: "border-box",
+            background: "#fff",
+          }}
+        />
+      </div>
+
+      {/* Selected chips */}
+      {selectedChips.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            marginBottom: 10,
+          }}
+        >
+          {selectedChips.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() =>
+                setTempKeys((prev) => {
+                  const next = new Set(prev);
+                  next.delete(key);
+                  return next;
+                })
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#000",
+                color: "#fff",
+                borderRadius: 50,
+                padding: "4px 10px",
+                fontSize: 12,
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {label} ×
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Two-column layout */}
       <div
         style={{
           display: "flex",
@@ -1026,7 +1329,7 @@ function BoqFilterSheet({
         {/* Left: categories */}
         <div
           style={{
-            width: 120,
+            width: 110,
             flexShrink: 0,
             overflowY: "auto",
             borderRight: `1px solid ${BORDER_COLOR}`,
@@ -1039,17 +1342,27 @@ function BoqFilterSheet({
                 key={cat}
                 onClick={() => setActiveCategoryFilter(cat)}
                 style={{
-                  padding: "10px 8px",
-                  background: isActive ? "#000" : "transparent",
-                  color: isActive ? "#fff" : "#000",
+                  padding: "12px 10px",
+                  borderLeft: isActive
+                    ? "2px solid #000"
+                    : "2px solid transparent",
                   borderBottom: `1px solid ${BORDER_COLOR}`,
                   cursor: "pointer",
+                  background: isActive ? LIGHT_BG : "transparent",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, wordBreak: "break-word" }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: isActive ? 700 : 500,
+                    color: "#000",
+                    wordBreak: "break-word",
+                    marginBottom: 2,
+                  }}
+                >
                   {cat}
                 </div>
-                <div style={{ fontSize: 10, color: isActive ? "rgba(200,200,200,1)" : GREY_TEXT }}>
+                <div style={{ fontSize: 10, color: GREY_TEXT }}>
                   {countForCategory(cat)} items
                 </div>
               </div>
@@ -1060,8 +1373,15 @@ function BoqFilterSheet({
         {/* Right: subcategories */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {activeSubcats.length === 0 ? (
-            <div style={{ padding: 20, fontSize: 12, color: GREY_TEXT, textAlign: "center" }}>
-              No subcategories
+            <div
+              style={{
+                padding: 20,
+                fontSize: 12,
+                color: GREY_TEXT,
+                textAlign: "center",
+              }}
+            >
+              {subSearch ? `No results for "${subSearch}"` : "No subcategories"}
             </div>
           ) : (
             activeSubcats.map((sub) => {
@@ -1076,17 +1396,18 @@ function BoqFilterSheet({
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    padding: "9px 10px",
+                    padding: "12px 12px",
                     borderBottom: `1px solid ${BORDER_COLOR}`,
                     cursor: "pointer",
+                    background: "transparent",
                   }}
                 >
                   <div
                     style={{
-                      width: 16,
-                      height: 16,
+                      width: 18,
+                      height: 18,
                       borderRadius: 4,
-                      border: `2px solid ${isChecked ? GREEN : "rgba(150,150,150,1)"}`,
+                      border: `2px solid ${isChecked ? GREEN : "rgba(180,180,180,1)"}`,
                       background: isChecked ? GREEN : "transparent",
                       display: "flex",
                       alignItems: "center",
@@ -1106,14 +1427,21 @@ function BoqFilterSheet({
                       </svg>
                     )}
                   </div>
-                  <span style={{ flex: 1, fontSize: 11, color: "#000" }}>{sub}</span>
                   <span
                     style={{
-                      fontSize: 10,
+                      flex: 1,
+                      fontSize: 12,
+                      color: "#000",
+                      fontWeight: isChecked ? 600 : 400,
+                    }}
+                  >
+                    {sub}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
                       color: GREY_TEXT,
-                      background: LIGHT_BG,
-                      borderRadius: 50,
-                      padding: "2px 6px",
                       flexShrink: 0,
                     }}
                   >

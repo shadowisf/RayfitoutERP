@@ -253,6 +253,28 @@ export default function FinanceView({ projectId, projectName }: Props) {
       prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val],
     );
 
+  const [activeBar, setActiveBar] = useState<string | null>(null);
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length || !activeBar) return null;
+    const item = payload.find((p: any) => p.dataKey === activeBar);
+    if (!item) return null;
+    return (
+      <div
+        style={{
+          backgroundColor: "white",
+          border: "1px solid rgba(232,232,232,1)",
+          borderRadius: "8px",
+          padding: "8px 14px",
+          fontSize: "12px",
+          fontWeight: 600,
+        }}
+      >
+        {item.name}: AED {formatMoney(item.value)}
+      </div>
+    );
+  };
+
   const totalRevenue = projectValue + totalManualRevenue;
   const totalExpenses = mrTotal + joTotal + totalManualExpense;
   const pnl = totalRevenue - totalExpenses;
@@ -364,13 +386,41 @@ export default function FinanceView({ projectId, projectName }: Props) {
 
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="skeleton-pulse"
-              style={{ height: "120px", borderRadius: "12px" }}
-            />
-          ))}
+          {/* Chart + Panels row */}
+          <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "20px" }}>
+            {/* Chart skeleton */}
+            <div className="skeleton-pulse" style={{ borderRadius: "12px", minHeight: "500px" }} />
+
+            {/* Revenue + Expenses + PNL */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", flex: 1 }}>
+                {/* Revenue panel skeleton */}
+                <div className="skeleton-pulse" style={{ borderRadius: "12px", minHeight: "500px" }} />
+                {/* Expenses panel skeleton */}
+                <div className="skeleton-pulse" style={{ borderRadius: "12px", minHeight: "500px" }} />
+              </div>
+              {/* PNL row skeleton */}
+              <div className="skeleton-pulse" style={{ borderRadius: "10px", height: "58px" }} />
+            </div>
+          </div>
+
+          {/* Table section skeleton */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
+            {/* Title + total spent */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div className="skeleton-pulse" style={{ height: "20px", width: "280px", borderRadius: "6px" }} />
+                <div className="skeleton-pulse" style={{ height: "14px", width: "120px", borderRadius: "6px" }} />
+              </div>
+              <div className="skeleton-pulse" style={{ height: "52px", width: "180px", borderRadius: "10px" }} />
+            </div>
+            {/* Filter row */}
+            <div className="skeleton-pulse" style={{ height: "36px", width: "100px", borderRadius: "50px" }} />
+            {/* Table rows */}
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="skeleton-pulse" style={{ height: "48px", borderRadius: "8px" }} />
+            ))}
+          </div>
         </div>
       ) : (
         <>
@@ -415,21 +465,25 @@ export default function FinanceView({ projectId, projectName }: Props) {
                       width={55}
                       tickMargin={6}
                     />
-                    <Tooltip
-                      formatter={(v: any) => [`AED ${formatMoney(v)}`, ""]}
-                    />
+                    <Tooltip content={<CustomTooltip />} cursor={false} />
                     <Bar
                       dataKey="Revenue"
                       fill="rgba(33,227,144,1)"
+                      activeBar={{ fill: "rgba(33,227,144,1)" }}
                       radius={[30, 30, 30, 30]}
                       barSize={45}
+                      onMouseEnter={() => setActiveBar("Revenue")}
+                      onMouseLeave={() => setActiveBar(null)}
                     />
                     <Bar
                       dataKey="Expenses"
                       fill="rgba(238,79,79,1)"
+                      activeBar={{ fill: "rgba(238,79,79,1)" }}
                       radius={[30, 30, 30, 30]}
                       barSize={45}
                       minPointSize={60}
+                      onMouseEnter={() => setActiveBar("Expenses")}
+                      onMouseLeave={() => setActiveBar(null)}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1156,11 +1210,11 @@ export default function FinanceView({ projectId, projectName }: Props) {
                               className="approval-pill normal-text"
                               style={{
                                 backgroundColor: isPaid
-                                  ? "rgba(209,250,229,1)"
-                                  : "rgba(254,243,199,1)",
+                                  ? "rgba(187,247,208,1)"
+                                  : "rgba(255,181,181,1)",
                                 color: isPaid
-                                  ? "rgba(6,95,70,1)"
-                                  : "rgba(146,64,14,1)",
+                                  ? "rgba(3,130,46,1)"
+                                  : "rgba(248,77,77,1)",
                               }}
                             >
                               {row.payment_status}
@@ -1200,7 +1254,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                     {joStatusFilter.length > 0
                       ? ` of ${joRows.length}`
                       : ""}{" "}
-                    payment requests
+                    PRs
                   </p>
 
                   <br />
@@ -1441,11 +1495,11 @@ export default function FinanceView({ projectId, projectName }: Props) {
                               className="approval-pill normal-text"
                               style={{
                                 backgroundColor: isPaid
-                                  ? "rgba(209,250,229,1)"
-                                  : "rgba(254,243,199,1)",
+                                  ? "rgba(187,247,208,1)"
+                                  : "rgba(255,181,181,1)",
                                 color: isPaid
-                                  ? "rgba(6,95,70,1)"
-                                  : "rgba(146,64,14,1)",
+                                  ? "rgba(3,130,46,1)"
+                                  : "rgba(248,77,77,1)",
                               }}
                             >
                               {row.payment_status}

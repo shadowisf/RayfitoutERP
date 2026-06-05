@@ -20,7 +20,97 @@ function S({
 
 export default function LpoDetailSkeleton() {
   return (
-    <div className="dashboard">
+    <>
+    <style>{`
+      @media (max-width: 768px) { .mr-loading-desktop { display: none !important; } }
+      @media (min-width: 769px) { .mr-loading-mobile { display: none !important; } }
+    `}</style>
+
+    {/* ── Mobile skeleton ── */}
+    <div className="mr-loading-mobile" style={{ padding: "16px", paddingBottom: "80px", background: "rgba(245,245,245,1)", minHeight: "100dvh", boxSizing: "border-box" }}>
+
+      {/* Breadcrumb */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <S w="200px" h={10} />
+        <S w="28px" h={28} style={{ borderRadius: "6px" }} />
+      </div>
+
+      {/* Requisition Timeline card */}
+      <div style={{ background: "white", borderRadius: "12px", padding: "16px", marginBottom: "12px" }}>
+        <S w="160px" h={14} style={{ marginBottom: 6 }} />
+        <S w="240px" h={9} style={{ marginBottom: 18 }} />
+        {/* Timeline track */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 0 }}>
+          <div style={{ position: "absolute", top: "50%", left: 17, right: 17, height: 2, background: "rgba(0,0,0,0.08)", transform: "translateY(-50%)" }} />
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: i === 1 ? "flex-start" : i === 3 ? "flex-end" : "center", gap: 6, position: "relative" }}>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", ...SHIMMER }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+          <S w="70px" h={8} />
+          <S w="65px" h={8} />
+          <S w="75px" h={8} />
+        </div>
+        {/* Progress bar */}
+        <S w="100%" h={4} style={{ borderRadius: 2, marginTop: 10 }} />
+      </div>
+
+      {/* Material Requests section */}
+      <div style={{ background: "white", borderRadius: "12px", padding: "16px", marginBottom: "12px" }}>
+        <S w="140px" h={14} style={{ marginBottom: 14 }} />
+
+        {/* Category tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <S w="48px" h={32} style={{ borderRadius: "8px" }} />
+          <S w="80px" h={32} style={{ borderRadius: "8px" }} />
+        </div>
+
+        {/* Item group header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <S w="160px" h={12} />
+          <S w="24px" h={24} style={{ borderRadius: "6px" }} />
+        </div>
+
+        {/* Item rows */}
+        {[1, 2].map((i) => (
+          <div key={i} style={{ border: "1px solid rgba(217,217,217,1)", borderRadius: "8px", padding: "12px", display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <S w="24px" h={24} style={{ borderRadius: "50%", flexShrink: 0 }} />
+            <S w="140px" h={12} style={{ flex: 1 }} />
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+              <S w="44px" h={32} style={{ borderRadius: "6px" }} />
+              <S w="70px" h={32} style={{ borderRadius: "6px" }} />
+            </div>
+          </div>
+        ))}
+
+        {/* ADD ITEM button */}
+        <S w="100%" h={42} style={{ borderRadius: "8px", marginTop: 8 }} />
+      </div>
+
+      {/* Comments section */}
+      <div style={{ background: "white", borderRadius: "12px", padding: "16px" }}>
+        <S w="90px" h={13} style={{ marginBottom: 8 }} />
+        <S w="100px" h={10} style={{ marginBottom: 14 }} />
+        <div style={{ border: "1px solid rgba(220,220,220,1)", borderRadius: "10px", padding: "14px" }}>
+          <S w="70%" h={10} style={{ marginBottom: 10 }} />
+          <S w="55%" h={10} style={{ marginBottom: 14 }} />
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <S w="28px" h={28} style={{ borderRadius: "6px" }} />
+            <S w="60px" h={30} style={{ borderRadius: "6px" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed bottom bar */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px", background: "white", borderTop: "1px solid rgba(220,220,220,1)" }}>
+        <S w="100%" h={44} style={{ borderRadius: "50px" }} />
+      </div>
+    </div>
+
+    {/* ── Desktop skeleton ── */}
+    <div className="mr-loading-desktop dashboard">
       {/* ── Breadcrumb + download button ── */}
       <div
         style={{
@@ -357,5 +447,6 @@ export default function LpoDetailSkeleton() {
         </div>
       </div>
     </div>
+    </>
   );
 }

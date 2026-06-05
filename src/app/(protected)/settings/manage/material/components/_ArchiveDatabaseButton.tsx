@@ -96,12 +96,6 @@ export default function ArchiveDatabaseButton({
             </strong>{" "}
             in database <strong>{dbName}</strong>?
           </p>
-
-          <br />
-
-          <p style={{ color: "rgba(200,60,60,1)", fontWeight: 600 }}>
-            This action cannot be undone.
-          </p>
         </>
       )}
     </FormPopUp>

@@ -5,8 +5,8 @@ export async function GET(req: NextRequest) {
   try {
     const [rows] = await db.query(`
       SELECT * FROM lut_material_categories
-      WHERE id >= 191
-         OR id IN (SELECT DISTINCT category_id FROM lut_predefined_items WHERE category_id IS NOT NULL)
+      WHERE id NOT IN (SELECT DISTINCT category_id FROM lut_predefined_items WHERE category_id IS NOT NULL)
+         OR id IN (SELECT DISTINCT category_id FROM lut_predefined_items WHERE category_id IS NOT NULL AND (is_archived = 0 OR is_archived IS NULL))
       ORDER BY id ASC
     `);
 

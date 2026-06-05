@@ -78,11 +78,13 @@ type GroupedMrLinesBySupplier = {
 type MrLinesViewProps = {
   mrLines: GroupedMrLines;
   mrHeader: MrHeader;
+  initialData?: import("../types/mrViewInitialData").MrViewInitialData;
 };
 
 export default function MrLinesView({
   mrHeader,
   mrLines: rawMrLines,
+  initialData,
 }: MrLinesViewProps) {
   const { userInfo } = useAuth();
   const router = useRouter();
@@ -219,12 +221,12 @@ export default function MrLinesView({
     mrHeader.progress_id < 12,
   );
   const [itemsWithQuotations, setItemsWithQuotations] = useState<Set<number>>(
-    new Set(),
+    () => new Set(initialData?.itemsWithQuotations ?? []),
   );
-  const [isCheckingQuotations, setIsCheckingQuotations] =
-    useState<boolean>(true);
+  const [isCheckingQuotations, setIsCheckingQuotations] = useState<boolean>(
+    !initialData?.itemsWithQuotations,
+  );
 
-  // Price stats for procurement quotations stage (progress_id === 7)
   const [materialPriceStats, setMaterialPriceStats] = useState<
     Record<
       string,
@@ -235,19 +237,16 @@ export default function MrLinesView({
         prev_price: number | null;
       }
     >
-  >({});
+  >(initialData?.materialPriceStats ?? {});
 
-  // ── Inventory stock matches per material description (draft stage only) ─────
-  // null = not yet loaded (show blank); Record = loaded (empty array = no match)
   const [itemInventoryStatus, setItemInventoryStatus] = useState<Record<
     string,
     InventoryMatch[]
-  > | null>(null);
+  > | null>(initialData?.itemInventoryStatus ?? null);
 
-  // ── Quotation price ranges per MR line (for PRICE RANGE column) ─────────
   const [quotationPriceRanges, setQuotationPriceRanges] = useState<
     Record<number, { min: number; max: number }>
-  >({});
+  >(initialData?.quotationPriceRanges ?? {});
 
   // ── Price hover popups (lowest & prev) ────────────────────────────────────
   type PriceHoverRow = {
@@ -429,14 +428,14 @@ export default function MrLinesView({
 
   const [supplierApprovalStatus, setSupplierApprovalStatus] = useState<{
     [itemId: number]: "approved" | "rejected" | "pending";
-  }>({});
+  }>(initialData?.supplierApprovalStatus ?? {});
   const [isCheckingSupplierApprovals, setIsCheckingSupplierApprovals] =
-    useState<boolean>(true);
+    useState<boolean>(!initialData?.supplierApprovalStatus);
   const [supplierQSApprovalStatus, setSupplierQSApprovalStatus] = useState<{
     [itemId: number]: "approved" | "rejected" | "pending";
-  }>({});
+  }>(initialData?.supplierQSApprovalStatus ?? {});
   const [isCheckingSupplierQSApprovals, setIsCheckingSupplierQSApprovals] =
-    useState<boolean>(true);
+    useState<boolean>(!initialData?.supplierQSApprovalStatus);
 
   const [lpoInvoiceStatus, setLpoInvoiceStatus] = useState<{
     [supplierId: number]: {
@@ -445,9 +444,9 @@ export default function MrLinesView({
       hasSignedFile: boolean;
       supplierType: string;
     };
-  }>({});
+  }>(initialData?.lpoInvoiceStatus ?? {});
   const [isCheckingLpoInvoices, setIsCheckingLpoInvoices] =
-    useState<boolean>(true);
+    useState<boolean>(!initialData?.lpoInvoiceStatus);
 
   const [mrLinesBySupplier, setMrLinesBySupplier] =
     useState<GroupedMrLinesBySupplier>({});
@@ -456,24 +455,24 @@ export default function MrLinesView({
 
   const [lpoPaymentStatus, setLpoPaymentStatus] = useState<{
     [supplierId: number]: "approved" | "rejected" | "pending";
-  }>({});
+  }>(initialData?.lpoPaymentStatus ?? {});
   const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] =
-    useState<boolean>(true);
+    useState<boolean>(!initialData?.lpoPaymentStatus);
 
   const [grnStatus, setGrnStatus] = useState<{
     [supplierId: number]: boolean;
-  }>({});
-  const [isCheckingGrn, setIsCheckingGrn] = useState<boolean>(true);
+  }>(initialData?.grnStatus ?? {});
+  const [isCheckingGrn, setIsCheckingGrn] = useState<boolean>(!initialData?.grnStatus);
 
   const [qcStatus, setQcStatus] = useState<{
     [itemId: number]: "passed" | "failed" | "pending";
-  }>({});
-  const [isCheckingQc, setIsCheckingQc] = useState<boolean>(true);
+  }>(initialData?.qcStatus ?? {});
+  const [isCheckingQc, setIsCheckingQc] = useState<boolean>(!initialData?.qcStatus);
 
   const [inventoryStatus, setInventoryStatus] = useState<{
     [itemId: number]: boolean;
-  }>({});
-  const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(true);
+  }>(initialData?.inventoryStatus ?? {});
+  const [isCheckingInventory, setIsCheckingInventory] = useState<boolean>(!initialData?.inventoryStatus);
   // Add this state near the other state declarations at the top
   const [grnQuantityMismatch, setGrnQuantityMismatch] = useState<{
     [supplierId: number]: boolean;
@@ -887,6 +886,7 @@ export default function MrLinesView({
 
   // Fetch price stats for all materials when in Quotations stage or Manager Price Approval
   useEffect(() => {
+    if (initialData?.materialPriceStats !== undefined) return;
     if (mrHeader.progress_id !== 7 && mrHeader.progress_id !== 10) return;
 
     const allMaterials: string[] = [];
@@ -918,6 +918,7 @@ export default function MrLinesView({
 
   // ── Fetch inventory status for draft stage ────────────────────────────────
   useEffect(() => {
+    if (initialData?.itemInventoryStatus !== undefined) return;
     if (mrHeader.progress_id !== 1) return;
 
     const descriptions: string[] = [];
@@ -1005,6 +1006,7 @@ export default function MrLinesView({
 
   // ── Fetch quotation price ranges for PRICE RANGE column ───────────────────
   const fetchQuotationPriceRanges = useCallback(() => {
+    if (initialData?.quotationPriceRanges !== undefined) return;
     if (mrHeader.progress_id !== 10) return;
     fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier/getQuotationPriceRangesByMrHeaderID`,
@@ -1575,6 +1577,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkAllQuotations() {
+      if (initialData?.itemsWithQuotations !== undefined) { setIsCheckingQuotations(false); return; }
       if (mrHeader.progress_id !== 7 && mrHeader.progress_id !== 11) {
         setIsCheckingQuotations(false);
         return;
@@ -1634,6 +1637,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkSupplierApprovals() {
+      if (initialData?.supplierApprovalStatus !== undefined) { setIsCheckingSupplierApprovals(false); return; }
       if (mrHeader.progress_id !== 10 && mrHeader.progress_id !== 11) {
         setIsCheckingSupplierApprovals(false);
         return;
@@ -1717,6 +1721,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkSupplierQSApprovals() {
+      if (initialData?.supplierQSApprovalStatus !== undefined) { setIsCheckingSupplierQSApprovals(false); return; }
       if (mrHeader.progress_id !== 9 && mrHeader.progress_id !== 11) {
         setIsCheckingSupplierQSApprovals(false);
         return;
@@ -1795,6 +1800,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkLpoInvoices() {
+      if (initialData?.lpoInvoiceStatus !== undefined) { setIsCheckingLpoInvoices(false); return; }
       if (
         mrHeader.progress_id !== 12 &&
         mrHeader.progress_id !== 13 &&
@@ -1941,6 +1947,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkPaymentStatuses() {
+      if (initialData?.lpoPaymentStatus !== undefined) { setIsCheckingPaymentStatus(false); return; }
       if (mrHeader.progress_id !== 14) {
         setIsCheckingPaymentStatus(false);
         return;
@@ -2029,6 +2036,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkGrnStatuses() {
+      if (initialData?.grnStatus !== undefined) { setIsCheckingGrn(false); return; }
       if (mrHeader.progress_id !== 17) {
         setIsCheckingGrn(false);
         return;
@@ -2128,6 +2136,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkQcStatuses() {
+      if (initialData?.qcStatus !== undefined) { setIsCheckingQc(false); return; }
       if (mrHeader.progress_id !== 21) {
         setIsCheckingQc(false);
         return;
@@ -2249,6 +2258,7 @@ export default function MrLinesView({
 
   useEffect(() => {
     async function checkStockStatuses() {
+      if (initialData?.inventoryStatus !== undefined) { setIsCheckingInventory(false); return; }
       if (mrHeader.progress_id !== 24) {
         setIsCheckingInventory(false);
         return;
@@ -3120,6 +3130,7 @@ export default function MrLinesView({
                         fontWeight: 600,
                         marginBottom: "6px",
                         textTransform: "uppercase",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       BOQ REF <span style={{ color: "red" }}>*</span>
@@ -5505,6 +5516,7 @@ export default function MrLinesView({
                                                       marginBottom: "6px",
                                                       textTransform:
                                                         "uppercase",
+                                                      whiteSpace: "nowrap",
                                                     }}
                                                   >
                                                     BOQ Ref{" "}

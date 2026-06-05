@@ -196,6 +196,35 @@ export default function Navbar({ onHamburgerClick }: NavbarProps) {
                   User Settings
                 </a>
 
+                {/* Manage Database — QS and Manager only */}
+                {(userInfo?.departmentID === 8 || userInfo?.departmentID === 16) && (
+                  <a
+                    href="/settings/manage/material"
+                    onClick={() => setProfileOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      width: "100%",
+                      padding: "10px 16px",
+                      textDecoration: "none",
+                      color: "black",
+                      fontWeight: "600",
+                      fontSize: "13px",
+                      backgroundColor: "transparent",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.backgroundColor = "rgba(245,245,245,1)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.backgroundColor = "transparent")
+                    }
+                  >
+                    <img src="/icons/database.svg" alt="" style={{ width: "16px", height: "16px", opacity: 0.7 }} />
+                    Manage Database
+                  </a>
+                )}
+
                 {/* Team Management — commented out for now
                 <a
                   href="/team"

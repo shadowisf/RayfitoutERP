@@ -32,6 +32,11 @@ type RequisitionTimelineProps = {
    *  QS Review (stage 2) and QS Price Check (stage 9) are excluded from the
    *  planned stage list when this is true. */
   skipQsReview?: boolean;
+  /** Pre-fetched server-side data — skips the client-side fetch when provided. */
+  initialProgressLog?: ProgressLogEntry[];
+  initialHasBoqReference?: boolean;
+  initialHasItemAvailable?: boolean;
+  initialHasNeedOrder?: boolean;
 };
 
 // Rejection progress IDs for MR/LPO
@@ -155,12 +160,16 @@ export default function RequisitionTimeline({
   projectName,
   requiredDate,
   skipQsReview = false,
+  initialProgressLog,
+  initialHasBoqReference,
+  initialHasItemAvailable,
+  initialHasNeedOrder,
 }: RequisitionTimelineProps) {
-  const [progressLog, setProgressLog] = useState<ProgressLogEntry[]>([]);
-  const [hasBoqReference, setHasBoqReference] = useState<boolean>(false);
-  const [hasItemAvailable, setHasItemAvailable] = useState<boolean>(false);
-  const [hasNeedOrder, setHasNeedOrder] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [progressLog, setProgressLog] = useState<ProgressLogEntry[]>(initialProgressLog ?? []);
+  const [hasBoqReference, setHasBoqReference] = useState<boolean>(initialHasBoqReference ?? false);
+  const [hasItemAvailable, setHasItemAvailable] = useState<boolean>(initialHasItemAvailable ?? false);
+  const [hasNeedOrder, setHasNeedOrder] = useState<boolean>(initialHasNeedOrder ?? true);
+  const [isLoading, setIsLoading] = useState(initialProgressLog === undefined);
   const [replacementsPopup, setReplacementsPopup] = useState<
     ReplacementItem[] | null
   >(null);
@@ -169,6 +178,9 @@ export default function RequisitionTimeline({
   const externalLinkIcon = "/icons/external-link.svg";
 
   useEffect(() => {
+    // Skip client fetch if data was pre-loaded server-side
+    if (initialProgressLog !== undefined) return;
+
     async function fetchData() {
       try {
         const [logRes, boqRes] = await Promise.all([
@@ -207,7 +219,7 @@ export default function RequisitionTimeline({
     }
 
     fetchData();
-  }, [mrHeaderId, lpoId]);
+  }, [mrHeaderId, lpoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return <div>Loading timeline...</div>;

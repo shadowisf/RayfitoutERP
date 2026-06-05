@@ -20,10 +20,20 @@ type MaterialItem = PredefinedItem & {
   is_archived?: number | null;
 };
 
+type UpdatedFields = {
+  description: string;
+  categoryId: number;
+  subcategoryId: number;
+  unit: string | null;
+  brand: string | null;
+  databaseId: number | null;
+  databaseName: string | null;
+};
+
 type EditMaterialButtonProps = {
   item: MaterialItem;
   onOpen?: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (updated: UpdatedFields) => void;
   onDatabaseCreated?: (id: number, name: string) => void;
 };
 
@@ -193,7 +203,17 @@ export default function EditMaterialButton({
 
       toast("Material updated successfully", "success");
       setIsOpen(false);
-      onSuccess?.();
+      const dbId = databaseId ? Number(databaseId) : null;
+      const dbName = databases.find((d) => d.id === dbId)?.name ?? null;
+      onSuccess?.({
+        description: description.trim(),
+        categoryId: Number(categoryID),
+        subcategoryId: Number(subCategoryID),
+        unit: unit || null,
+        brand: brand || null,
+        databaseId: dbId,
+        databaseName: dbName,
+      });
     } catch (err: any) {
       toast(err?.message || "Something went wrong.", "error");
     } finally {
