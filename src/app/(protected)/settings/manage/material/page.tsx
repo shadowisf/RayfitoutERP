@@ -689,6 +689,87 @@ export default function MaterialDatabasePage() {
       .finally(() => setChangelogLoading(false));
   }, [detailItem?.id, changelogTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Optimistic update helpers ─────────────────────────────────────────────
+  function optimisticRenameCategory(oldName: string, newName: string) {
+    setAllItems((prev) =>
+      prev.map((i) =>
+        i.category_name === oldName ? { ...i, category_name: newName } : i,
+      ),
+    );
+    setGroupedItems((prev) => {
+      const next = { ...prev };
+      if (next[oldName]) {
+        next[newName] = next[oldName];
+        delete next[oldName];
+      }
+      return next;
+    });
+  }
+
+  function optimisticArchiveCategory(catName: string) {
+    setAllItems((prev) => prev.filter((i) => i.category_name !== catName));
+    setGroupedItems((prev) => {
+      const next = { ...prev };
+      delete next[catName];
+      return next;
+    });
+  }
+
+  function optimisticRenameSubCategory(catName: string, oldSub: string, newSub: string) {
+    setAllItems((prev) =>
+      prev.map((i) =>
+        i.category_name === catName && i.subcategory_name === oldSub
+          ? { ...i, subcategory_name: newSub }
+          : i,
+      ),
+    );
+    setGroupedItems((prev) => {
+      const cat = prev[catName];
+      if (!cat) return prev;
+      const next = { ...cat };
+      if (next[oldSub]) {
+        next[newSub] = next[oldSub].map((i) => ({ ...i, subcategory_name: newSub }));
+        delete next[oldSub];
+      }
+      return { ...prev, [catName]: next };
+    });
+  }
+
+  function optimisticArchiveSubCategory(catName: string, subName: string) {
+    setAllItems((prev) =>
+      prev.filter((i) => !(i.category_name === catName && i.subcategory_name === subName)),
+    );
+    setGroupedItems((prev) => {
+      const cat = prev[catName];
+      if (!cat) return prev;
+      const next = { ...cat };
+      delete next[subName];
+      return { ...prev, [catName]: next };
+    });
+  }
+
+  function optimisticUpdateMaterial(updatedItem: MaterialItem) {
+    const newCat = updatedItem.category_name || "Uncategorized";
+    const newSub = updatedItem.subcategory_name || "General";
+    setAllItems((prev) =>
+      prev.map((i) => (i.id === updatedItem.id ? updatedItem : i)),
+    );
+    setGroupedItems((prev) => {
+      // Remove from old location, add to new
+      const next: GroupedItems = {};
+      Object.entries(prev).forEach(([cat, subs]) => {
+        next[cat] = {};
+        Object.entries(subs).forEach(([sub, items]) => {
+          next[cat][sub] = items.filter((i) => i.id !== updatedItem.id);
+        });
+      });
+      if (!next[newCat]) next[newCat] = {};
+      if (!next[newCat][newSub]) next[newCat][newSub] = [];
+      next[newCat][newSub] = [...next[newCat][newSub], updatedItem];
+      return next;
+    });
+  }
+
   // ── New material created callback ─────────────────────────────────────────
   function handleNewMaterialCreated(newItem: PredefinedItem) {
     const cat = newItem.category_name || "Uncategorized";
@@ -746,28 +827,70 @@ export default function MaterialDatabasePage() {
     return grouped;
   }, [allItems, activeDatabaseTab]);
 
-  // Merge item-derived categories with all known categories so newly created
-  // empty categories appear in the sidebar immediately.
   const sidebarCategories = useMemo(() => {
     const fromItems = new Set(Object.keys(sidebarGrouped));
     knownCategories.forEach((c) => fromItems.add(c.value));
     return [...fromItems].sort();
   }, [sidebarGrouped, knownCategories]);
 
+  // ── Duplicate category/subcategory name detection ────────────────────────
+  const duplicateCategoryNames = useMemo(() => {
+    const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+    const seen = new Map<string, number>();
+    sidebarCategories.forEach((cat) => {
+      const key = normalize(cat);
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    });
+    return new Set(
+      sidebarCategories
+        .map((cat) => normalize(cat))
+        .filter((key) => (seen.get(key) ?? 0) > 1),
+    );
+  }, [sidebarCategories]);
+
+  const duplicateSubCategoryNames = useMemo(() => {
+    const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+    const dupeSet = new Set<string>();
+    sidebarCategories.forEach((cat) => {
+      const subs = Object.keys(sidebarGrouped[cat] ?? {});
+      const seen = new Map<string, number>();
+      subs.forEach((sub) => {
+        const key = normalize(sub);
+        seen.set(key, (seen.get(key) ?? 0) + 1);
+      });
+      seen.forEach((count, key) => {
+        if (count > 1)
+          subs
+            .filter((s) => normalize(s) === key)
+            .forEach((s) => dupeSet.add(`${cat}::${s}`));
+      });
+    });
+    return dupeSet;
+  }, [sidebarCategories, sidebarGrouped]);
+
   const sidebarQ = sidebarSearch.trim().toLowerCase();
+
+  // A sub is visible if it has no items (newly created, empty) OR has at least one non-archived item
+  const isSubVisible = (cat: string, sub: string) => {
+    const subItems = sidebarGrouped[cat]?.[sub] ?? [];
+    if (subItems.length === 0) return true;
+    return subItems.some((item) => !item.is_archived);
+  };
+
   const visibleSidebarCategories = sidebarCategories.filter((cat) => {
+    const catId =
+      Object.values(sidebarGrouped[cat] ?? {}).flat()[0]?.category_id ??
+      knownCategories.find((c) => c.value === cat)?.id;
+    const knownSubs = catId
+      ? knownSubCategories.filter((s) => s.category_id === catId).map((s) => s.value)
+      : [];
+    const allSubs = [...new Set([...Object.keys(sidebarGrouped[cat] ?? {}), ...knownSubs])];
+    // Hide only if category has items AND every visible sub would be hidden
+    const hasVisibleSub = allSubs.length === 0 || allSubs.some((sub) => isSubVisible(cat, sub));
+    if (!hasVisibleSub) return false;
     if (!sidebarQ) return true;
     if (cat.toLowerCase().includes(sidebarQ)) return true;
-    const itemSubs = Object.keys(sidebarGrouped[cat] || {});
-    const knownCatId = knownCategories.find((c) => c.value === cat)?.id;
-    const knownSubs = knownCatId
-      ? knownSubCategories
-          .filter((s) => s.category_id === knownCatId)
-          .map((s) => s.value)
-      : [];
-    return [...new Set([...itemSubs, ...knownSubs])].some((sub) =>
-      sub.toLowerCase().includes(sidebarQ),
-    );
+    return allSubs.some((sub) => sub.toLowerCase().includes(sidebarQ));
   });
   const totalFilteredCount = sidebarCategories.reduce(
     (sum, cat) => sum + Object.values(sidebarGrouped[cat] || {}).flat().length,
@@ -1065,7 +1188,6 @@ export default function MaterialDatabasePage() {
                 </p>
                 <CreateCategoryButton
                   onSuccess={() => {
-                    fetchItems(true);
                     fetchCategories();
                   }}
                   renderTrigger={(open) => (
@@ -1185,8 +1307,6 @@ export default function MaterialDatabasePage() {
                     Object.values(sidebarGrouped[cat] || {}).flat()[0]
                       ?.category_id ??
                     knownCategories.find((c) => c.value === cat)?.id;
-                  // Merge item-derived subs with known subs so newly created empty
-                  // subcategories appear immediately.
                   const itemSubs = Object.keys(sidebarGrouped[cat] || {});
                   const knownSubs = catId
                     ? knownSubCategories
@@ -1197,9 +1317,10 @@ export default function MaterialDatabasePage() {
                     .sort()
                     .filter(
                       (sub) =>
-                        !sidebarQ ||
-                        cat.toLowerCase().includes(sidebarQ) ||
-                        sub.toLowerCase().includes(sidebarQ),
+                        isSubVisible(cat, sub) &&
+                        (!sidebarQ ||
+                          cat.toLowerCase().includes(sidebarQ) ||
+                          sub.toLowerCase().includes(sidebarQ)),
                     );
 
                   return (
@@ -1255,6 +1376,12 @@ export default function MaterialDatabasePage() {
                             }}
                           >
                             <span>{titleCase(cat)}</span>
+                            {duplicateCategoryNames.has(cat.toLowerCase().replace(/\s+/g, " ").trim()) && (
+                              <span className="tooltip-bar" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, zIndex: "auto" }}>
+                                <img src="/icons/database-duplicate-warning.svg" alt="duplicate" style={{ width: "14px" }} />
+                                <span className="tooltip-label" style={{ color: "rgba(248,77,77,1)" }}>Duplicate Name</span>
+                              </span>
+                            )}
                             <svg
                               width="12"
                               height="12"
@@ -1293,7 +1420,7 @@ export default function MaterialDatabasePage() {
                               categoryName={cat}
                               onDark
                               onSuccess={(newName) => {
-                                fetchItems(true);
+                                optimisticRenameCategory(cat, newName);
                                 setActiveCategoryTab(newName);
                                 setExpandedCategoryTab(newName);
                               }}
@@ -1304,9 +1431,9 @@ export default function MaterialDatabasePage() {
                               itemCount={catCount}
                               onDark
                               onSuccess={() => {
+                                optimisticArchiveCategory(cat);
                                 setActiveCategoryTab("");
                                 setExpandedCategoryTab("");
-                                fetchItems(true);
                               }}
                             />
                           </div>
@@ -1390,9 +1517,18 @@ export default function MaterialDatabasePage() {
                                       textDecoration: isSubActive
                                         ? "underline"
                                         : "none",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "6px",
                                     }}
                                   >
                                     {titleCase(sub)}
+                                    {duplicateSubCategoryNames.has(`${cat}::${sub}`) && (
+                                      <span className="tooltip-bar" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, zIndex: "auto" }}>
+                                        <img src="/icons/database-duplicate-warning.svg" alt="duplicate" style={{ width: "13px" }} />
+                                        <span className="tooltip-label" style={{ color: "rgba(248,77,77,1)" }}>Duplicate Name</span>
+                                      </span>
+                                    )}
                                   </span>
                                 </button>
                                 {isSubActive && subId && catId && (
@@ -1418,15 +1554,18 @@ export default function MaterialDatabasePage() {
                                     <EditSubCategoryButton
                                       subCategoryId={subId}
                                       subCategoryName={sub}
-                                      onSuccess={() => fetchItems(true)}
+                                      onSuccess={(newName) => {
+                                        optimisticRenameSubCategory(cat, sub, newName);
+                                        if (activeSubCategoryTab === sub) setActiveSubCategoryTab(newName);
+                                      }}
                                     />
                                     <ArchiveSubCategoryButton
                                       subCategoryId={subId}
                                       subCategoryName={sub}
                                       itemCount={subCount}
                                       onSuccess={() => {
+                                        optimisticArchiveSubCategory(cat, sub);
                                         setActiveSubCategoryTab("");
-                                        fetchItems(true);
                                       }}
                                     />
                                   </div>
@@ -1453,7 +1592,6 @@ export default function MaterialDatabasePage() {
                               <CreateSubCategoryButton
                                 materialCategoryID={catId}
                                 onSuccess={() => {
-                                  fetchItems(true);
                                   fetchCategories();
                                 }}
                                 renderTrigger={(open) => (
@@ -1540,7 +1678,7 @@ export default function MaterialDatabasePage() {
                         }
                         subCategoryName={activeSubCategoryTab}
                         onSuccess={(newName) => {
-                          fetchItems(true);
+                          optimisticRenameSubCategory(activeCategoryTab, activeSubCategoryTab, newName);
                           setActiveSubCategoryTab(newName);
                         }}
                       />
@@ -1561,7 +1699,7 @@ export default function MaterialDatabasePage() {
                         }
                         categoryName={activeCategoryTab}
                         onSuccess={(newName) => {
-                          fetchItems(true);
+                          optimisticRenameCategory(activeCategoryTab, newName);
                           setActiveCategoryTab(newName);
                           setExpandedCategoryTab(newName);
                         }}
@@ -2251,7 +2389,25 @@ export default function MaterialDatabasePage() {
                                   <EditMaterialButton
                                     item={item}
                                     onOpen={() => setDetailItem(item)}
-                                    onSuccess={() => fetchItems(true, true)}
+                                    onSuccess={(updated) => {
+                                      const catName = knownCategories.find((c) => c.id === updated.categoryId)?.value ?? item.category_name ?? "Uncategorized";
+                                      const subName = knownSubCategories.find((s) => s.id === updated.subcategoryId)?.value ?? item.subcategory_name ?? "General";
+                                      const updatedItem: MaterialItem = {
+                                        ...item,
+                                        material_description: updated.description,
+                                        category_id: updated.categoryId,
+                                        category_name: catName,
+                                        subcategory_id: updated.subcategoryId,
+                                        subcategory_name: subName,
+                                        unit: updated.unit ?? item.unit,
+                                        brand: updated.brand ?? item.brand,
+                                        database_id: updated.databaseId ?? item.database_id,
+                                        database: updated.databaseName ?? item.database,
+                                      };
+                                      optimisticUpdateMaterial(updatedItem);
+                                      setDetailItem(updatedItem);
+                                      refreshChangelog();
+                                    }}
                                     onDatabaseCreated={(id, name) =>
                                       setRegistryDatabases((prev) => [
                                         ...prev,

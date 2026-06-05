@@ -579,6 +579,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "deleteMaterialCategory") {
+      await db.query("DELETE FROM lut_material_categories WHERE id = ?", [body.id]);
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action === "updateSubCategory") {
       await db.query(
         "UPDATE lut_material_subcategories SET value = ? WHERE id = ?",
@@ -592,6 +597,11 @@ export async function POST(req: Request) {
         "UPDATE lut_predefined_items SET is_archived = 1 WHERE subcategory_id = ?",
         [body.id],
       );
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === "deleteMaterialSubCategory") {
+      await db.query("DELETE FROM lut_material_subcategories WHERE id = ?", [body.id]);
       return NextResponse.json({ success: true });
     }
 

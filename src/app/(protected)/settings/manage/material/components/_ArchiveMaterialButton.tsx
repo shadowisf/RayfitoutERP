@@ -30,7 +30,11 @@ export default function ArchiveMaterialButton({ item, onSuccess }: Props) {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: item.id, is_archived: 1, changed_by: userInfo?.name ?? null }),
+          body: JSON.stringify({
+            id: item.id,
+            is_archived: 1,
+            changed_by: userInfo?.name ?? null,
+          }),
         },
       );
       if (!res.ok) throw new Error();
@@ -52,17 +56,6 @@ export default function ArchiveMaterialButton({ item, onSuccess }: Props) {
       <p>
         Are you sure you want to archive{" "}
         <strong>{item.material_description}</strong>?
-      </p>
-
-      <br />
-
-      <p
-        style={{
-          color: "rgba(200,60,60,1)",
-          fontWeight: 600,
-        }}
-      >
-        This action cannot be undone.
       </p>
     </FormPopUp>
   );

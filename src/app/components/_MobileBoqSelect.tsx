@@ -472,7 +472,8 @@ export default function MobileBoqSelect({
             marginBottom: 8,
           }}
         >
-          {tempSelectedIDs.length} ITEM{tempSelectedIDs.length !== 1 ? "S" : ""} SELECTED
+          {tempSelectedIDs.length} ITEM{tempSelectedIDs.length !== 1 ? "S" : ""}{" "}
+          SELECTED
         </div>
       )}
       {/* Search + filter */}
@@ -566,7 +567,7 @@ export default function MobileBoqSelect({
   return (
     <>
       <FormPopUp
-        header="SELECT BOQ ITEM(S)"
+        header="SELECT BOQ ITEMS"
         setIsOpen={(open) => {
           if (!open) onClose();
         }}
@@ -589,28 +590,6 @@ export default function MobileBoqSelect({
             pointerEvents: "none",
           }}
         />
-
-        {/* Filter summary bar (display only — no button) */}
-        {!isFetching && allLines.length > 0 && (
-          <div
-            style={{
-              background: LIGHT_BG,
-              borderRadius: 8,
-              padding: "10px 12px",
-              marginBottom: 4,
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#000" }}>
-              Showing {categoryCount}{" "}
-              {categoryCount === 1 ? "Category" : "Categories"} &amp;{" "}
-              {subcategoryCount}{" "}
-              {subcategoryCount === 1 ? "Subcategory" : "Subcategories"}
-            </div>
-            <div style={{ fontSize: 11, color: GREY_TEXT, marginTop: 2 }}>
-              {filteredCount} {filteredCount === 1 ? "item" : "items"}
-            </div>
-          </div>
-        )}
 
         {/* Applied filter label */}
         {appliedFilterLabel && (
@@ -762,15 +741,22 @@ function BoqFilterSheet({
   GREY_TEXT,
   LIGHT_BG,
 }: BoqFilterSheetProps) {
-  // Local temp state — only committed to parent on CONFIRM
   const [tempKeys, setTempKeys] = useState<Set<string>>(
     () => new Set(selectedSubcategoryKeys),
   );
+  const [subSearch, setSubSearch] = useState("");
 
   const allCategories = Object.keys(groupedLines);
-  const activeSubcats = activeCategoryFilter
+
+  const allSubcats = activeCategoryFilter
     ? Object.keys(groupedLines[activeCategoryFilter] ?? {})
     : [];
+
+  const activeSubcats = subSearch.trim()
+    ? allSubcats.filter((s) =>
+        s.toLowerCase().includes(subSearch.toLowerCase()),
+      )
+    : allSubcats;
 
   const countForCategory = (cat: string) =>
     Object.values(groupedLines[cat] ?? {}).reduce(
@@ -798,12 +784,31 @@ function BoqFilterSheet({
     onClose();
   };
 
+  // Count items that would show given tempKeys
+  const showCount = useMemo(() => {
+    if (tempKeys.size === 0)
+      return Object.values(groupedLines)
+        .flatMap((subs) => Object.values(subs))
+        .reduce((s, lines) => s + lines.length, 0);
+    let count = 0;
+    tempKeys.forEach((key) => {
+      const [cat, sub] = key.split("::");
+      count += (groupedLines[cat]?.[sub] ?? []).length;
+    });
+    return count;
+  }, [tempKeys, groupedLines]);
+
+  const selectedChips = Array.from(tempKeys).map((key) => ({
+    key,
+    label: key.split("::")[1],
+  }));
+
   const resetButton = (
     <Button
-      componentType={"button"}
-      bgColor={"white"}
-      borderColor={"black"}
-      textColor={"black"}
+      componentType="button"
+      bgColor="white"
+      borderColor="black"
+      textColor="black"
       onClick={resetAll}
     >
       RESET
@@ -812,14 +817,94 @@ function BoqFilterSheet({
 
   return (
     <FormPopUp
-      header="FILTER BOQ ITEM(S)"
+      header="FILTER BOQ ITEMS"
       setIsOpen={(open) => {
         if (!open) onClose();
       }}
       handleSubmit={handleConfirm}
-      addButtonLabel="CONFIRM"
+      addButtonLabel={"CONFIRM"}
       secondButton={resetButton}
     >
+      {/* Search bar */}
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          marginBottom: 10,
+        }}
+      >
+        <img
+          src="/icons/search.svg"
+          alt=""
+          style={{
+            position: "absolute",
+            left: 12,
+            width: 15,
+            height: 15,
+            opacity: 0.4,
+            pointerEvents: "none",
+          }}
+        />
+        <input
+          type="text"
+          placeholder="Search for Material Subcategory"
+          value={subSearch}
+          onChange={(e) => setSubSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "10px 14px 10px 36px",
+            borderRadius: 50,
+            border: `1.5px solid ${subSearch ? GREEN : BORDER_COLOR}`,
+            fontSize: 13,
+            outline: "none",
+            boxSizing: "border-box",
+            background: "#fff",
+          }}
+        />
+      </div>
+
+      {/* Selected chips */}
+      {selectedChips.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            marginBottom: 10,
+          }}
+        >
+          {selectedChips.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() =>
+                setTempKeys((prev) => {
+                  const next = new Set(prev);
+                  next.delete(key);
+                  return next;
+                })
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#000",
+                color: "#fff",
+                borderRadius: 50,
+                padding: "4px 10px",
+                fontSize: 12,
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {label} ×
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Two-column layout */}
       <div
         style={{
@@ -833,7 +918,7 @@ function BoqFilterSheet({
         {/* Left: categories */}
         <div
           style={{
-            width: 120,
+            width: 110,
             flexShrink: 0,
             overflowY: "auto",
             borderRight: `1px solid ${BORDER_COLOR}`,
@@ -846,29 +931,27 @@ function BoqFilterSheet({
                 key={cat}
                 onClick={() => setActiveCategoryFilter(cat)}
                 style={{
-                  padding: "10px 8px",
-                  background: isActive ? "#000" : "transparent",
-                  color: isActive ? "#fff" : "#000",
+                  padding: "12px 10px",
+                  borderLeft: isActive
+                    ? "2px solid #000"
+                    : "2px solid transparent",
                   borderBottom: `1px solid ${BORDER_COLOR}`,
                   cursor: "pointer",
+                  background: isActive ? LIGHT_BG : "transparent",
                 }}
               >
                 <div
                   style={{
                     fontSize: 11,
-                    fontWeight: 600,
-                    marginBottom: 2,
+                    fontWeight: isActive ? 700 : 500,
+                    color: "#000",
                     wordBreak: "break-word",
+                    marginBottom: 2,
                   }}
                 >
                   {cat}
                 </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: isActive ? "rgba(200,200,200,1)" : GREY_TEXT,
-                  }}
-                >
+                <div style={{ fontSize: 10, color: GREY_TEXT }}>
                   {countForCategory(cat)} items
                 </div>
               </div>
@@ -887,7 +970,7 @@ function BoqFilterSheet({
                 textAlign: "center",
               }}
             >
-              No subcategories
+              {subSearch ? `No results for "${subSearch}"` : "No subcategories"}
             </div>
           ) : (
             activeSubcats.map((sub) => {
@@ -902,17 +985,18 @@ function BoqFilterSheet({
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    padding: "9px 10px",
+                    padding: "12px 12px",
                     borderBottom: `1px solid ${BORDER_COLOR}`,
                     cursor: "pointer",
+                    background: "transparent",
                   }}
                 >
                   <div
                     style={{
-                      width: 16,
-                      height: 16,
+                      width: 18,
+                      height: 18,
                       borderRadius: 4,
-                      border: `2px solid ${isChecked ? GREEN : "rgba(150,150,150,1)"}`,
+                      border: `2px solid ${isChecked ? GREEN : "rgba(180,180,180,1)"}`,
                       background: isChecked ? GREEN : "transparent",
                       display: "flex",
                       alignItems: "center",
@@ -932,16 +1016,21 @@ function BoqFilterSheet({
                       </svg>
                     )}
                   </div>
-                  <span style={{ flex: 1, fontSize: 11, color: "#000" }}>
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 12,
+                      color: "#000",
+                      fontWeight: isChecked ? 600 : 400,
+                    }}
+                  >
                     {sub}
                   </span>
                   <span
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
+                      fontWeight: 600,
                       color: GREY_TEXT,
-                      background: LIGHT_BG,
-                      borderRadius: 50,
-                      padding: "2px 6px",
                       flexShrink: 0,
                     }}
                   >

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useAuth } from "@/app/context/AuthContext";
 import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "./Button";
@@ -533,6 +534,10 @@ export default function MultipleSelectMaterialItemButton({
   singleSelect = false,
   downloadButton,
 }: props) {
+  const { userInfo } = useAuth();
+  const recentKey = userInfo?.email ? `mr_recent_${userInfo.email}` : null;
+  const [recentlyUsedIDs, setRecentlyUsedIDs] = useState<number[]>([]);
+
   const searchIcon = "/icons/search.svg";
   const externalLinkIcon = "/icons/external-link.svg";
   const pencilIcon = "/icons/pencil.svg";
@@ -655,13 +660,14 @@ export default function MultipleSelectMaterialItemButton({
 
   // Show "Recently Ordered / Library" sections only when browsing all materials
   const isAllView = !activeCategoryTab && !activeSubCategoryTab;
+  const recentIDsSet = useMemo(() => new Set(recentlyUsedIDs), [recentlyUsedIDs]);
   const recentCount = isAllView
-    ? flatItems.filter((i) => !!i.last_purchase).length
+    ? flatItems.filter((i) => recentIDsSet.has(i.id)).length
     : 0;
   const sortedFlatItems = isAllView
     ? [
-        ...flatItems.filter((i) => !!i.last_purchase),
-        ...flatItems.filter((i) => !i.last_purchase),
+        ...flatItems.filter((i) => recentIDsSet.has(i.id)),
+        ...flatItems.filter((i) => !recentIDsSet.has(i.id)),
       ]
     : flatItems;
 
@@ -755,6 +761,15 @@ export default function MultipleSelectMaterialItemButton({
       setSidebarSearch("");
       setFilterUnits([]);
       setTempFilterUnits([]);
+      // Load per-user recently used from localStorage
+      if (recentKey) {
+        try {
+          const stored = localStorage.getItem(recentKey);
+          setRecentlyUsedIDs(stored ? JSON.parse(stored) : []);
+        } catch {
+          setRecentlyUsedIDs([]);
+        }
+      }
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -802,6 +817,13 @@ export default function MultipleSelectMaterialItemButton({
         ? selectedItems[0].material_description
         : `${selectedItems.length} ITEMS SELECTED`,
     );
+    // Persist per-user recently used to localStorage
+    if (recentKey && tempSelectedIDs.length > 0) {
+      try {
+        const updated = [...new Set([...tempSelectedIDs, ...recentlyUsedIDs])].slice(0, 20);
+        localStorage.setItem(recentKey, JSON.stringify(updated));
+      } catch {}
+    }
     setIsOpen(false);
   };
 
@@ -1386,7 +1408,7 @@ export default function MultipleSelectMaterialItemButton({
           </div>
 
           {/* ── Recently Used — pinned at bottom ── */}
-          {allItems.some((i) => !!i.last_purchase) && (
+          {recentlyUsedIDs.length > 0 && allItems.some((i) => recentIDsSet.has(i.id)) && (
             <div
               style={{
                 flexShrink: 0,
@@ -1414,7 +1436,7 @@ export default function MultipleSelectMaterialItemButton({
                 </span>
               </div>
               {allItems
-                .filter((i) => !!i.last_purchase)
+                .filter((i) => recentIDsSet.has(i.id))
                 .slice(0, 4)
                 .map((item) => (
                   <button
@@ -2003,14 +2025,17 @@ export default function MultipleSelectMaterialItemButton({
                             </tr>
                           )}
                           <tr
-                            onClick={() => {
-                              setDetailItem(item);
-                              handleCheckboxToggle(item.id);
-                            }}
+                            onClick={() => setDetailItem(item)}
                             className={isDetailing ? "row-detailing" : ""}
                             style={{ cursor: "pointer" }}
                           >
-                            <td style={{ textAlign: "center" }}>
+                            <td
+                              style={{ textAlign: "center" }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCheckboxToggle(item.id);
+                              }}
+                            >
                               <div
                                 style={{
                                   width: "32px",
@@ -2026,7 +2051,7 @@ export default function MultipleSelectMaterialItemButton({
                                   fontSize: isSelected ? "20px" : "22px",
                                   fontWeight: 600,
                                   flexShrink: 0,
-                                  pointerEvents: "none",
+                                  cursor: "pointer",
                                 }}
                               >
                                 {isSelected ? "×" : "+"}

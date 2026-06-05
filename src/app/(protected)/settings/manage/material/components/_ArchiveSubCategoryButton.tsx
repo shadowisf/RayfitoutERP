@@ -21,6 +21,8 @@ export default function ArchiveSubCategoryButton({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
+  const isEmpty = itemCount === 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -28,47 +30,58 @@ export default function ArchiveSubCategoryButton({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "archiveSubCategory",
+          action: isEmpty ? "deleteMaterialSubCategory" : "archiveSubCategory",
           id: subCategoryId,
         }),
       });
       if (!res.ok) throw new Error();
       toast(
-        `${itemCount} material${itemCount !== 1 ? "s" : ""} archived.`,
+        isEmpty
+          ? `Subcategory "${subCategoryName}" deleted.`
+          : `${itemCount} material${itemCount !== 1 ? "s" : ""} archived.`,
         "success",
       );
       setIsOpen(false);
       onSuccess();
     } catch {
-      toast("Failed to archive subcategory.", "error");
+      toast(
+        isEmpty
+          ? "Failed to delete subcategory."
+          : "Failed to archive subcategory.",
+        "error",
+      );
     }
   };
 
   const modal = isOpen && (
     <FormPopUp
-      header="ARCHIVE SUBCATEGORY"
+      header={isEmpty ? "DELETE SUBCATEGORY" : "ARCHIVE SUBCATEGORY"}
       setIsOpen={setIsOpen}
       handleSubmit={handleSubmit}
       addButtonLabel="CONFIRM"
     >
-      <p>
-        Are you sure you want to archive all{" "}
-        <strong>
-          {itemCount} material{itemCount !== 1 ? "s" : ""}
-        </strong>{" "}
-        in subcategory <strong>{subCategoryName}</strong>?
-      </p>
+      {isEmpty ? (
+        <>
+          <p>
+            Are you sure you want to delete the empty subcategory{" "}
+            <strong>{subCategoryName}</strong>?
+          </p>
 
-      <br />
+          <br />
 
-      <p
-        style={{
-          color: "rgba(200,60,60,1)",
-          fontWeight: 600,
-        }}
-      >
-        This action cannot be undone.
-      </p>
+          <p style={{ color: "rgba(200,60,60,1)", fontWeight: 600 }}>
+            This action cannot be undone.
+          </p>
+        </>
+      ) : (
+        <p>
+          Are you sure you want to archive all{" "}
+          <strong>
+            {itemCount} material{itemCount !== 1 ? "s" : ""}
+          </strong>{" "}
+          in subcategory <strong>{subCategoryName}</strong>?
+        </p>
+      )}
     </FormPopUp>
   );
 

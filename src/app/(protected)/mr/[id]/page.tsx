@@ -4,6 +4,7 @@ import CreateJoLineClient from "./components/CreateJoLine";
 import DeleteMrHeaderButton from "./components/department/_DeleteMrHeaderButton";
 import EditMrHeaderButton from "./components/department/_EditMrHeaderButton";
 import MrLinesView from "./components/MrLinesView";
+import { prefetchMrViewData } from "./utils/prefetchMrViewData";
 import JoLinesView from "./components/JoLinesView";
 import PrLinesView from "./components/PrLinesView";
 import { MrHeader } from "./types/mrHeader";
@@ -165,6 +166,35 @@ export default async function MrWithID({
     });
 
   const { duration, durationStyle, hoursDecimal } = durationData;
+
+  // Fetch timeline data server-side so RequisitionTimeline renders without a loading flash
+  const [progressLog, boqCheckData] = await Promise.all([
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getProgressLog`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mr_header_id: id, lpo_id: null }),
+    })
+      .then((r) => r.json())
+      .catch(() => []),
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/checkBoqReference`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mr_header_id: id }),
+    })
+      .then((r) => r.json())
+      .catch(() => ({})),
+  ]);
+
+  // Pre-fetch all MrLinesView data so it's ready before the skeleton disappears
+  const mrViewInitialData =
+    !effectiveIsJobOrder && !isPaymentRequest && Object.keys(mrLines).length > 0
+      ? await prefetchMrViewData(
+          mrLines as any,
+          mrHeader.id,
+          mrHeader.progress_id,
+          process.env.NEXT_PUBLIC_BASE_URL ?? "",
+        )
+      : {};
 
   // Flag color logic — same as in the Kanban list view
   const getFlagColor = (hours: number, progress_id: number): string => {
@@ -695,6 +725,10 @@ export default async function MrWithID({
           mrHeader.department_id === 8 ||
           mrHeader.department_id === 16
         }
+        initialProgressLog={progressLog}
+        initialHasBoqReference={boqCheckData?.hasBoqReference ?? false}
+        initialHasItemAvailable={boqCheckData?.hasItemAvailable ?? false}
+        initialHasNeedOrder={boqCheckData?.hasNeedOrder ?? true}
       />
 
       <br />
@@ -712,7 +746,7 @@ export default async function MrWithID({
           />
         )
       ) : mrLines && Object.keys(mrLines).length > 0 ? (
-        <MrLinesView mrLines={mrLines} mrHeader={mrHeader} />
+        <MrLinesView mrLines={mrLines} mrHeader={mrHeader} initialData={mrViewInitialData} />
       ) : (
         <CreateMrLineClient
           mrHeaderID={mrHeader.id}
