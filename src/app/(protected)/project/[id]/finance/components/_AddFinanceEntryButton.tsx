@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
+import InputItem from "@/app/components/InputItem";
 
 type EntryType = "revenue" | "expense";
 
@@ -127,194 +128,79 @@ export default function AddFinanceEntryButton({
             addButtonLabel="ADD"
             haveLoadingState
           >
-            {/* TYPE */}
-            <div style={{ marginBottom: "20px" }}>
-              <small
-                style={{
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  color: "rgba(120,120,120,1)",
-                }}
-              >
-                {label} TYPE
-              </small>
-              <select
+            <div className="input-row half">
+              <InputItem
+                label={`${label} TYPE`}
+                type="select"
                 value={type}
                 onChange={(e) =>
                   setType(e.target.value as "one_time" | "recurring")
                 }
-                style={{
-                  width: "100%",
-                  marginTop: "6px",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(217,217,217,1)",
-                  backgroundColor: "white",
-                }}
-              >
-                <option value="one_time">ONE TIME</option>
-                <option value="recurring">RECURRING</option>
-              </select>
-            </div>
-
-            {/* NAME */}
-            <div style={{ marginBottom: "20px" }}>
-              <small
-                style={{
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  color: "rgba(120,120,120,1)",
-                }}
-              >
-                {label} NAME
-              </small>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{
-                  width: "100%",
-                  marginTop: "6px",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(217,217,217,1)",
-                  boxSizing: "border-box",
-                }}
+                required
+                noOptionalLabel
+                dbMap={
+                  <>
+                    <option value="one_time">ONE TIME</option>
+                    <option value="recurring">RECURRING</option>
+                  </>
+                }
+              />
+              <InputItem
+                label="AMOUNT"
+                type="text postfix"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="000"
+                postfixText="AED"
+                required
               />
             </div>
 
-            {/* AMOUNT */}
-            <div style={{ marginBottom: type === "recurring" ? "20px" : "0" }}>
-              <small
-                style={{
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  color: "rgba(120,120,120,1)",
-                }}
-              >
-                AMOUNT
-              </small>
-              <div style={{ position: "relative", marginTop: "6px" }}>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="000"
-                  style={{
-                    width: "100%",
-                    padding: "10px 50px 10px 10px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(217,217,217,1)",
-                    boxSizing: "border-box",
-                  }}
-                />
-                <span
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "rgba(150,150,150,1)",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                  }}
-                >
-                  AED
-                </span>
-              </div>
+            <div className="input-row full">
+              <InputItem
+                label={`${label} NAME`}
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
             </div>
 
-            {/* RECURRING FIELDS */}
             {type === "recurring" && (
               <>
-                <div style={{ marginBottom: "20px" }}>
-                  <small
-                    style={{
-                      textTransform: "uppercase",
-                      fontWeight: 600,
-                      color: "rgba(120,120,120,1)",
-                    }}
-                  >
-                    FREQUENCY
-                  </small>
-                  <select
+                <div className="input-row full">
+                  <InputItem
+                    label="FREQUENCY"
+                    type="select"
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
-                    style={{
-                      width: "100%",
-                      marginTop: "6px",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(217,217,217,1)",
-                      backgroundColor: "white",
-                    }}
-                  >
-                    <option value="">SELECT FREQUENCY</option>
-                    {FREQUENCIES.map((f) => (
-                      <option key={f} value={f}>
-                        {f.charAt(0).toUpperCase() + f.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+                    required
+                    dbMap={
+                      <>
+                        <option value="">SELECT FREQUENCY</option>
+                        {FREQUENCIES.map((f) => (
+                          <option key={f} value={f}>
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                          </option>
+                        ))}
+                      </>
+                    }
+                  />
                 </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "16px",
-                  }}
-                >
-                  <div>
-                    <small
-                      style={{
-                        textTransform: "uppercase",
-                        fontWeight: 600,
-                        color: "rgba(120,120,120,1)",
-                      }}
-                    >
-                      START DATE (OPTIONAL)
-                    </small>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      style={{
-                        width: "100%",
-                        marginTop: "6px",
-                        padding: "10px",
-                        borderRadius: "8px",
-                        border: "1px solid rgba(217,217,217,1)",
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <small
-                      style={{
-                        textTransform: "uppercase",
-                        fontWeight: 600,
-                        color: "rgba(120,120,120,1)",
-                      }}
-                    >
-                      END DATE (OPTIONAL)
-                    </small>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      style={{
-                        width: "100%",
-                        marginTop: "6px",
-                        padding: "10px",
-                        borderRadius: "8px",
-                        border: "1px solid rgba(217,217,217,1)",
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
+                <div className="input-row half">
+                  <InputItem
+                    label="START DATE"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <InputItem
+                    label="END DATE"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
                 </div>
               </>
             )}
