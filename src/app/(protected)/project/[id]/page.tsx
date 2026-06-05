@@ -582,7 +582,16 @@ export default function ProjectWithID() {
               <h2>{project?.type}</h2>
             </div>
           </div>
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Button
+              componentType="link"
+              href={`/project/${id}/finance`}
+              bgColor="black"
+              borderColor="black"
+              textColor="white"
+            >
+              FINANCIAL ANALYTICS
+            </Button>
             {(userInfo?.departmentID === 8 ||
               userInfo?.departmentID === 16) && (
               <>
@@ -772,20 +781,36 @@ export default function ProjectWithID() {
               onDelete={() => {}}
             />
             {/* Search bar */}
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={boqSearch}
-              onChange={(e) => setBoqSearch(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid rgba(211,211,211,1)",
-                borderRadius: "6px",
-                fontSize: "12px",
-                outline: "none",
-                width: "200px",
-              }}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                placeholder="SEARCH"
+                value={boqSearch}
+                onChange={(e) => setBoqSearch(e.target.value)}
+                style={{
+                  padding: "8px 32px 8px 12px",
+                  border: "1px solid rgba(211,211,211,1)",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  outline: "none",
+                  width: "200px",
+                }}
+              />
+              <img
+                src="/icons/search.svg"
+                alt="search"
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "14px",
+                  height: "14px",
+                  opacity: 0.5,
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
             {(userInfo?.departmentID === 8 ||
               userInfo?.departmentID === 16) && (
               <CreateBoqHeaderButton
@@ -1288,20 +1313,36 @@ export default function ProjectWithID() {
                   </>
                 )}
               </div>
-              <input
-                type="text"
-                placeholder="SEARCH"
-                value={mrSearch}
-                onChange={(e) => setMrSearch(e.target.value)}
-                style={{
-                  padding: "8px 12px",
-                  border: "1px solid rgba(211,211,211,1)",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  outline: "none",
-                  width: "200px",
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type="text"
+                  placeholder="SEARCH"
+                  value={mrSearch}
+                  onChange={(e) => setMrSearch(e.target.value)}
+                  style={{
+                    padding: "8px 32px 8px 12px",
+                    border: "1px solid rgba(211,211,211,1)",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    outline: "none",
+                    width: "200px",
+                  }}
+                />
+                <img
+                  src="/icons/search.svg"
+                  alt="search"
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "14px",
+                    height: "14px",
+                    opacity: 0.5,
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
             </div>
 
             {filteredMrs?.length === 0 ? (
@@ -1544,20 +1585,36 @@ export default function ProjectWithID() {
                   </>
                 )}
               </div>
-              <input
-                type="text"
-                placeholder="SEARCH"
-                value={joSearch}
-                onChange={(e) => setJoSearch(e.target.value)}
-                style={{
-                  padding: "8px 12px",
-                  border: "1px solid rgba(211,211,211,1)",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  outline: "none",
-                  width: "200px",
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type="text"
+                  placeholder="SEARCH"
+                  value={joSearch}
+                  onChange={(e) => setJoSearch(e.target.value)}
+                  style={{
+                    padding: "8px 32px 8px 12px",
+                    border: "1px solid rgba(211,211,211,1)",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    outline: "none",
+                    width: "200px",
+                  }}
+                />
+                <img
+                  src="/icons/search.svg"
+                  alt="search"
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "14px",
+                    height: "14px",
+                    opacity: 0.5,
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
             </div>
 
             {filteredJobOrders?.length === 0 ? (

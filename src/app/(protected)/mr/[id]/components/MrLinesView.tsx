@@ -61,6 +61,7 @@ import AddMrLineAttachment from "./department/_AddMrLineAttachment";
 import MobileBrandSpecsEditor from "./department/_MobileBrandSpecsEditor";
 import DepartmentActionsButton from "./department/_DepartmentActionsButton";
 import { useRefresh } from "@/app/context/RefreshContext";
+import TableHeaderTooltipHover from "@/app/components/TableHeaderTooltipHover";
 
 type GroupedMrLines = {
   [category: string]: {
@@ -255,6 +256,7 @@ export default function MrLinesView({
     project_name: string;
     vendor_name: string;
     unit_price: number;
+    requested_by?: string;
   };
   const [hoveredLowestDesc, setHoveredLowestDesc] = useState<string | null>(
     null,
@@ -358,6 +360,70 @@ export default function MrLinesView({
       fetchPriceHoverDetail(materialDesc, "prev");
     },
     [materialPriceStats, cancelPrevHideTimer, fetchPriceHoverDetail],
+  );
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Material history hover popup ──────────────────────────────────────────
+  type MaterialHistoryRow = {
+    lpo_id: number;
+    mr_header_id: number;
+    project_name: string;
+    supplier_name: string | null;
+    unit_price: number | null;
+    requested_by?: string;
+  };
+  const [hoveredMaterialDesc, setHoveredMaterialDesc] = useState<string | null>(
+    null,
+  );
+  const [hoveredMaterialRect, setHoveredMaterialRect] =
+    useState<DOMRect | null>(null);
+  const [materialHistoryCache, setMaterialHistoryCache] = useState<
+    Record<string, MaterialHistoryRow[] | "loading">
+  >({});
+  const materialHideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const startMaterialHideTimer = useCallback(() => {
+    if (materialHideTimer.current) clearTimeout(materialHideTimer.current);
+    materialHideTimer.current = setTimeout(() => {
+      setHoveredMaterialDesc(null);
+      setHoveredMaterialRect(null);
+    }, 120);
+  }, []);
+
+  const cancelMaterialHideTimer = useCallback(() => {
+    if (materialHideTimer.current) {
+      clearTimeout(materialHideTimer.current);
+      materialHideTimer.current = null;
+    }
+  }, []);
+
+  const fetchMaterialHistory = useCallback(
+    async (desc: string) => {
+      if (materialHistoryCache[desc] !== undefined) return;
+      setMaterialHistoryCache((prev) => ({ ...prev, [desc]: "loading" }));
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialLPOHistory?material=${encodeURIComponent(desc)}`,
+        );
+        const data: MaterialHistoryRow[] = res.ok ? await res.json() : [];
+        setMaterialHistoryCache((prev) => ({ ...prev, [desc]: data }));
+      } catch {
+        setMaterialHistoryCache((prev) => ({ ...prev, [desc]: [] }));
+      }
+    },
+    [materialHistoryCache],
+  );
+
+  const handleMaterialEnter = useCallback(
+    (e: React.MouseEvent, desc: string) => {
+      cancelMaterialHideTimer();
+      setHoveredMaterialDesc(desc);
+      setHoveredMaterialRect(
+        (e.currentTarget as HTMLElement).getBoundingClientRect(),
+      );
+      fetchMaterialHistory(desc);
+    },
+    [cancelMaterialHideTimer, fetchMaterialHistory],
   );
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -3694,7 +3760,44 @@ export default function MrLinesView({
                                       </th>
                                       {mrHeader.progress_id === 1 && (
                                         <th style={{ width: "150px" }}>
-                                          INVENTORY STATUS
+                                          <span
+                                            style={{
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              gap: "5px",
+                                            }}
+                                          >
+                                            INVENTORY STATUS
+                                            <TableHeaderTooltipHover
+                                              width={320}
+                                            >
+                                              <strong>Exact Match:</strong>
+                                              <br />
+                                              The system uses unique material ID
+                                              references to search the inventory
+                                              database for the exact requested
+                                              material, even if it exists under
+                                              a different inventory name or
+                                              description.
+                                              <br />
+                                              <br />
+                                              <strong>Similar Match:</strong>
+                                              <br />
+                                              The system searches for the
+                                              closest matching inventory items
+                                              based on material names, keywords,
+                                              and character similarity to help
+                                              identify possible alternatives or
+                                              related stock.
+                                              <br />
+                                              <br />
+                                              <strong>No Match:</strong>
+                                              <br />
+                                              The system could not find any
+                                              matching or similar inventory
+                                              items for the requested material.
+                                            </TableHeaderTooltipHover>
+                                          </span>
                                         </th>
                                       )}
                                       {mrHeader.progress_id >= 9 ? (
@@ -4006,7 +4109,22 @@ export default function MrLinesView({
                                                 }}
                                               >
                                                 <div>
-                                                  {item.material_description}
+                                                  <span
+                                                    style={{
+                                                      cursor: "default",
+                                                    }}
+                                                    onMouseEnter={(e) =>
+                                                      handleMaterialEnter(
+                                                        e,
+                                                        item.material_description,
+                                                      )
+                                                    }
+                                                    onMouseLeave={
+                                                      startMaterialHideTimer
+                                                    }
+                                                  >
+                                                    {item.material_description}
+                                                  </span>
                                                   {item.qs_review_type ===
                                                     "item_available" &&
                                                     mrHeader.progress_id <= 4 &&
@@ -8002,7 +8120,9 @@ export default function MrLinesView({
                 hasIncompleteLines()
               }
               style={
-                hasIncompleteLines() && !hasAnyRejectedItems() && !hasAnyQSRejectedItems()
+                hasIncompleteLines() &&
+                !hasAnyRejectedItems() &&
+                !hasAnyQSRejectedItems()
                   ? { cursor: "not-allowed" }
                   : undefined
               }
@@ -8334,6 +8454,9 @@ export default function MrLinesView({
                   }}
                 >
                   <div style={{ padding: "12px" }}>
+                    <h4 style={{ marginBottom: "12px" }}>
+                      {type === "lowest" ? "LOWEST PRICE" : "PREVIOUS PRICE"}
+                    </h4>
                     {row === "loading" || row === undefined ? (
                       <div
                         style={{
@@ -8355,14 +8478,25 @@ export default function MrLinesView({
                             <th>LPO NUMBER</th>
                             <th>PROJECT</th>
                             <th>VENDOR</th>
-                            <th>PRICE</th>
-                            <th></th>
+                            <th>REQUESTER</th>
+                            <th>UNIT PRICE</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
                             <td style={{ whiteSpace: "nowrap" }}>
-                              LPO-{String(row.lpo_id).padStart(5, "0")}
+                              <a
+                                href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: "rgba(37,150,190,1)",
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                }}
+                              >
+                                LPO-{String(row.lpo_id).padStart(5, "0")}
+                              </a>
                             </td>
                             <td style={{ whiteSpace: "nowrap" }}>
                               {row.project_name}
@@ -8370,29 +8504,11 @@ export default function MrLinesView({
                             <td style={{ whiteSpace: "nowrap" }}>
                               {row.vendor_name}
                             </td>
-                            <td
-                              style={{
-                                whiteSpace: "nowrap",
-                                fontWeight: 600,
-                                color: "rgba(2,122,70,1)",
-                              }}
-                            >
-                              {formatPriceAED(row.unit_price)}
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {row.requested_by ?? "—"}
                             </td>
-                            <td>
-                              <Button
-                                componentType={"link"}
-                                bgColor={"rgba(239, 239, 239, 1)"}
-                                borderColor={"rgba(223, 223, 223, 1)"}
-                                textColor={"black"}
-                                style={{ padding: "7px 7px" }}
-                                href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
-                              >
-                                <img
-                                  src="/icons/external-link.svg"
-                                  alt="open"
-                                />
-                              </Button>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {formatPriceAED(row.unit_price)}
                             </td>
                           </tr>
                         </tbody>
@@ -8404,6 +8520,135 @@ export default function MrLinesView({
             })()
           : null,
       )}
+      {/* ── Material history hover popup ──────────────────────────────────── */}
+      {hoveredMaterialDesc &&
+        hoveredMaterialRect &&
+        (() => {
+          const rows = materialHistoryCache[hoveredMaterialDesc];
+          const PREVIEW = 9;
+          const spaceBelow = window.innerHeight - hoveredMaterialRect.bottom;
+          const popupHeight = 300;
+          const top =
+            spaceBelow >= popupHeight + 8
+              ? hoveredMaterialRect.bottom + 4
+              : hoveredMaterialRect.top - popupHeight - 4;
+          const spaceRight = window.innerWidth - hoveredMaterialRect.left;
+          const left =
+            spaceRight >= 500
+              ? hoveredMaterialRect.left
+              : Math.max(8, window.innerWidth - 500);
+          return (
+            <div
+              key="material-history"
+              onMouseEnter={cancelMaterialHideTimer}
+              onMouseLeave={startMaterialHideTimer}
+              style={{
+                position: "fixed",
+                left,
+                top: Math.max(8, top),
+                backgroundColor: "white",
+                border: "1px solid rgba(223,223,223,1)",
+                borderRadius: "10px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                zIndex: 10000,
+                width: "auto",
+                whiteSpace: "nowrap",
+                padding: "16px",
+              }}
+            >
+              <h4 style={{ marginBottom: "12px" }}>PURCHASE HISTORY</h4>
+              {rows === "loading" || rows === undefined ? (
+                <div
+                  style={{
+                    padding: "16px",
+                    textAlign: "center",
+                    color: "rgba(128,128,128,1)",
+                    fontSize: "13px",
+                  }}
+                >
+                  Loading...
+                </div>
+              ) : rows.length === 0 ? (
+                <div>No purchase history found.</div>
+              ) : (
+                <table
+                  className="items-table popup-hover"
+                  style={{ width: "100%" }}
+                >
+                  <thead>
+                    <tr>
+                      <th>LPO NUMBER</th>
+                      <th>PROJECT</th>
+                      <th>VENDOR</th>
+                      <th>REQUESTER</th>
+                      <th>UNIT PRICE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.slice(0, PREVIEW).map((row, i) => (
+                      <tr key={`${row.lpo_id}-${i}`}>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <a
+                            href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: "rgba(37,150,190,1)",
+                              fontWeight: 600,
+                              textDecoration: "none",
+                            }}
+                          >
+                            LPO-{String(row.lpo_id).padStart(5, "0")}
+                          </a>
+                        </td>
+                        <td>{row.project_name}</td>
+                        <td>{row.supplier_name ?? "—"}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          {row.requested_by ?? "—"}
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          {row.unit_price != null
+                            ? formatPriceAED(row.unit_price)
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {(rows.length > PREVIEW || rows.length > 0) && (
+                    <tfoot>
+                      <tr>
+                        <td colSpan={3}>
+                          {rows.length > PREVIEW && (
+                            <a
+                              href={`/mr?material=${encodeURIComponent(hoveredMaterialDesc)}`}
+                              style={{
+                                color: "rgba(37,150,190,1)",
+                                fontSize: "11px",
+                                textDecoration: "none",
+                              }}
+                            >
+                              ...and {rows.length - PREVIEW} more purchase
+                              {rows.length - PREVIEW !== 1 ? "s" : ""}
+                            </a>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 700 }}>TOTAL</td>
+                        <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+                          {formatPriceAED(
+                            rows.reduce(
+                              (sum, r) => sum + (r.unit_price ?? 0),
+                              0,
+                            ),
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              )}
+            </div>
+          );
+        })()}
     </>
   );
 }

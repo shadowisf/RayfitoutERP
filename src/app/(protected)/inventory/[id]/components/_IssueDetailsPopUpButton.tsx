@@ -190,10 +190,10 @@ export default function TransactionDetailsPopUpButton({
                   {/* ✅ Updated to show multiple BOQ items */}
                   <h3>
                     {transaction?.boq_items && transaction.boq_items.length > 0
-                      ? transaction.boq_items.length === 1
-                        ? transaction.boq_items[0].boq_item_number
-                        : `${transaction.boq_items.length} BOQ ITEMS`
-                      : "-"}
+                    ? transaction.boq_items
+                        .map((b: any) => b.boq_item_number)
+                        .join(", ")
+                    : "-"}
                   </h3>
                 </div>
                 <div>

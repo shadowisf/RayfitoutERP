@@ -26,12 +26,16 @@ export async function GET(req: NextRequest) {
          vml.unit,
          ROUND(lml.unit_price, 2)                      AS unit_price,
          DATE_FORMAT(l.created_at, '%d/%m/%Y')         AS date,
-         s.name                                        AS supplier_name
+         s.name                                        AS supplier_name,
+         COALESCE(p.name, '—')                         AS project_name,
+         COALESCE(mh.requested_by, '—')               AS requested_by
        FROM lpo_mr_line  lml
        JOIN lpo          l   ON lml.lpo_id        = l.id
        JOIN vw_mr_lines  vml ON lml.mr_line_id    = vml.id
        JOIN mr_lines     ml  ON ml.id             = vml.id
-       LEFT JOIN suppliers s ON l.supplier_id     = s.id
+       LEFT JOIN suppliers  s  ON l.supplier_id   = s.id
+       LEFT JOIN mr_headers mh ON l.mr_header_id  = mh.id
+       LEFT JOIN projects   p  ON mh.project_id   = p.id
        LEFT JOIN lut_predefined_items pi ON pi.id = ml.predefined_item_id
        WHERE vml.material_description = ?
          AND l.progress_id NOT IN (13)
@@ -53,6 +57,8 @@ export async function GET(req: NextRequest) {
       unit_price: row.unit_price != null ? Number(row.unit_price) : null,
       date: row.date ?? null,
       supplier_name: row.supplier_name ?? null,
+      project_name: row.project_name ?? "—",
+      requested_by: row.requested_by ?? "—",
     }));
 
     return NextResponse.json(data, { status: 200 });

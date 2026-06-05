@@ -3,7 +3,7 @@
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import { useRouter } from "next/navigation";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { SupplierQuotation } from "../../types/supplierQuotation";
 import { toast } from "@/app/components/Toast";
@@ -13,6 +13,7 @@ import { MrLine } from "../../types/mrLine";
 import SupplierDetailsPopUp from "../../../components/SupplierDetailsPopUp";
 import { formatPriceAED } from "@/lib/formatPrice";
 import { useRefresh } from "@/app/context/RefreshContext";
+import TableHeaderTooltipHover from "@/app/components/TableHeaderTooltipHover";
 
 type PriceApprovalButtonProps = {
   progressID: number;
@@ -91,11 +92,86 @@ export default function PriceApprovalButton({
     | null
   >(null);
 
+  // Price hover popup state
+  type PriceHoverRow = {
+    lpo_id: number;
+    mr_header_id: number;
+    project_name: string;
+    vendor_name: string;
+    unit_price: number;
+  };
+  const [hoveredLowestRect, setHoveredLowestRect] = useState<DOMRect | null>(
+    null,
+  );
+  const [hoveredPrevRect, setHoveredPrevRect] = useState<DOMRect | null>(null);
+  const [priceHoverCache, setPriceHoverCache] = useState<
+    Record<
+      string,
+      {
+        lowest?: PriceHoverRow | "loading" | null;
+        prev?: PriceHoverRow | "loading" | null;
+      }
+    >
+  >({});
+  const lowestHideTimer = useRef<NodeJS.Timeout | null>(null);
+  const prevHideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const startLowestHideTimer = useCallback(() => {
+    if (lowestHideTimer.current) clearTimeout(lowestHideTimer.current);
+    lowestHideTimer.current = setTimeout(() => setHoveredLowestRect(null), 120);
+  }, []);
+  const cancelLowestHideTimer = useCallback(() => {
+    if (lowestHideTimer.current) {
+      clearTimeout(lowestHideTimer.current);
+      lowestHideTimer.current = null;
+    }
+  }, []);
+  const startPrevHideTimer = useCallback(() => {
+    if (prevHideTimer.current) clearTimeout(prevHideTimer.current);
+    prevHideTimer.current = setTimeout(() => setHoveredPrevRect(null), 120);
+  }, []);
+  const cancelPrevHideTimer = useCallback(() => {
+    if (prevHideTimer.current) {
+      clearTimeout(prevHideTimer.current);
+      prevHideTimer.current = null;
+    }
+  }, []);
+  const fetchPriceHoverDetail = useCallback(
+    async (desc: string, type: "lowest" | "prev") => {
+      if (priceHoverCache[desc]?.[type] !== undefined) return;
+      setPriceHoverCache((prev) => ({
+        ...prev,
+        [desc]: { ...prev[desc], [type]: "loading" },
+      }));
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialPriceHoverDetail?material=${encodeURIComponent(desc)}&type=${type}`,
+        );
+        const data = res.ok ? await res.json() : null;
+        setPriceHoverCache((prev) => ({
+          ...prev,
+          [desc]: { ...prev[desc], [type]: data },
+        }));
+      } catch {
+        setPriceHoverCache((prev) => ({
+          ...prev,
+          [desc]: { ...prev[desc], [type]: null },
+        }));
+      }
+    },
+    [priceHoverCache],
+  );
+
   // Budget est. column: BOQ lines + existing spend per BOQ line
   const [boqLinesForBudget, setBoqLinesForBudget] = useState<
     {
       id: number;
       item_number: string;
+      item_name: string;
+      item_description: string | null;
+      location: string | null;
+      scope_of_work: string | null;
+      boq_id: number;
       rate_per_quantity: number;
       quantity: number;
       unit: string;
@@ -128,6 +204,14 @@ export default function PriceApprovalButton({
     useState<SupplierQuotation | null>(null);
   const [cheaperOptionOpen, setCheaperOptionOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [showInventoryMatchConfirm, setShowInventoryMatchConfirm] =
+    useState(false);
+  const [showBudgetOverrunConfirm, setShowBudgetOverrunConfirm] =
+    useState(false);
+  // Accurate item numbers for the budget popup (keyed by BOQ line id)
+  const [accurateBoqNumbers, setAccurateBoqNumbers] = useState<
+    Record<number, string>
+  >({});
 
   // Fixed-position tooltip for BUDGET EST. progress bars
   const [boqBarTooltip, setBoqBarTooltip] = useState<{
@@ -156,6 +240,29 @@ export default function PriceApprovalButton({
       setPortalContainer(container);
     }
   }, [isSmartSelectPortal, portalTargetId]);
+
+  // Use the GET endpoint which has the correct ORDER BY (category_order,
+  // subcategory_order, item_order). The POST endpoint lacks ORDER BY so its
+  // computed item numbers are non-deterministic. Filter to this project client-side.
+  useEffect(() => {
+    if (!isOpen || !mrLine.project_id) return;
+    fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getAllBoqLinesWithNumberRef`,
+    )
+      .then((r) => (r.ok ? r.json() : []))
+      .then(
+        (rows: { id: number; project_id: number; item_number: string }[]) => {
+          const map: Record<number, string> = {};
+          rows
+            .filter((r) => r.project_id === mrLine.project_id)
+            .forEach((r) => {
+              map[r.id] = r.item_number;
+            });
+          setAccurateBoqNumbers(map);
+        },
+      )
+      .catch(() => {});
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isOpen || !mrLine?.material_description) return;
@@ -199,7 +306,6 @@ export default function PriceApprovalButton({
     async function fetchBoqLinesForBudget() {
       if (!mrLine.id) return;
       try {
-        // Directly query jt_mr_lines_boq_lines for this MR line
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getBoqLinesByMrLineID`,
           {
@@ -209,19 +315,12 @@ export default function PriceApprovalButton({
           },
         );
         if (!res.ok) return;
-        const lines: {
-          id: number;
-          item_number: string;
-          rate_per_quantity: number;
-          quantity: number;
-          unit: string;
-          allocated_qty: number | null;
-        }[] = await res.json();
+        const lines = await res.json();
         setBoqLinesForBudget(lines);
 
         // Fetch existing spend (purchase history) for each BOQ line in parallel
         const spendEntries = await Promise.all(
-          lines.map(async (b) => {
+          lines.map(async (b: { id: number }) => {
             try {
               const r = await fetch(
                 `${process.env.NEXT_PUBLIC_BASE_URL}/api/boq/getPurchaseHistoryByBoqLineID`,
@@ -510,24 +609,21 @@ export default function PriceApprovalButton({
     await refresh();
   }
 
-  async function handleApproveSupplierAndQuotation(e: React.FormEvent) {
-    e.preventDefault();
+  function getOverBudgetLines(quotation: SupplierQuotation) {
+    return boqLinesForBudget
+      .map((boq) => {
+        const allocQty = boq.allocated_qty ?? 0;
+        const itemBudget = boq.rate_per_quantity * boq.quantity;
+        const existing = boqExistingSpend[boq.id] ?? 0;
+        const vendorCost = allocQty * Number(quotation.unit_price);
+        const totalCost = existing + vendorCost;
+        const pnl = itemBudget - totalCost;
+        return { boq, existing, vendorCost, itemBudget, totalCost, pnl };
+      })
+      .filter(({ pnl }) => pnl < 0);
+  }
 
-    const selectedQuotation = supplierQuotations.find(
-      (q) => q.id === Number(selectedQuotationID),
-    );
-
-    if (!selectedQuotation) {
-      toast("Please select a vendor", "error");
-      return;
-    }
-
-    console.log("📝 Approving quotation:", {
-      quotation_id: selectedQuotation.id,
-      mr_line_id: mrLine.id,
-      supplier_id: selectedQuotation.supplier_id,
-    });
-
+  async function doApprove(selectedQuotation: SupplierQuotation) {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/supplier`,
       {
@@ -548,12 +644,42 @@ export default function PriceApprovalButton({
         "success",
       );
       setIsOpen(false);
+      setShowInventoryMatchConfirm(false);
+      setShowBudgetOverrunConfirm(false);
       setRejectText("");
       fetchQuotations();
       await refresh();
     } else {
       toast("Failed to approve vendor and quotation", "error");
     }
+  }
+
+  async function handleApproveSupplierAndQuotation(e: React.FormEvent) {
+    e.preventDefault();
+
+    const selectedQuotation = supplierQuotations.find(
+      (q) => q.id === Number(selectedQuotationID),
+    );
+
+    if (!selectedQuotation) {
+      toast("Please select a vendor", "error");
+      return;
+    }
+
+    const hasExactMatch = inventoryMatches?.some(
+      (m) => m.match_type === "exact",
+    );
+    if (hasExactMatch) {
+      setShowInventoryMatchConfirm(true);
+      return;
+    }
+
+    if (getOverBudgetLines(selectedQuotation).length > 0) {
+      setShowBudgetOverrunConfirm(true);
+      return;
+    }
+
+    await doApprove(selectedQuotation);
   }
 
   async function handleRejectAll(e: React.FormEvent) {
@@ -913,7 +1039,6 @@ export default function PriceApprovalButton({
                           />
                           <span
                             style={{
-                              fontSize: "13px",
                               fontWeight: 600,
                               color: "rgba(220,38,38,1)",
                               textDecoration: "underline",
@@ -962,17 +1087,42 @@ export default function PriceApprovalButton({
                       >
                         <div
                           className="skeleton-pulse"
-                          style={{ height: "18px", borderRadius: "6px", width: "70%", marginBottom: "8px" }}
+                          style={{
+                            height: "18px",
+                            borderRadius: "6px",
+                            width: "70%",
+                            marginBottom: "8px",
+                          }}
                         />
                         <div
                           className="skeleton-pulse"
-                          style={{ height: "12px", borderRadius: "6px", width: "45%", marginBottom: "36px" }}
+                          style={{
+                            height: "12px",
+                            borderRadius: "6px",
+                            width: "45%",
+                            marginBottom: "36px",
+                          }}
                         />
                         <div style={{ display: "flex", gap: "32px" }}>
                           {[1, 2, 3].map((i) => (
                             <div key={i}>
-                              <div className="skeleton-pulse" style={{ height: "10px", borderRadius: "4px", width: "60px", marginBottom: "6px" }} />
-                              <div className="skeleton-pulse" style={{ height: "16px", borderRadius: "4px", width: "80px" }} />
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "10px",
+                                  borderRadius: "4px",
+                                  width: "60px",
+                                  marginBottom: "6px",
+                                }}
+                              />
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "16px",
+                                  borderRadius: "4px",
+                                  width: "80px",
+                                }}
+                              />
                             </div>
                           ))}
                         </div>
@@ -982,17 +1132,60 @@ export default function PriceApprovalButton({
                         <thead>
                           <tr>
                             {[70, 50, 60, 55].map((w, idx) => (
-                              <th key={idx}><div className="skeleton-pulse" style={{ height: "10px", borderRadius: "4px", width: `${w}%` }} /></th>
+                              <th key={idx}>
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "10px",
+                                    borderRadius: "4px",
+                                    width: `${w}%`,
+                                  }}
+                                />
+                              </th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {[1, 2, 3].map((i) => (
                             <tr key={i}>
-                              <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px" }} /></td>
-                              <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px", width: "60px" }} /></td>
-                              <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px" }} /></td>
-                              <td><div className="skeleton-pulse" style={{ height: "22px", borderRadius: "25px", width: "90px" }} /></td>
+                              <td>
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "14px",
+                                    borderRadius: "4px",
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "14px",
+                                    borderRadius: "4px",
+                                    width: "60px",
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "14px",
+                                    borderRadius: "4px",
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "22px",
+                                    borderRadius: "25px",
+                                    width: "90px",
+                                  }}
+                                />
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1004,25 +1197,121 @@ export default function PriceApprovalButton({
                         <tr>
                           <th></th>
                           {[55, 60, 45, 50, 55, 65].map((w, idx) => (
-                            <th key={idx}><div className="skeleton-pulse" style={{ height: "10px", borderRadius: "4px", width: `${w}%` }} /></th>
+                            <th key={idx}>
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "10px",
+                                  borderRadius: "4px",
+                                  width: `${w}%`,
+                                }}
+                              />
+                            </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {[1, 2, 3].map((i) => (
                           <tr key={i}>
-                            <td><div className="skeleton-pulse" style={{ height: "14px", width: "14px", borderRadius: "50%" }} /></td>
-                            <td><div className="skeleton-pulse" style={{ height: "32px", borderRadius: "25px", width: "140px" }} /></td>
-                            <td><div className="skeleton-pulse" style={{ height: "32px", borderRadius: "25px", width: "120px" }} /></td>
-                            <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px", width: "60px" }} /></td>
-                            <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px", width: "80px" }} /></td>
-                            <td><div className="skeleton-pulse" style={{ height: "14px", borderRadius: "4px", width: "80px" }} /></td>
                             <td>
-                              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", rowGap: "20px", columnGap: "10px" }}>
-                                <div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "80px" }} />
-                                <div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px" }} />
-                                <div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px", width: "80px" }} />
-                                <div className="skeleton-pulse" style={{ height: "12px", borderRadius: "4px" }} />
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "14px",
+                                  width: "14px",
+                                  borderRadius: "50%",
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "32px",
+                                  borderRadius: "25px",
+                                  width: "140px",
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "32px",
+                                  borderRadius: "25px",
+                                  width: "120px",
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "14px",
+                                  borderRadius: "4px",
+                                  width: "60px",
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "14px",
+                                  borderRadius: "4px",
+                                  width: "80px",
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <div
+                                className="skeleton-pulse"
+                                style={{
+                                  height: "14px",
+                                  borderRadius: "4px",
+                                  width: "80px",
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "auto 1fr",
+                                  rowGap: "20px",
+                                  columnGap: "10px",
+                                }}
+                              >
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "12px",
+                                    borderRadius: "4px",
+                                    width: "80px",
+                                  }}
+                                />
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "12px",
+                                    borderRadius: "4px",
+                                  }}
+                                />
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "12px",
+                                    borderRadius: "4px",
+                                    width: "80px",
+                                  }}
+                                />
+                                <div
+                                  className="skeleton-pulse"
+                                  style={{
+                                    height: "12px",
+                                    borderRadius: "4px",
+                                  }}
+                                />
                               </div>
                             </td>
                           </tr>
@@ -1101,14 +1390,64 @@ export default function PriceApprovalButton({
                                 value: priceStats?.prev_price,
                               },
                             ] as const
-                          ).map(({ label, value }) => (
-                            <div key={label}>
-                              <small>{label}</small>
-                              <h3>
-                                {value != null ? formatPriceAED(value) : "N/A"}
-                              </h3>
-                            </div>
-                          ))}
+                          ).map(({ label, value }) => {
+                            const isLowest = label === "LOWEST PRICE";
+                            const isPrev = label === "PREV. PRICE";
+                            const hasHover =
+                              (isLowest && priceStats?.lowest_price != null) ||
+                              (isPrev && priceStats?.prev_price != null);
+                            return (
+                              <div
+                                key={label}
+                                onMouseEnter={
+                                  isLowest && priceStats?.lowest_price != null
+                                    ? (e) => {
+                                        cancelLowestHideTimer();
+                                        setHoveredLowestRect(
+                                          (
+                                            e.currentTarget as HTMLElement
+                                          ).getBoundingClientRect(),
+                                        );
+                                        fetchPriceHoverDetail(
+                                          mrLine.material_description,
+                                          "lowest",
+                                        );
+                                      }
+                                    : isPrev && priceStats?.prev_price != null
+                                      ? (e) => {
+                                          cancelPrevHideTimer();
+                                          setHoveredPrevRect(
+                                            (
+                                              e.currentTarget as HTMLElement
+                                            ).getBoundingClientRect(),
+                                          );
+                                          fetchPriceHoverDetail(
+                                            mrLine.material_description,
+                                            "prev",
+                                          );
+                                        }
+                                      : undefined
+                                }
+                                onMouseLeave={
+                                  isLowest && priceStats?.lowest_price != null
+                                    ? startLowestHideTimer
+                                    : isPrev && priceStats?.prev_price != null
+                                      ? startPrevHideTimer
+                                      : undefined
+                                }
+                                style={
+                                  hasHover ? { cursor: "default" } : undefined
+                                }
+                              >
+                                <small>{label}</small>
+                                <h3>
+                                  {value != null
+                                    ? formatPriceAED(value)
+                                    : "N/A"}
+                                </h3>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -1124,14 +1463,22 @@ export default function PriceApprovalButton({
                           <tr
                             style={{ backgroundColor: "rgba(247,247,247,1)" }}
                           >
-                            {[
-                              "INVENTORY STATUS",
-                              "QTY AVAILABLE",
-                              "LOCATION",
-                              "STATUS",
-                            ].map((h) => (
-                              <th key={h}>{h}</th>
-                            ))}
+                            <th>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                                INVENTORY STATUS
+                                <TableHeaderTooltipHover width={320}>
+                                  <strong>Exact Match:</strong><br />
+                                  The system uses unique material ID references to search the inventory database for the exact requested material, even if it exists under a different inventory name or description.<br /><br />
+                                  <strong>Similar Match:</strong><br />
+                                  The system searches for the closest matching inventory items based on material names, keywords, and character similarity to help identify possible alternatives or related stock.<br /><br />
+                                  <strong>No Match:</strong><br />
+                                  The system could not find any matching or similar inventory items for the requested material.
+                                </TableHeaderTooltipHover>
+                              </span>
+                            </th>
+                            <th>QTY AVAILABLE</th>
+                            <th>LOCATION</th>
+                            <th>STATUS</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1253,7 +1600,21 @@ export default function PriceApprovalButton({
                           {anyHasStocks && <th>QTY STOCKS</th>}
                           <th>UNIT PRICE</th>
                           <th>TOTAL PRICE</th>
-                          <th>BUDGET EST.</th>
+                          <th>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                              }}
+                            >
+                              BUDGET EST.
+                              <TableHeaderTooltipHover>
+                                Budget estimates is a new feature and only
+                                calculates BOQ price impacts from May 25, 2026.
+                              </TableHeaderTooltipHover>
+                            </span>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1550,8 +1911,10 @@ export default function PriceApprovalButton({
                                                   whiteSpace: "nowrap",
                                                 }}
                                               >
-                                                BOQ {boq.item_number} /{" "}
-                                                {allocQty} {boq.unit}
+                                                BOQ{" "}
+                                                {accurateBoqNumbers[boq.id] ??
+                                                  boq.item_number}{" "}
+                                                / {allocQty} {boq.unit}
                                               </div>
                                               {/* Col 2: warning + pct + bar */}
                                               <div
@@ -1589,7 +1952,7 @@ export default function PriceApprovalButton({
                                                           : "rgba(0,163,93,1)",
                                                       }}
                                                     >
-                                                      {Math.round(existingPct)}%
+                                                      {parseFloat(existingPct.toFixed(2))}%
                                                     </span>
                                                     <span
                                                       style={{
@@ -1597,7 +1960,7 @@ export default function PriceApprovalButton({
                                                       }}
                                                     >
                                                       {" "}
-                                                      + {Math.round(vendorPct)}%
+                                                      + {parseFloat(vendorPct.toFixed(2))}%
                                                     </span>
                                                   </div>
                                                   {/* Progress bar — tooltip via fixed portal on hover */}
@@ -1827,11 +2190,12 @@ export default function PriceApprovalButton({
                 {totalSavings != null && (
                   <div>
                     Estimated Total Savings:{" "}
-                    <strong style={{ color: "rgba(0,163,93,1)" }}>
+                    <strong style={{ color: "rgba(80, 176, 83, 1)" }}>
                       {formatPriceAED(totalSavings)}
                     </strong>
                   </div>
                 )}
+                <br />
                 <table className="items-table">
                   <thead>
                     <tr>
@@ -1942,6 +2306,622 @@ export default function PriceApprovalButton({
             </div>,
             document.body,
           )}
+
+        {/* Inventory match confirmation popup */}
+        {showInventoryMatchConfirm &&
+          inventoryMatches &&
+          (() => {
+            const selectedQuotation = supplierQuotations.find(
+              (q) => q.id === Number(selectedQuotationID),
+            );
+            return (
+              <FormPopUp
+                header={"EXACT INVENTORY MATCH DETECTED"}
+                setIsOpen={() => setShowInventoryMatchConfirm(false)}
+                style={{ width: "75dvw" }}
+                addButtonLabel="IGNORE & CONFIRM"
+                handleSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!selectedQuotation) return;
+                  if (getOverBudgetLines(selectedQuotation).length > 0) {
+                    setShowInventoryMatchConfirm(false);
+                    setShowBudgetOverrunConfirm(true);
+                    return;
+                  }
+                  await doApprove(selectedQuotation);
+                }}
+                secondButton={
+                  <Button
+                    componentType="button"
+                    bgColor="white"
+                    borderColor="black"
+                    textColor="black"
+                    onClick={() => setShowInventoryMatchConfirm(false)}
+                  >
+                    CANCEL
+                  </Button>
+                }
+              >
+                <p>
+                  The following materials from this request were found in
+                  inventory.
+                </p>
+
+                <br />
+
+                <table
+                  className="items-table"
+                  style={{ tableLayout: "fixed", width: "100%" }}
+                >
+                  <colgroup>
+                    <col />
+                    <col style={{ width: "110px" }} />
+                    <col />
+                    <col style={{ width: "120px" }} />
+                    <col style={{ width: "200px" }} />
+                    <col style={{ width: "140px" }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>MATERIAL</th>
+                      <th>QTY USE</th>
+                      <th>INVENTORY STATUS</th>
+                      <th>QTY AVAILABLE</th>
+                      <th>LOCATION</th>
+                      <th>STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventoryMatches.map((m, idx) => (
+                      <tr key={m.inventory_item_id}>
+                        <td
+                          style={{
+                            ...(idx > 0 ? { borderTop: "none" } : {}),
+                            ...(idx < inventoryMatches.length - 1
+                              ? { borderBottom: "none" }
+                              : {}),
+                          }}
+                        >
+                          {idx === 0 && (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: "8px",
+                              }}
+                            >
+                              <img
+                                src="/icons/warning.svg"
+                                alt="warning"
+                                style={{
+                                  width: "14px",
+                                  height: "14px",
+                                  flexShrink: 0,
+                                  marginTop: "2px",
+                                }}
+                              />
+                              <span style={{ fontWeight: 600 }}>
+                                {mrLine.material_description}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            whiteSpace: "nowrap",
+                            ...(idx > 0 ? { borderTop: "none" } : {}),
+                            ...(idx < inventoryMatches.length - 1
+                              ? { borderBottom: "none" }
+                              : {}),
+                          }}
+                        >
+                          {idx === 0 &&
+                            `${formatQuantity(mrLine.quantity)} ${mrLine.unit}`}
+                        </td>
+                        <td
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <a
+                            href={`/inventory/${m.inventory_item_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: "rgba(37,150,190,1)",
+                              fontWeight: 600,
+                              textDecoration: "none",
+                            }}
+                          >
+                            {m.inventory_description}
+                          </a>
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          {m.total_qty} {m.unit}
+                        </td>
+                        <td>
+                          {m.locations?.length > 0
+                            ? m.locations.join(" + ")
+                            : "—"}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "3px 10px",
+                              borderRadius: "50px",
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              backgroundColor:
+                                m.match_type === "exact"
+                                  ? "rgba(6,95,70,1)"
+                                  : "rgba(209,250,229,1)",
+                              color:
+                                m.match_type === "exact"
+                                  ? "rgba(209,250,229,1)"
+                                  : "rgba(6,95,70,1)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {m.match_type === "exact"
+                              ? "Exact Match"
+                              : "Similar Match"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </FormPopUp>
+            );
+          })()}
+
+        {/* Budget overrun confirmation popup */}
+        {showBudgetOverrunConfirm &&
+          (() => {
+            const selectedQuotation = supplierQuotations.find(
+              (q) => q.id === Number(selectedQuotationID),
+            );
+            if (!selectedQuotation) return null;
+            const overBudgetLines = getOverBudgetLines(selectedQuotation);
+            if (overBudgetLines.length === 0) return null;
+            return (
+              <FormPopUp
+                header={"SELECTED PROCUREMENT PACKAGE EXCEEDS BUDGET"}
+                setIsOpen={() => setShowBudgetOverrunConfirm(false)}
+                style={{ width: "80dvw" }}
+                addButtonLabel="IGNORE & CONFIRM"
+                handleSubmit={async (e) => {
+                  e.preventDefault();
+                  await doApprove(selectedQuotation);
+                }}
+                secondButton={
+                  <Button
+                    componentType="button"
+                    bgColor="black"
+                    borderColor="black"
+                    textColor="white"
+                    onClick={() => setShowBudgetOverrunConfirm(false)}
+                  >
+                    CANCEL
+                  </Button>
+                }
+              >
+                <p
+                  style={{ color: "rgba(120,120,120,1)", marginBottom: "20px" }}
+                >
+                  The following material from this request exceed the dedicated
+                  budgets for BOQ items.
+                </p>
+                <table
+                  className="items-table"
+                  style={{ tableLayout: "fixed", width: "100%" }}
+                >
+                  <colgroup>
+                    <col />
+                    <col style={{ width: "100px" }} />
+                    <col />
+                    <col style={{ width: "75px" }} />
+                    <col style={{ width: "75px" }} />
+                    <col style={{ width: "200px" }} />
+                    <col style={{ width: "120px" }} />
+                    <col style={{ width: "180px" }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>MATERIAL</th>
+                      <th>QTY USE</th>
+                      <th>BOQ ITEM</th>
+                      <th>QTY</th>
+                      <th>REQ. QTY</th>
+                      <th>TOTAL COST</th>
+                      <th>TOTAL PRICE</th>
+                      <th>PNL (AFTER PURCHASE)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overBudgetLines.map(
+                      (
+                        {
+                          boq,
+                          existing,
+                          vendorCost,
+                          itemBudget,
+                          totalCost,
+                          pnl,
+                        },
+                        idx,
+                      ) => {
+                        const existingPct =
+                          itemBudget > 0 ? (existing / itemBudget) * 100 : 0;
+                        const vendorPct =
+                          itemBudget > 0 ? (vendorCost / itemBudget) * 100 : 0;
+                        const existingBarPct = Math.min(existingPct, 100);
+                        const vendorBarPct = Math.min(
+                          vendorPct,
+                          Math.max(0, 100 - existingBarPct),
+                        );
+                        const spanStyle = {
+                          verticalAlign: "top" as const,
+                          ...(idx > 0 ? { borderTop: "none" } : {}),
+                          ...(idx < overBudgetLines.length - 1
+                            ? { borderBottom: "none" }
+                            : {}),
+                        };
+                        return (
+                          <tr key={boq.id}>
+                            {/* REQUESTED MATERIAL — spans all rows */}
+                            <td style={spanStyle}>
+                              {idx === 0 && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "flex-start",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  <img
+                                    src="/icons/warning.svg"
+                                    alt="warning"
+                                    style={{
+                                      width: "14px",
+                                      height: "14px",
+                                      flexShrink: 0,
+                                      marginTop: "2px",
+                                    }}
+                                  />
+                                  <span style={{ fontWeight: 600 }}>
+                                    {mrLine.material_description}
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                            {/* QTY REQUESTED — spans all rows */}
+                            <td style={{ ...spanStyle, whiteSpace: "nowrap" }}>
+                              {idx === 0 &&
+                                `${formatQuantity(mrLine.quantity)} ${mrLine.unit}`}
+                            </td>
+                            {/* ITEM NAME — item_number left, details stacked right */}
+                            <td style={{ verticalAlign: "top" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "16px",
+                                  alignItems: "flex-start",
+                                }}
+                              >
+                                {/* # — accurate item number from full project BOQ */}
+                                <span
+                                  style={{
+                                    whiteSpace: "nowrap",
+                                    color: "rgba(120,120,120,1)",
+                                    fontSize: "12px",
+                                    flexShrink: 0,
+                                    minWidth: "36px",
+                                  }}
+                                >
+                                  {accurateBoqNumbers[boq.id] ??
+                                    boq.item_number}
+                                </span>
+                                {/* Item details */}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "10px",
+                                    flex: 1,
+                                    minWidth: 0,
+                                  }}
+                                >
+                                  <strong>{boq.item_name}</strong>
+                                  {boq.boq_id && (
+                                    <small
+                                      style={{ color: "rgba(150,150,150,1)" }}
+                                    >
+                                      BOQ-{String(boq.boq_id).padStart(5, "0")}
+                                    </small>
+                                  )}
+                                  {boq.item_description && (
+                                    <p style={{ whiteSpace: "pre-wrap" }}>
+                                      {boq.item_description}
+                                    </p>
+                                  )}
+                                  {boq.location && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "10px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <img
+                                        src="/icons/location-boq.svg"
+                                        style={{ width: "16px" }}
+                                        alt="location"
+                                      />
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          marginTop: "4px",
+                                          color: "rgba(105,105,105,1)",
+                                        }}
+                                      >
+                                        {boq.location}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {boq.scope_of_work && (
+                                    <div
+                                      style={{
+                                        backgroundColor: "rgba(225,225,225,1)",
+                                        borderRadius: "50px",
+                                        padding: "4px 10px",
+                                        width: "fit-content",
+                                      }}
+                                    >
+                                      <strong>{boq.scope_of_work}</strong>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td
+                              style={{
+                                whiteSpace: "nowrap",
+                                verticalAlign: "top",
+                              }}
+                            >
+                              {formatQuantity(boq.allocated_qty ?? 0)}{" "}
+                              {boq.unit}
+                            </td>
+                            <td
+                              style={{
+                                whiteSpace: "nowrap",
+                                verticalAlign: "top",
+                              }}
+                            >
+                              {formatQuantity(boq.quantity)} {boq.unit}
+                            </td>
+                            <td style={{ verticalAlign: "top" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "4px",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    whiteSpace: "nowrap",
+                                    color: "rgba(220,38,38,1)",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {formatPriceAED(totalCost)}
+                                </span>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  <img
+                                    src="/icons/warning.svg"
+                                    alt="over budget"
+                                    style={{
+                                      width: "11px",
+                                      height: "11px",
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      color: "rgba(220,38,38,1)",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {parseFloat(existingPct.toFixed(2))}% +{" "}
+                                    {parseFloat(vendorPct.toFixed(2))}%
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      color: "rgba(150,150,150,1)",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {formatPriceAED(itemBudget)} -{" "}
+                                    {formatPriceAED(existing)}
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    height: "5px",
+                                    borderRadius: "3px",
+                                    backgroundColor: "rgba(220,220,220,1)",
+                                    overflow: "hidden",
+                                    position: "relative",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      left: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: `${existingBarPct}%`,
+                                      backgroundColor: "rgba(194,53,53,1)",
+                                    }}
+                                  />
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      left: `${existingBarPct}%`,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: `${vendorBarPct}%`,
+                                      backgroundColor: "rgba(248,77,77,1)",
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td
+                              style={{
+                                whiteSpace: "nowrap",
+                                verticalAlign: "top",
+                              }}
+                            >
+                              {formatPriceAED(itemBudget)}
+                            </td>
+                            <td
+                              style={{
+                                whiteSpace: "nowrap",
+                                verticalAlign: "top",
+                                fontWeight: 600,
+                                color: "rgba(220,38,38,1)",
+                              }}
+                            >
+                              AED - {formatPriceAED(Math.abs(pnl))}
+                            </td>
+                          </tr>
+                        );
+                      },
+                    )}
+                  </tbody>
+                </table>
+              </FormPopUp>
+            );
+          })()}
+
+        {/* Price hover popups (lowest & prev) */}
+        {[
+          {
+            rect: hoveredLowestRect,
+            type: "lowest" as const,
+            onCancel: cancelLowestHideTimer,
+            onHide: () => setHoveredLowestRect(null),
+          },
+          {
+            rect: hoveredPrevRect,
+            type: "prev" as const,
+            onCancel: cancelPrevHideTimer,
+            onHide: () => setHoveredPrevRect(null),
+          },
+        ].map(({ rect, type, onCancel, onHide }) =>
+          rect
+            ? (() => {
+                const row =
+                  priceHoverCache[mrLine.material_description]?.[type];
+                if (row === null) return null;
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const top = spaceBelow >= 98 ? rect.bottom + 4 : rect.top - 94;
+                return createPortal(
+                  <div
+                    key={type}
+                    onMouseEnter={onCancel}
+                    onMouseLeave={onHide}
+                    style={{
+                      position: "fixed",
+                      left: Math.max(8, rect.left),
+                      top: Math.max(8, top),
+                      backgroundColor: "white",
+                      border: "1px solid rgba(223,223,223,1)",
+                      borderRadius: "10px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      zIndex: 10000,
+                      width: "auto",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <div style={{ padding: "12px" }}>
+                      <h4 style={{ marginBottom: "12px" }}>
+                        {type === "lowest" ? "LOWEST PRICE" : "PREVIOUS PRICE"}
+                      </h4>
+                      {row === "loading" || row === undefined ? (
+                        <div
+                          style={{
+                            padding: "16px",
+                            textAlign: "center",
+                            color: "rgba(128,128,128,1)",
+                            fontSize: "13px",
+                          }}
+                        >
+                          Loading...
+                        </div>
+                      ) : (
+                        <table
+                          className="items-table popup-hover"
+                          style={{ width: "auto" }}
+                        >
+                          <thead>
+                            <tr>
+                              <th>LPO NUMBER</th>
+                              <th>PROJECT</th>
+                              <th>VENDOR</th>
+                              <th>REQUESTER</th>
+                              <th>UNIT PRICE</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                <a
+                                  href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "rgba(37,150,190,1)", fontWeight: 600, textDecoration: "none" }}
+                                >
+                                  LPO-{String(row.lpo_id).padStart(5, "0")}
+                                </a>
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {row.project_name}
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {row.vendor_name}
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {(row as any).requested_by ?? "—"}
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {formatPriceAED(row.unit_price)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>,
+                  document.body,
+                );
+              })()
+            : null,
+        )}
 
         {isRejectOpen && (
           <FormPopUp

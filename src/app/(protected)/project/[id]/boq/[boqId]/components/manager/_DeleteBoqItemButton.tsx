@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import Button from "@/app/components/Button";
 import { useRouter } from "next/navigation";
@@ -124,7 +125,7 @@ export default function DeleteBoqItemButton({
         <img src={trashIcon} alt="trash" /> Delete
       </Button>
 
-      {isOpen && (
+      {isOpen && typeof window !== "undefined" && createPortal(
         <FormPopUp
           header={"DELETE BILL OF QUANTITY ITEM"}
           setIsOpen={setIsOpen}
@@ -132,7 +133,8 @@ export default function DeleteBoqItemButton({
           addButtonLabel={"CONFIRM"}
         >
           <p>Are you sure you want to delete this item?</p>
-        </FormPopUp>
+        </FormPopUp>,
+        document.body
       )}
     </>
   );

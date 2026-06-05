@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
          l.mr_header_id,
          COALESCE(p.name, '—')             AS project_name,
          COALESCE(s.name, '—')             AS vendor_name,
-         ROUND(lml.unit_price, 2)          AS unit_price
+         ROUND(lml.unit_price, 2)          AS unit_price,
+         COALESCE(mh.requested_by, '—')    AS requested_by
        FROM lpo_mr_line  lml
        JOIN lpo          l   ON lml.lpo_id     = l.id
        JOIN vw_mr_lines  vml ON lml.mr_line_id = vml.id
@@ -56,6 +57,7 @@ export async function GET(req: NextRequest) {
         project_name: row.project_name,
         vendor_name: row.vendor_name,
         unit_price: row.unit_price != null ? Number(row.unit_price) : null,
+        requested_by: row.requested_by ?? "—",
       },
       { status: 200 },
     );

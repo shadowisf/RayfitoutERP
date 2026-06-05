@@ -22,6 +22,9 @@ export async function POST(req: Request) {
          bl.boq_id,
          bl.project_id,
          bl.item_name,
+         bl.item_description,
+         bl.location,
+         bl.scope_of_work,
          bl.category,
          bl.sub_category,
          bl.quantity,
@@ -82,21 +85,29 @@ export async function POST(req: Request) {
 
       return {
         id: row.id,
+        boq_id: row.boq_id,
         item_number: fullItemNumber,
         item_name: row.item_name,
+        item_description: row.item_description ?? null,
+        location: row.location ?? null,
+        scope_of_work: row.scope_of_work ?? null,
         category: row.category,
         sub_category: row.sub_category,
         quantity: Number(row.quantity),
         unit: row.unit,
         rate_per_quantity: Number(row.rate_per_quantity),
         total_cost: Number(row.total_cost),
-        allocated_qty: row.allocated_qty != null ? Number(row.allocated_qty) : null,
+        allocated_qty:
+          row.allocated_qty != null ? Number(row.allocated_qty) : null,
       };
     });
 
     return NextResponse.json(results, { status: 200 });
   } catch (err: any) {
-    console.error("getBoqLinesByMrLineID error:", err.sqlMessage || err.message);
+    console.error(
+      "getBoqLinesByMrLineID error:",
+      err.sqlMessage || err.message,
+    );
     return NextResponse.json(
       { error: err.sqlMessage || err.message },
       { status: 500 },

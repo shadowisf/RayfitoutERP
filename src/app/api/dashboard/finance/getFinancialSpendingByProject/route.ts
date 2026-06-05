@@ -28,25 +28,64 @@ export async function GET(request: Request) {
     const startStr = effectiveStart.toISOString().split("T")[0];
     const endStr = effectiveEnd.toISOString().split("T")[0];
 
-    const dateWhere = hasDateFilter
+    const lpoDateWhere = hasDateFilter
       ? "AND DATE(l.created_at) >= ? AND DATE(l.created_at) <= ?"
+      : "";
+    const joDdateWhere = hasDateFilter
+      ? "AND DATE(mh.date_requested) >= ? AND DATE(mh.date_requested) <= ?"
       : "";
     const dateArgs = hasDateFilter ? [startStr, endStr] : [];
 
-    // 1. Chart data — committed means the full LPO total regardless of payment status
+    // Combined: material LPOs (payment-view filter) + JO payment requests
     const [chartRows] = await db.query<RowDataPacket[]>(
       `SELECT
-         DATE_FORMAT(l.created_at, ?) AS period_key,
-         DATE_FORMAT(l.created_at, ?) AS period_label,
-         COALESCE(p.name, 'Unspecified') AS project_name,
-         COALESCE(SUM(l.total), 0) AS total_spent
-       FROM lpo l
-       JOIN mr_headers mh ON l.mr_header_id = mh.id
-       LEFT JOIN projects p ON mh.project_id = p.id
-       WHERE l.progress_id NOT IN (13) ${dateWhere}
-       GROUP BY period_key, period_label, p.id, p.name
+         DATE_FORMAT(date_col, ?) AS period_key,
+         DATE_FORMAT(date_col, ?) AS period_label,
+         project_name,
+         SUM(amount)              AS total_spent
+       FROM (
+         -- Material LPOs — same filter as payment view
+         SELECT
+           l.created_at                        AS date_col,
+           COALESCE(p.name, 'Unspecified')     AS project_name,
+           l.total                             AS amount
+         FROM lpo l
+         JOIN mr_headers mh ON l.mr_header_id = mh.id
+         LEFT JOIN projects p ON mh.project_id = p.id
+         WHERE mh.progress_id = 26
+           AND l.progress_id > 14
+           ${lpoDateWhere}
+
+         UNION ALL
+
+         -- JO Payment Requests — same filter as payment-request view
+         SELECT
+           mh.date_requested                                               AS date_col,
+           COALESCE(p.name, 'Unspecified')                                 AS project_name,
+           COALESCE(jl_totals.after_retention_with_vat_sum, 0)            AS amount
+         FROM mr_headers mh
+         JOIN mr_headers jo_ref
+              ON jo_ref.id = mh.payment_jo_reference_id
+             AND jo_ref.progress_id = 25
+         LEFT JOIN projects p ON jo_ref.project_id = p.id
+         LEFT JOIN (
+           SELECT mr_header_id,
+                  SUM(COALESCE(after_retention_with_vat, 0)) AS after_retention_with_vat_sum
+           FROM jo_lines
+           GROUP BY mr_header_id
+         ) jl_totals ON jl_totals.mr_header_id = mh.payment_jo_reference_id
+         WHERE mh.type = 'payment'
+           AND mh.progress_id = 25
+           ${joDdateWhere}
+       ) combined
+       GROUP BY period_key, period_label, project_name
        ORDER BY period_key ASC`,
-      [dateKeyFmt, labelFmt, ...dateArgs],
+      [
+        dateKeyFmt,
+        labelFmt,
+        ...dateArgs,   // for LPO date filter
+        ...dateArgs,   // for JO date filter
+      ],
     );
 
     // 2. Project budgets
@@ -56,13 +95,12 @@ export async function GET(request: Request) {
        WHERE quoted_budget IS NOT NULL AND quoted_budget > 0`,
     );
 
-    // Build project_budgets map
     const projectBudgets: Record<string, number> = {};
     for (const row of budgetRows as any[]) {
       projectBudgets[row.name] = Number(row.quoted_budget);
     }
 
-    // Build chartData pivot
+    // Build pivot
     const periodMap = new Map<string, string>();
     const projectTotalMap: Record<string, number> = {};
     const projectSet = new Set<string>();
@@ -70,7 +108,6 @@ export async function GET(request: Request) {
     for (const row of chartRows as any[]) {
       periodMap.set(row.period_key, row.period_label);
       projectSet.add(row.project_name);
-      // Accumulate per-project total for the table
       projectTotalMap[row.project_name] =
         (projectTotalMap[row.project_name] ?? 0) + Number(row.total_spent);
     }
@@ -79,7 +116,6 @@ export async function GET(request: Request) {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([key, label]) => ({ key, label }));
 
-    // Sort projects alphabetically; put Unspecified last
     const projects = Array.from(projectSet).sort((a, b) => {
       if (a === "Unspecified") return 1;
       if (b === "Unspecified") return -1;
@@ -100,7 +136,6 @@ export async function GET(request: Request) {
       return entry;
     });
 
-    // Table data: total per project, sorted desc — Unspecified always last
     const tableData = Object.entries(projectTotalMap)
       .sort((a, b) => {
         if (a[0] === "Unspecified") return 1;
@@ -110,23 +145,11 @@ export async function GET(request: Request) {
       .map(([project, total]) => ({ project, total }));
 
     return NextResponse.json(
-      {
-        projects,
-        project_budgets: projectBudgets,
-        chartData,
-        table_data: tableData,
-        granularity,
-      },
+      { projects, project_budgets: projectBudgets, chartData, table_data: tableData, granularity },
       { status: 200 },
     );
   } catch (err: any) {
-    console.error(
-      "getFinancialSpendingByProject error:",
-      err.sqlMessage || err.message,
-    );
-    return NextResponse.json(
-      { error: err.sqlMessage || err.message },
-      { status: 500 },
-    );
+    console.error("getFinancialSpendingByProject error:", err.sqlMessage || err.message);
+    return NextResponse.json({ error: err.sqlMessage || err.message }, { status: 500 });
   }
 }
