@@ -897,7 +897,40 @@ export default function MobileBoqSelectWithAllocation({
           SELECTED
         </div>
       )}
-      {/* Search + filter */}
+      {/* Auto Allocate + Search + filter */}
+      {mrQty > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <Button
+            componentType="button"
+            bgColor="black"
+            borderColor="black"
+            textColor="white"
+            full
+            disabled={tempSelectedIDs.length === 0}
+            onClick={() => {
+              if (tempSelectedIDs.length === 0) return;
+              const perItem = parseFloat((mrQty / tempSelectedIDs.length).toFixed(2));
+              const newQtys: Record<number, number> = {};
+              tempSelectedIDs.forEach((id, idx) => {
+                if (idx === tempSelectedIDs.length - 1) {
+                  const allocated = parseFloat((perItem * idx).toFixed(2));
+                  newQtys[id] = parseFloat((mrQty - allocated).toFixed(2));
+                } else {
+                  newQtys[id] = perItem;
+                }
+              });
+              setAllocatedQtys(newQtys);
+              setAllocatedRaw(
+                Object.fromEntries(
+                  Object.entries(newQtys).map(([k, v]) => [k, String(v)]),
+                ),
+              );
+            }}
+          >
+            AUTO ALLOCATE
+          </Button>
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div
           style={{

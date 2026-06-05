@@ -1949,9 +1949,13 @@ export default function BoqReferencePopUp({
                                     </td>
                                     {showAllocatedQty && (
                                       <td>
-                                        {boqItem.allocated_qty != null
-                                          ? `${formatQuantity(boqItem.allocated_qty)} ${boqItem.unit}`
-                                          : "-"}
+                                        {`${formatQuantity(
+                                          boqItem.allocated_qty != null
+                                            ? boqItem.allocated_qty
+                                            : boqItems.length > 0
+                                              ? Number(item.quantity) / boqItems.length
+                                              : 0,
+                                        )} ${boqItem.unit}`}
                                       </td>
                                     )}
                                     {showAllocatedQty &&

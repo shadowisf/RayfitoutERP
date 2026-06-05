@@ -1159,12 +1159,13 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
       <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
         {/* ── Left panel ───────────────────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Search bar */}
+          {/* Search bar + Auto Allocate */}
           <div
             style={{
               display: "flex",
               gap: "10px",
               alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
             <div
@@ -1200,6 +1201,37 @@ export default function MultipleSelectBoqItemButtonWithAllocation({
                 }}
               />
             </div>
+            {mrQty > 0 && (
+              <Button
+                componentType="button"
+                bgColor="black"
+                borderColor="black"
+                textColor="white"
+                disabled={tempSelectedBoqIDs.length === 0}
+                onClick={() => {
+                  if (tempSelectedBoqIDs.length === 0) return;
+                  const perItem = parseFloat((mrQty / tempSelectedBoqIDs.length).toFixed(2));
+                  const newQtys: Record<number, number> = {};
+                  tempSelectedBoqIDs.forEach((id, idx) => {
+                    if (idx === tempSelectedBoqIDs.length - 1) {
+                      const allocated = parseFloat((perItem * idx).toFixed(2));
+                      newQtys[id] = parseFloat((mrQty - allocated).toFixed(2));
+                    } else {
+                      newQtys[id] = perItem;
+                    }
+                  });
+                  setAllocatedQtys(newQtys);
+                  setAllocatedRaw(
+                    Object.fromEntries(
+                      Object.entries(newQtys).map(([k, v]) => [k, String(v)]),
+                    ),
+                  );
+                }}
+                style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                AUTO ALLOCATE
+              </Button>
+            )}
           </div>
 
           <br />

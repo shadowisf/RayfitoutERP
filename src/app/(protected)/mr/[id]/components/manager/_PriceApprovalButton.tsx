@@ -609,10 +609,18 @@ export default function PriceApprovalButton({
     await refresh();
   }
 
+  // Returns the effective allocated quantity for a BOQ line:
+  // uses stored allocated_qty when present, otherwise splits mrLine.quantity equally.
+  function effectiveAllocQty(boq: { allocated_qty: number | null }): number {
+    if (boq.allocated_qty != null) return boq.allocated_qty;
+    const count = boqLinesForBudget.length;
+    return count > 0 ? Number(mrLine.quantity) / count : 0;
+  }
+
   function getOverBudgetLines(quotation: SupplierQuotation) {
     return boqLinesForBudget
       .map((boq) => {
-        const allocQty = boq.allocated_qty ?? 0;
+        const allocQty = effectiveAllocQty(boq);
         const itemBudget = boq.rate_per_quantity * boq.quantity;
         const existing = boqExistingSpend[boq.id] ?? 0;
         const vendorCost = allocQty * Number(quotation.unit_price);
@@ -1867,8 +1875,7 @@ export default function PriceApprovalButton({
                                         }}
                                       >
                                         {boqLinesForBudget.map((boq) => {
-                                          const allocQty =
-                                            boq.allocated_qty ?? 0;
+                                          const allocQty = effectiveAllocQty(boq);
                                           const itemBudget =
                                             boq.rate_per_quantity *
                                             boq.quantity;
@@ -2693,7 +2700,7 @@ export default function PriceApprovalButton({
                                 verticalAlign: "top",
                               }}
                             >
-                              {formatQuantity(boq.allocated_qty ?? 0)}{" "}
+                              {formatQuantity(effectiveAllocQty(boq))}{" "}
                               {boq.unit}
                             </td>
                             <td
