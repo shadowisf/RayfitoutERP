@@ -13,6 +13,22 @@ import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import CreateLocationButton from "./_AddLocationButton";
 import { useRefresh } from "@/app/context/RefreshContext";
 
+function addCommas(val: string): string {
+  if (!val) return val;
+  const parts = val.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
+}
+function formatMoneyOpen(val: string | number): string {
+  const n = Number(val);
+  if (!val && val !== 0) return "";
+  if (isNaN(n)) return "";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+function stripCommas(val: string | number): number {
+  return Number(String(val).replace(/,/g, "")) || 0;
+}
+
 type AddBoqItemButtonProps = {
   boqHeaderID: number;
   bgColor?: string;
@@ -88,14 +104,10 @@ export default function AddBoqItemButton({
   }, [isOpen]);
 
   useEffect(() => {
-    if (ratePerQuantity && quantity) {
-      const rate = Number(ratePerQuantity);
-      const qty = Number(quantity);
-      if (!isNaN(rate) && !isNaN(qty)) {
-        setTotalCost(Number((rate * qty).toFixed(2)));
-      } else {
-        setTotalCost("");
-      }
+    const rate = stripCommas(ratePerQuantity);
+    const qty = stripCommas(quantity);
+    if (rate > 0 && qty > 0) {
+      setTotalCost(formatMoneyOpen(rate * qty));
     } else {
       setTotalCost("");
     }
@@ -170,10 +182,10 @@ export default function AddBoqItemButton({
           sub_category: subCategory,
           scope_of_work: scopeOfWork || null,
           location_ids: locationID,
-          quantity: Number(quantity) || 0,
+          quantity: stripCommas(quantity),
           unit,
-          rate_per_quantity: Number(ratePerQuantity) || 0,
-          total_cost: Number(totalCost) || 0,
+          rate_per_quantity: stripCommas(ratePerQuantity),
+          total_cost: stripCommas(totalCost),
           item_description: itemDescription || null,
           attachments: JSON.stringify(attachmentUrls),
           dn_number_and_date: dnNumberAndDate || null,
@@ -312,11 +324,10 @@ export default function AddBoqItemButton({
               value={quantity}
               type="text"
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                  setQuantity(val);
-                }
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d*\.?\d{0,3}$/.test(raw)) setQuantity(addCommas(raw));
               }}
+              onBlur={() => { if (quantity !== "") setQuantity(formatMoneyOpen(stripCommas(quantity))); }}
               required
             />
             <InputItem
@@ -338,11 +349,10 @@ export default function AddBoqItemButton({
               postfixText={currency}
               placeholder="ENTER RATE / QUANTITY"
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                  setRatePerQuantity(val);
-                }
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d*\.?\d{0,3}$/.test(raw)) setRatePerQuantity(addCommas(raw));
               }}
+              onBlur={() => { if (ratePerQuantity !== "") setRatePerQuantity(formatMoneyOpen(stripCommas(ratePerQuantity))); }}
               required
             />
             <InputItem

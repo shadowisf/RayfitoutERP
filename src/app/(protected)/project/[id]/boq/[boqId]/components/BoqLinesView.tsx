@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
+import FormPopUp from "@/app/components/FormPopup";
+import Button from "@/app/components/Button";
 import {
   DndContext,
   closestCenter,
@@ -40,6 +43,38 @@ import EditBoqItemButton from "./manager/_EditBoqItemButton";
 import InfoPopUpButton from "@/app/components/_InfoPopUpButton";
 import { DeleteBoqHeaderButton } from "./manager/_DeleteBoqHeaderButton";
 import DownloadSelectedBoqButton from "./manager/_DownloadSelectedBoqButton";
+import FilterBoqButton from "./_FilterBoqButton";
+import LinkedBoqDetails from "./LinkedBoqDetails";
+
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      style={{
+        width: 18,
+        height: 18,
+        cursor: "pointer",
+        accentColor: "rgba(0,163,93,1)",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
 
 type GroupedBoqLines = {
   [category: string]: {
@@ -212,6 +247,10 @@ export default function BoqLinesView({
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
 
+  // ── Category / subcategory filter ─────────────────────────────────────────
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+  const [filterSubCategories, setFilterSubCategories] = useState<string[]>([]);
+
   const [originalBoqLines, setOriginalBoqLines] =
     useState<GroupedIndexedBoqLines>({});
   const [boqLines, setBoqLines] = useState<GroupedIndexedBoqLines>({});
@@ -263,9 +302,28 @@ export default function BoqLinesView({
   }, [initialBoqLines]);
 
   useEffect(() => {
-    const filtered = filterBoqLines(originalBoqLines, searchQuery);
+    let filtered = filterBoqLines(originalBoqLines, searchQuery);
+    if (filterCategories.length > 0) {
+      const next: typeof filtered = {};
+      filterCategories.forEach((cat) => {
+        if (filtered[cat]) next[cat] = filtered[cat];
+      });
+      filtered = next;
+    }
+    if (filterSubCategories.length > 0) {
+      const next: typeof filtered = {};
+      Object.entries(filtered).forEach(([cat, subs]) => {
+        const matchingSubs: typeof subs = {};
+        Object.entries(subs).forEach(([sub, items]) => {
+          if (filterSubCategories.includes(`${cat}::${sub}`))
+            matchingSubs[sub] = items;
+        });
+        if (Object.keys(matchingSubs).length > 0) next[cat] = matchingSubs;
+      });
+      filtered = next;
+    }
     setBoqLines(filtered);
-  }, [originalBoqLines, searchQuery]);
+  }, [originalBoqLines, searchQuery, filterCategories, filterSubCategories]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -653,13 +711,7 @@ export default function BoqLinesView({
                 }
                 onChange={(e) => onToggleAll(items, e.target.checked)}
                 onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: "16px",
-                  height: "16px",
-                  cursor: "pointer",
-                  accentColor: "#10b981",
-                  flexShrink: 0,
-                }}
+                className="manager-checkbox"
               />
               <span style={{ marginRight: "15px" }}>
                 {originalCategoryIndex + 1}.{originalSubCategoryIndex + 1}
@@ -695,10 +747,22 @@ export default function BoqLinesView({
               handleItemDragEnd(event, category, subCategory)
             }
           >
-            <table className="items-table two-toned">
+            <table className="items-table">
+              <colgroup>
+                <col style={{ width: "50px" }} />
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "150px" }} />
+                <col />
+                <col style={{ width: "125px" }} />
+                {canSeePrice && <col style={{ width: "125px" }} />}
+                {canSeePrice && <col style={{ width: "125px" }} />}
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "200px" }} />
+                {canManage && <col style={{ width: "100px" }} />}
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: "40px" }}></th>
+                  <th></th>
                   <th>#</th>
                   <th>DN NUMBER & DATE</th>
                   <th>ITEM</th>
@@ -709,7 +773,7 @@ export default function BoqLinesView({
                       <th>TOTAL PRICE</th>
                     </>
                   )}
-                  <th>ATTACHMENTS</th>
+                  <th>ATTACHMENT(S)</th>
                   <th>REMARKS</th>
                   {canManage && <th></th>}
                 </tr>
@@ -742,12 +806,7 @@ export default function BoqLinesView({
                               type="checkbox"
                               checked={selectedBoqLineIds.has(item.id)}
                               onChange={() => onToggleItem(item.id)}
-                              style={{
-                                width: "16px",
-                                height: "16px",
-                                cursor: "pointer",
-                                accentColor: "#10b981",
-                              }}
+                              className="manager-checkbox"
                             />
                           </td>
                         }
@@ -789,16 +848,38 @@ export default function BoqLinesView({
                                 <EditBoqItemLocationButton item={item} />
                               </div>
                             )}
-                            {item.scope_of_work && (
+                            {(item.scope_of_work || item.has_jo) && (
                               <div
                                 style={{
-                                  backgroundColor: "rgba(225, 225, 225, 1)",
-                                  borderRadius: "50px",
-                                  padding: "4px 10px",
-                                  width: "fit-content",
+                                  display: "flex",
+                                  gap: "8px",
+                                  flexWrap: "wrap",
                                 }}
                               >
-                                <strong>{item.scope_of_work}</strong>
+                                {item.scope_of_work && (
+                                  <div
+                                    style={{
+                                      backgroundColor: "rgba(225, 225, 225, 1)",
+                                      borderRadius: "50px",
+                                      padding: "4px 10px",
+                                      width: "fit-content",
+                                    }}
+                                  >
+                                    <strong>{item.scope_of_work}</strong>
+                                  </div>
+                                )}
+                                {item.has_jo && (
+                                  <div
+                                    style={{
+                                      backgroundColor: "rgba(254, 240, 138, 1)",
+                                      borderRadius: "50px",
+                                      padding: "4px 10px",
+                                      width: "fit-content",
+                                    }}
+                                  >
+                                    <strong>Subcontracted</strong>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -829,11 +910,19 @@ export default function BoqLinesView({
 
                         {canManage && (
                           <td>
-                            <ThreeDotsMenuButton>
-                              <EditBoqItemButton item={item} />
-                              <DuplicateBoqItemButton item={item} />
-                              <DeleteBoqItemButton item={item} />
-                            </ThreeDotsMenuButton>
+                            <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
+                              <LinkedBoqDetails
+                                item={item}
+                                categoryIndex={item.originalCategoryIndex}
+                                subCategoryIndex={item.originalSubCategoryIndex}
+                                itemIndex={item.originalItemIndex}
+                              />
+                              <ThreeDotsMenuButton>
+                                <EditBoqItemButton item={item} />
+                                <DuplicateBoqItemButton item={item} />
+                                <DeleteBoqItemButton item={item} />
+                              </ThreeDotsMenuButton>
+                            </div>
                           </td>
                         )}
                       </DraggableBoqItem>
@@ -981,6 +1070,12 @@ export default function BoqLinesView({
                   : "-"}
               </h2>
             </div>
+            <div>
+              <small>TOTAL VALUE</small>
+              <h2>
+                {boqHeader.currency} {formatMoney(boqHeader.total_value)}
+              </h2>
+            </div>
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
             {(userInfo?.departmentID === 8 ||
@@ -1059,6 +1154,65 @@ export default function BoqLinesView({
       <br />
       <br />
 
+      {/* ── Category / subcategory filter ──────────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          marginBottom: "16px",
+        }}
+      >
+        {/* Left: filter button + chips */}
+        <FilterBoqButton
+          originalBoqLines={originalBoqLines}
+          filterCategories={filterCategories}
+          filterSubCategories={filterSubCategories}
+          onFilterCategoriesChange={setFilterCategories}
+          onFilterSubCategoriesChange={setFilterSubCategories}
+        />
+
+        {/* Right: search */}
+        <div
+          style={{
+            width: "300px",
+            backgroundColor: "white",
+            position: "relative",
+            flexShrink: 0,
+          }}
+        >
+          <input
+            type="text"
+            placeholder="SEARCH"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "7px 40px 7px 15px",
+              borderRadius: "8px",
+              border: "1px solid rgba(223,223,223,1)",
+              fontSize: "14px",
+              boxSizing: "border-box",
+            }}
+          />
+          <img
+            src={searchIcon}
+            alt="search"
+            style={{
+              position: "absolute",
+              right: "15px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "16px",
+              height: "16px",
+              opacity: 0.5,
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+      </div>
+
       <div
         className="category-grid"
         style={{ display: "flex", gap: "50px", alignItems: "center" }}
@@ -1109,7 +1263,7 @@ export default function BoqLinesView({
               >
                 <img
                   src={arrowRight}
-                  style={{ transform: "rotate(-180deg)" }}
+                  style={{ transform: "rotate(-180deg)", marginRight: "3px" }}
                 />
               </button>
             </>
@@ -1238,7 +1392,7 @@ export default function BoqLinesView({
                   cursor: "pointer",
                 }}
               >
-                <img src={arrowRight} />
+                <img src={arrowRight} style={{ marginLeft: "3px" }} />
               </button>
             </>
           )}
@@ -1253,41 +1407,6 @@ export default function BoqLinesView({
             alignItems: "center",
           }}
         >
-          <div
-            style={{
-              width: "300px",
-              backgroundColor: "white",
-              position: "relative",
-            }}
-          >
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "7px 40px 7px 15px",
-                borderRadius: "8px",
-                border: "1px solid rgba(223, 223, 223, 1)",
-                fontSize: "14px",
-                boxSizing: "border-box",
-              }}
-            />
-            <img
-              src={searchIcon}
-              alt="search"
-              style={{
-                position: "absolute",
-                right: "15px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "16px",
-                height: "16px",
-                opacity: 0.5,
-              }}
-            />
-          </div>
           {canManage && (
             <AddBoqItemButton
               boqHeaderID={boqHeader.id}
@@ -1307,7 +1426,15 @@ export default function BoqLinesView({
       <br />
 
       {activeCategory === "SUMMARY" ? (
-        <table className="items-table two-toned">
+        <table
+          className="items-table two-toned"
+          style={{ tableLayout: "fixed", width: "100%" }}
+        >
+          <colgroup>
+            <col style={{ width: "60px" }} />
+            <col />
+            <col style={{ width: "160px" }} />
+          </colgroup>
           <thead>
             <tr>
               <th>#</th>

@@ -227,7 +227,7 @@ export default function MultipleUploadFileBox({
         <span>{label}</span>{" "}
         {!required && (
           <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-            (OPTIONAL)
+            OPTIONAL
           </small>
         )}
       </label>

@@ -7,10 +7,11 @@ export async function POST(req: Request) {
     const boqId = body.boq_id;
 
     const [rows]: any = await db.query(
-      `SELECT * FROM vw_boq_lines WHERE boq_id = ? ORDER BY 
-    category_order ASC, 
-    subcategory_order ASC, 
-    item_order ASC`,
+      `SELECT bl.*,
+        EXISTS(SELECT 1 FROM jt_jo_lines_boq_lines WHERE boq_line_id = bl.id) AS has_jo
+       FROM vw_boq_lines bl
+       WHERE bl.boq_id = ?
+       ORDER BY bl.category_order ASC, bl.subcategory_order ASC, bl.item_order ASC`,
       [boqId],
     );
 
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
         attachments: row.attachments || [],
         dn_number_and_date: row.dn_number_and_date,
         remarks: row.remarks,
+        has_jo: !!row.has_jo,
       });
     });
 

@@ -76,19 +76,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ Fetch BOQ items from junction table
+    // ✅ Fetch BOQ items with computed positional item numbers
     const boqQuery = `
-      SELECT 
-        bl.id as boq_line_id,
-        bl.item_name as boq_item_name,
-        bl.category as boq_category,
-        bl.sub_category as boq_sub_category
-      FROM jt_stocks_transfer_issue_boq_lines jt
-      INNER JOIN boq_lines bl ON jt.boq_line_id = bl.id
-      WHERE jt.stocks_transfer_issue_id = ?
+      SELECT
+        t.boq_line_id,
+        t.boq_item_name,
+        t.cat_num,
+        t.sub_num,
+        t.item_num,
+        CONCAT(t.cat_num, '.', t.sub_num, '.', t.item_num) AS boq_item_number
+      FROM (
+        SELECT
+          bl.id   AS boq_line_id,
+          bl.item_name AS boq_item_name,
+          DENSE_RANK() OVER (
+            PARTITION BY bl.boq_id
+            ORDER BY bl.category_order
+          ) AS cat_num,
+          DENSE_RANK() OVER (
+            PARTITION BY bl.boq_id, bl.category
+            ORDER BY bl.subcategory_order
+          ) AS sub_num,
+          ROW_NUMBER() OVER (
+            PARTITION BY bl.boq_id, bl.category, bl.sub_category
+            ORDER BY bl.item_order
+          ) AS item_num,
+          bl.boq_id
+        FROM vw_boq_lines bl
+        WHERE bl.boq_id IN (
+          SELECT DISTINCT bl2.boq_id
+          FROM jt_stocks_transfer_issue_boq_lines jbl2
+          INNER JOIN vw_boq_lines bl2 ON bl2.id = jbl2.boq_line_id
+          WHERE jbl2.stocks_transfer_issue_id = ?
+        )
+      ) t
+      WHERE t.boq_line_id IN (
+        SELECT jbl.boq_line_id
+        FROM jt_stocks_transfer_issue_boq_lines jbl
+        WHERE jbl.stocks_transfer_issue_id = ?
+      )
     `;
 
-    const [boqRows] = await db.query<RowDataPacket[]>(boqQuery, [body.id]);
+    const [boqRows] = await db.query<RowDataPacket[]>(boqQuery, [body.id, body.id]);
 
     // Group the results - one transfer can have multiple items
     const transferData = {

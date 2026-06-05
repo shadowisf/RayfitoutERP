@@ -179,7 +179,7 @@ export default function DownloadSelectedBoqButton({
             textColor={"white"}
             onClick={onClearSelection}
           >
-            CANCEL
+            RESET
           </Button>
           <Button
             componentType={"button"}

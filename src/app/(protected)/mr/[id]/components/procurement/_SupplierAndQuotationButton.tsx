@@ -1,11 +1,12 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import Button from "@/app/components/Button";
 import FormPopUp from "@/app/components/FormPopup";
 import SingleSelectDropdown from "@/app/components/SingleSelectDropdown";
 import { toast } from "@/app/components/Toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import RejectCommentPopUp from "../manager/RejectCommentPopUp";
 import { MrHeader } from "../../types/mrHeader";
 import { MrLine } from "../../types/mrLine";
@@ -14,6 +15,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import InputItem from "@/app/components/InputItem";
 import { useRefresh } from "@/app/context/RefreshContext";
 import { formatPriceAED } from "@/lib/formatPrice";
+import TableHeaderTooltipHover from "@/app/components/TableHeaderTooltipHover";
 
 type InventoryMatch = {
   inventory_item_id: number;
@@ -119,6 +121,76 @@ export default function SupplierAndQuotationButton({
   const [inventoryMatches, setInventoryMatches] = useState<
     InventoryMatch[] | null
   >(null);
+
+  // Price hover popup state
+  type PriceHoverRow = {
+    lpo_id: number;
+    mr_header_id: number;
+    project_name: string;
+    vendor_name: string;
+    unit_price: number;
+  };
+  const [hoveredLowestRect, setHoveredLowestRect] = useState<DOMRect | null>(
+    null,
+  );
+  const [hoveredPrevRect, setHoveredPrevRect] = useState<DOMRect | null>(null);
+  const [priceHoverCache, setPriceHoverCache] = useState<
+    Record<
+      string,
+      {
+        lowest?: PriceHoverRow | "loading" | null;
+        prev?: PriceHoverRow | "loading" | null;
+      }
+    >
+  >({});
+  const lowestHideTimer = useRef<NodeJS.Timeout | null>(null);
+  const prevHideTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const startLowestHideTimer = useCallback(() => {
+    if (lowestHideTimer.current) clearTimeout(lowestHideTimer.current);
+    lowestHideTimer.current = setTimeout(() => setHoveredLowestRect(null), 120);
+  }, []);
+  const cancelLowestHideTimer = useCallback(() => {
+    if (lowestHideTimer.current) {
+      clearTimeout(lowestHideTimer.current);
+      lowestHideTimer.current = null;
+    }
+  }, []);
+  const startPrevHideTimer = useCallback(() => {
+    if (prevHideTimer.current) clearTimeout(prevHideTimer.current);
+    prevHideTimer.current = setTimeout(() => setHoveredPrevRect(null), 120);
+  }, []);
+  const cancelPrevHideTimer = useCallback(() => {
+    if (prevHideTimer.current) {
+      clearTimeout(prevHideTimer.current);
+      prevHideTimer.current = null;
+    }
+  }, []);
+  const fetchPriceHoverDetail = useCallback(
+    async (desc: string, type: "lowest" | "prev") => {
+      if (priceHoverCache[desc]?.[type] !== undefined) return;
+      setPriceHoverCache((prev) => ({
+        ...prev,
+        [desc]: { ...prev[desc], [type]: "loading" },
+      }));
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/mr/getMaterialPriceHoverDetail?material=${encodeURIComponent(desc)}&type=${type}`,
+        );
+        const data = res.ok ? await res.json() : null;
+        setPriceHoverCache((prev) => ({
+          ...prev,
+          [desc]: { ...prev[desc], [type]: data },
+        }));
+      } catch {
+        setPriceHoverCache((prev) => ({
+          ...prev,
+          [desc]: { ...prev[desc], [type]: null },
+        }));
+      }
+    },
+    [priceHoverCache],
+  );
 
   const formatNumber = (value: unknown): string => {
     const num = Number(value);
@@ -961,14 +1033,60 @@ export default function SupplierAndQuotationButton({
                             value: priceStats?.prev_price,
                           },
                         ] as const
-                      ).map(({ label, value }) => (
-                        <div key={label}>
-                          <small>{label}</small>
-                          <h3>
-                            {value != null ? formatPriceAED(value) : "N/A"}
-                          </h3>
-                        </div>
-                      ))}
+                      ).map(({ label, value }) => {
+                        const isLowest = label === "LOWEST PRICE";
+                        const isPrev = label === "PREV. PRICE";
+                        const hasHover =
+                          (isLowest && priceStats?.lowest_price != null) ||
+                          (isPrev && priceStats?.prev_price != null);
+                        return (
+                          <div
+                            key={label}
+                            onMouseEnter={
+                              isLowest && priceStats?.lowest_price != null
+                                ? (e) => {
+                                    cancelLowestHideTimer();
+                                    setHoveredLowestRect(
+                                      (
+                                        e.currentTarget as HTMLElement
+                                      ).getBoundingClientRect(),
+                                    );
+                                    fetchPriceHoverDetail(
+                                      mrLine.material_description,
+                                      "lowest",
+                                    );
+                                  }
+                                : isPrev && priceStats?.prev_price != null
+                                  ? (e) => {
+                                      cancelPrevHideTimer();
+                                      setHoveredPrevRect(
+                                        (
+                                          e.currentTarget as HTMLElement
+                                        ).getBoundingClientRect(),
+                                      );
+                                      fetchPriceHoverDetail(
+                                        mrLine.material_description,
+                                        "prev",
+                                      );
+                                    }
+                                  : undefined
+                            }
+                            onMouseLeave={
+                              isLowest && priceStats?.lowest_price != null
+                                ? startLowestHideTimer
+                                : isPrev && priceStats?.prev_price != null
+                                  ? startPrevHideTimer
+                                  : undefined
+                            }
+                            style={hasHover ? { cursor: "default" } : undefined}
+                          >
+                            <small>{label}</small>
+                            <h3>
+                              {value != null ? formatPriceAED(value) : "N/A"}
+                            </h3>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -982,14 +1100,42 @@ export default function SupplierAndQuotationButton({
                     </colgroup>
                     <thead>
                       <tr style={{ backgroundColor: "rgba(247,247,247,1)" }}>
-                        {[
-                          "INVENTORY STATUS",
-                          "QTY AVAILABLE",
-                          "LOCATION",
-                          "STATUS",
-                        ].map((h) => (
-                          <th key={h}>{h}</th>
-                        ))}
+                        <th>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                            }}
+                          >
+                            INVENTORY STATUS
+                            <TableHeaderTooltipHover width={320}>
+                              <strong>Exact Match:</strong>
+                              <br />
+                              The system uses unique material ID references to
+                              search the inventory database for the exact
+                              requested material, even if it exists under a
+                              different inventory name or description.
+                              <br />
+                              <br />
+                              <strong>Similar Match:</strong>
+                              <br />
+                              The system searches for the closest matching
+                              inventory items based on material names, keywords,
+                              and character similarity to help identify possible
+                              alternatives or related stock.
+                              <br />
+                              <br />
+                              <strong>No Match:</strong>
+                              <br />
+                              The system could not find any matching or similar
+                              inventory items for the requested material.
+                            </TableHeaderTooltipHover>
+                          </span>
+                        </th>
+                        <th>QTY AVAILABLE</th>
+                        <th>LOCATION</th>
+                        <th>STATUS</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1141,14 +1287,24 @@ export default function SupplierAndQuotationButton({
                         const totalVal = parseFloat(
                           quotation.total_price || "",
                         );
-                        const totalAlert: { type: "lowest" | "higher"; pct: number } | null =
+                        const totalAlert: {
+                          type: "lowest" | "higher";
+                          pct: number;
+                        } | null =
                           !isNaN(totalVal) &&
                           totalVal > 0 &&
                           globalLowestPrice !== null &&
                           globalPriceCount > 0
                             ? totalVal <= globalLowestPrice
                               ? { type: "lowest", pct: 0 }
-                              : { type: "higher", pct: Math.round(((totalVal - globalLowestPrice) / globalLowestPrice) * 100) }
+                              : {
+                                  type: "higher",
+                                  pct: Math.round(
+                                    ((totalVal - globalLowestPrice) /
+                                      globalLowestPrice) *
+                                      100,
+                                  ),
+                                }
                             : null;
 
                         const hasFile =
@@ -1504,15 +1660,26 @@ export default function SupplierAndQuotationButton({
                                   }}
                                 >
                                   <img
-                                    src={totalAlert.type === "lowest" ? "/icons/check-green.svg" : "/icons/warning.svg"}
+                                    src={
+                                      totalAlert.type === "lowest"
+                                        ? "/icons/check-green.svg"
+                                        : "/icons/warning.svg"
+                                    }
                                     alt={totalAlert.type}
-                                    style={{ width: "11px", height: "11px", flexShrink: 0 }}
+                                    style={{
+                                      width: "11px",
+                                      height: "11px",
+                                      flexShrink: 0,
+                                    }}
                                   />
                                   <span
                                     style={{
                                       fontSize: "10px",
                                       fontWeight: 600,
-                                      color: totalAlert.type === "lowest" ? "rgba(0,163,93,1)" : "rgba(220,38,38,1)",
+                                      color:
+                                        totalAlert.type === "lowest"
+                                          ? "rgba(0,163,93,1)"
+                                          : "rgba(220,38,38,1)",
                                     }}
                                   >
                                     {totalAlert.type === "lowest"
@@ -1574,6 +1741,110 @@ export default function SupplierAndQuotationButton({
             </FormPopUp>
           );
         })()}
+
+      {/* Price hover popups (lowest & prev) */}
+      {[
+        {
+          rect: hoveredLowestRect,
+          type: "lowest" as const,
+          onCancel: cancelLowestHideTimer,
+          onHide: () => setHoveredLowestRect(null),
+        },
+        {
+          rect: hoveredPrevRect,
+          type: "prev" as const,
+          onCancel: cancelPrevHideTimer,
+          onHide: () => setHoveredPrevRect(null),
+        },
+      ].map(({ rect, type, onCancel, onHide }) =>
+        rect
+          ? (() => {
+              const row = priceHoverCache[mrLine.material_description]?.[type];
+              if (row === null) return null;
+              const spaceBelow = window.innerHeight - rect.bottom;
+              const top = spaceBelow >= 98 ? rect.bottom + 4 : rect.top - 94;
+              return createPortal(
+                <div
+                  key={type}
+                  onMouseEnter={onCancel}
+                  onMouseLeave={onHide}
+                  style={{
+                    position: "fixed",
+                    left: Math.max(8, rect.left),
+                    top: Math.max(8, top),
+                    backgroundColor: "white",
+                    border: "1px solid rgba(223,223,223,1)",
+                    borderRadius: "10px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    zIndex: 10000,
+                    width: "auto",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <div style={{ padding: "12px" }}>
+                    <h4 style={{ marginBottom: "12px" }}>
+                      {type === "lowest" ? "LOWEST PRICE" : "PREVIOUS PRICE"}
+                    </h4>
+                    {row === "loading" || row === undefined ? (
+                      <div
+                        style={{
+                          padding: "16px",
+                          textAlign: "center",
+                          color: "rgba(128,128,128,1)",
+                          fontSize: "13px",
+                        }}
+                      >
+                        Loading...
+                      </div>
+                    ) : (
+                      <table
+                        className="items-table popup-hover"
+                        style={{ width: "auto" }}
+                      >
+                        <thead>
+                          <tr>
+                            <th>LPO NUMBER</th>
+                            <th>PROJECT</th>
+                            <th>VENDOR</th>
+                            <th>REQUESTER</th>
+                            <th>UNIT PRICE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              <a
+                                href={`/mr/${row.mr_header_id}/lpo/${row.lpo_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: "rgba(37,150,190,1)", fontWeight: 600, textDecoration: "none" }}
+                              >
+                                LPO-{String(row.lpo_id).padStart(5, "0")}
+                              </a>
+                            </td>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {row.project_name}
+                            </td>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {row.vendor_name}
+                            </td>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {(row as any).requested_by ?? "—"}
+                            </td>
+                            <td style={{ whiteSpace: "nowrap" }}>
+                              {formatPriceAED(row.unit_price)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>,
+                document.body,
+              );
+            })()
+          : null,
+      )}
     </>
   );
 }

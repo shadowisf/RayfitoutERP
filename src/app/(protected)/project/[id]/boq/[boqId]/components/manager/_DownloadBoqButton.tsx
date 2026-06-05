@@ -341,13 +341,16 @@ export default function DownloadBoqButton({
       <Button
         componentType={"button"}
         bgColor={iconOnly ? "black" : "white"}
-        borderColor={iconOnly ? "black" : "black"}
+        borderColor={iconOnly ? "black" : "rgba(211, 211, 211, 1)"}
         textColor={"black"}
         onClick={handleOpen}
-        style={iconOnly ? { padding: "7px 7px", flexShrink: 0 } : undefined}
+        style={
+          iconOnly
+            ? { padding: "7px 7px", flexShrink: 0 }
+            : { padding: "10px 10px", flexShrink: 0 }
+        }
       >
-        {!iconOnly &&
-          (isReference ? "EXPORT BOQ REFERENCE" : "EXPORT BOQ IN GROUPS")}
+        {!iconOnly && (isReference ? "EXPORT BOQ REFERENCE" : "")}
         <img
           src={downloadIcon}
           alt="download"
@@ -404,12 +407,7 @@ export default function DownloadBoqButton({
                     type="checkbox"
                     checked={isAllSelected}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      cursor: "pointer",
-                      accentColor: "#10b981",
-                    }}
+                    className="manager-checkbox"
                   />
                   <h4>Select All</h4>
                 </label>
@@ -433,12 +431,7 @@ export default function DownloadBoqButton({
                       onChange={(e) =>
                         handleCategoryChange(category, e.target.checked)
                       }
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        cursor: "pointer",
-                        accentColor: "#10b981",
-                      }}
+                      className="manager-checkbox"
                     />
                     <label
                       onClick={() => toggleCategory(category)}

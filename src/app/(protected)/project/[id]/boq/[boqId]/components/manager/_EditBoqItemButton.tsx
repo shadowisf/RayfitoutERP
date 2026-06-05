@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import FormPopUp from "@/app/components/FormPopup";
 import InputItem from "@/app/components/InputItem";
 import { UNIT_OPTIONS } from "@/constants/units";
@@ -13,6 +14,28 @@ import MultiSelectDropdown from "@/app/components/MultiSelectDropdown";
 import MultipleUploadFileBox from "@/app/components/MultipleUploadFileBox";
 import CreateLocationButton from "./_AddLocationButton";
 import { useRefresh } from "@/app/context/RefreshContext";
+
+function addCommas(val: string): string {
+  if (!val) return val;
+  const parts = val.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
+}
+function formatMoneyOpen(val: string | number): string {
+  const n = Number(val);
+  if (!val && val !== 0) return "";
+  if (isNaN(n)) return "";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+function formatQtyOpen(val: string | number): string {
+  const n = Number(val);
+  if (!val && val !== 0) return "";
+  if (isNaN(n)) return "";
+  return n % 1 === 0 ? String(n) : parseFloat(n.toFixed(10)).toString();
+}
+function stripCommas(val: string | number): number {
+  return Number(String(val).replace(/,/g, "")) || 0;
+}
 
 type EditBoqItemButtonProps = {
   item: BoqLine;
@@ -42,16 +65,10 @@ export default function EditBoqItemButton({
     item.scope_of_work || "",
   );
   const [locationID, setLocationID] = useState<(string | number)[]>([]);
-  const [quantity, setQuantity] = useState<string | number>(
-    String(item.quantity ?? ""),
-  );
+  const [quantity, setQuantity] = useState<string>(formatQtyOpen(item.quantity ?? ""));
   const [unit, setUnit] = useState(item.unit || "");
-  const [ratePerQuantity, setRatePerQuantity] = useState<string | number>(
-    String(item.rate_per_quantity ?? ""),
-  );
-  const [totalCost, setTotalCost] = useState<string | number>(
-    String(item.total_cost ?? ""),
-  );
+  const [ratePerQuantity, setRatePerQuantity] = useState<string>(formatMoneyOpen(item.rate_per_quantity ?? ""));
+  const [totalCost, setTotalCost] = useState<string>(formatMoneyOpen(item.total_cost ?? ""));
   const [itemDescription, setItemDescription] = useState(
     item.item_description || "",
   );
@@ -151,16 +168,14 @@ export default function EditBoqItemButton({
   // Calculate total cost
   useEffect(() => {
     const timer = setTimeout(() => {
-      const rate = Number(ratePerQuantity);
-      const qty = Number(quantity);
-      if (!isNaN(rate) && !isNaN(qty) && rate > 0 && qty > 0) {
-        const total = rate * qty;
-        setTotalCost(Number(total.toFixed(2)));
+      const rate = stripCommas(ratePerQuantity);
+      const qty = stripCommas(quantity);
+      if (rate > 0 && qty > 0) {
+        setTotalCost(formatMoneyOpen(rate * qty));
       } else {
         setTotalCost("");
       }
     }, 300);
-
     return () => clearTimeout(timer);
   }, [ratePerQuantity, quantity]);
 
@@ -254,10 +269,10 @@ export default function EditBoqItemButton({
           sub_category: subCategory,
           scope_of_work: scopeOfWork || null,
           location_ids: locationID,
-          quantity: Number(quantity) || 0,
+          quantity: stripCommas(quantity),
           unit,
-          rate_per_quantity: Number(ratePerQuantity) || 0,
-          total_cost: Number(totalCost) || 0,
+          rate_per_quantity: stripCommas(ratePerQuantity),
+          total_cost: stripCommas(totalCost),
           item_description: itemDescription || null,
           attachments: JSON.stringify(finalAttachments),
           dn_number_and_date: dnNumberAndDate || null,
@@ -295,10 +310,10 @@ export default function EditBoqItemButton({
     setCategory(item.category);
     setSubCategory(item.sub_category);
     setScopeOfWork(item.scope_of_work || "");
-    setQuantity(String(item.quantity ?? ""));
+    setQuantity(formatQtyOpen(item.quantity ?? ""));
     setUnit(item.unit || "");
-    setRatePerQuantity(String(item.rate_per_quantity ?? ""));
-    setTotalCost(String(item.total_cost ?? ""));
+    setRatePerQuantity(formatMoneyOpen(item.rate_per_quantity ?? ""));
+    setTotalCost(formatMoneyOpen(item.total_cost ?? ""));
     setItemDescription(item.item_description || "");
     setDnNumberAndDate(item.dn_number_and_date || "");
     setRemarks(item.remarks || "");
@@ -318,8 +333,7 @@ export default function EditBoqItemButton({
         <img src={pencilIcon} alt="pencil" /> Edit
       </Button>
 
-      {isOpen && (
-        <FormPopUp
+      {isOpen && typeof window !== "undefined" && createPortal(<FormPopUp
           header="UPDATE BILL OF QUANTITY ITEM"
           setIsOpen={setIsOpen}
           handleSubmit={handleSubmit}
@@ -404,11 +418,10 @@ export default function EditBoqItemButton({
               value={quantity}
               type="text"
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                  setQuantity(val);
-                }
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d*\.?\d{0,3}$/.test(raw)) setQuantity(addCommas(raw));
               }}
+              onBlur={() => { if (quantity !== "") setQuantity(formatMoneyOpen(stripCommas(quantity))); }}
               required
             />
             <InputItem
@@ -429,15 +442,14 @@ export default function EditBoqItemButton({
               type="text"
               placeholder="ENTER RATE / QUANTITY"
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                  setRatePerQuantity(val);
-                }
+                const raw = e.target.value.replace(/,/g, "");
+                if (raw === "" || /^\d*\.?\d{0,3}$/.test(raw)) setRatePerQuantity(addCommas(raw));
               }}
+              onBlur={() => { if (ratePerQuantity !== "") setRatePerQuantity(formatMoneyOpen(stripCommas(ratePerQuantity))); }}
               required
             />
             <InputItem
-              label="TOTAL COST"
+              label="TOTAL PRICE"
               value={totalCost}
               type="text"
               placeholder="CALCULATING..."
@@ -478,8 +490,7 @@ export default function EditBoqItemButton({
               onExistingFilesChange={handleExistingFilesChange}
             />
           </div>
-        </FormPopUp>
-      )}
+        </FormPopUp>, document.body)}
     </>
   );
 }

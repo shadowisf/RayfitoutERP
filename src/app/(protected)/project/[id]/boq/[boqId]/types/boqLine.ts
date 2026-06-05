@@ -17,4 +17,5 @@ export type BoqLine = {
   item_number: string;
   remarks: string;
   dn_number_and_date: string;
+  has_jo?: boolean;
 };

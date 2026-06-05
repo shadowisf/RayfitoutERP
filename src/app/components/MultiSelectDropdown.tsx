@@ -438,7 +438,8 @@ export default function MultiSelectDropdown({
                               e.currentTarget.style.backgroundColor = "#f5f5f5";
                             }}
                             onMouseOut={(e) => {
-                              e.currentTarget.style.backgroundColor = "transparent";
+                              e.currentTarget.style.backgroundColor =
+                                "transparent";
                             }}
                           >
                             <input
@@ -599,16 +600,24 @@ export default function MultiSelectDropdown({
   );
 
   return (
-    <div className="input-item" style={!label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}} ref={containerRef}>
+    <div
+      className="input-item"
+      style={
+        !label ? { flexDirection: "row", alignItems: "center", gap: "6px" } : {}
+      }
+      ref={containerRef}
+    >
       {!noLabel && label && (
         <label className="custom">
           <span>
             {label}
-            {required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}
+            {required && (
+              <span style={{ color: "red", marginLeft: "2px" }}>*</span>
+            )}
           </span>{" "}
           {!required && (
             <small style={{ fontStyle: "italic", fontWeight: "100" }}>
-              (OPTIONAL)
+              OPTIONAL
             </small>
           )}
         </label>
@@ -616,7 +625,11 @@ export default function MultiSelectDropdown({
 
       <div
         className="select-wrapper"
-        style={{ position: "relative", flex: !label ? "1 1 auto" : undefined, ...style }}
+        style={{
+          position: "relative",
+          flex: !label ? "1 1 auto" : undefined,
+          ...style,
+        }}
       >
         <select
           className={`native-select ${disabled ? "disabled" : ""} ${
@@ -664,7 +677,16 @@ export default function MultiSelectDropdown({
       </div>
 
       {!label && required && (
-        <span style={{ color: "red", fontSize: "12px", flexShrink: 0, lineHeight: 1 }}>*</span>
+        <span
+          style={{
+            color: "red",
+            fontSize: "12px",
+            flexShrink: 0,
+            lineHeight: 1,
+          }}
+        >
+          *
+        </span>
       )}
 
       {/* TOOLTIP */}

@@ -331,11 +331,12 @@ function GroupedSearchableChecklist({
                       onClick={() => toggleExpand(group.originalIdx)}
                     >
                       {group.name || "Uncategorized"}
-                      <span
-                        style={{ fontSize: 10, color: "#888", lineHeight: 1 }}
+                      <svg
+                        width="14" height="14" viewBox="0 0 14 14" fill="none"
+                        style={{ flexShrink: 0, transition: "transform 0.15s", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
                       >
-                        {isExpanded ? "∧" : "∨"}
-                      </span>
+                        <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="#888" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </h4>
                   </div>
 
