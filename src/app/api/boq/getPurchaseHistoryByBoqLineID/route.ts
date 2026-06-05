@@ -21,28 +21,42 @@ export async function POST(req: Request) {
     // Rows are ordered chronologically so the frontend can compute a running total.
     const [rows]: any = await db.query(
       `SELECT
-         lpo.id                                                          AS lpo_id,
+         lpo.id                                                           AS lpo_id,
          lpo.mr_header_id,
-         COALESCE(pi.material_description, ml.material_description)      AS material_description,
-         lpo.created_at                                                  AS lpo_date,
-         jmbl.allocated_qty                                             AS quantity,
-         ml.unit,
-         -- allocated_qty × unit_price × VAT/overhead ratio
+         COALESCE(pi.material_description, ml.material_description)       AS material_description,
+         lpo.created_at                                                   AS lpo_date,
+         -- Use allocated_qty when present; otherwise split mr_line qty equally
+         -- across all BOQ lines referenced by that mr_line (no DB write).
          ROUND(
-           jmbl.allocated_qty * lml.unit_price * lpo.total / NULLIF(lpo.subtotal, 0),
+           COALESCE(
+             jmbl.allocated_qty,
+             ml.quantity / NULLIF(boq_cnt.cnt, 0)
+           ),
+           4
+         )                                                                AS quantity,
+         ml.unit,
+         ROUND(
+           COALESCE(
+             jmbl.allocated_qty,
+             ml.quantity / NULLIF(boq_cnt.cnt, 0)
+           ) * lml.unit_price * lpo.total / NULLIF(lpo.subtotal, 0),
            2
-         )                                                               AS total_price,
-         pr.value                                                        AS lpo_status
+         )                                                                AS total_price,
+         pr.value                                                         AS lpo_status
        FROM jt_mr_lines_boq_lines jmbl
        JOIN mr_lines    ml  ON ml.id         = jmbl.mr_line_id
        JOIN lpo_mr_line lml ON lml.mr_line_id = ml.id
        JOIN lpo             ON lpo.id         = lml.lpo_id
        LEFT JOIN lut_predefined_items    pi ON pi.id = ml.predefined_item_id
        LEFT JOIN lut_mr_headers_progress pr ON pr.id = lpo.progress_id
+       -- Count of distinct BOQ lines per mr_line for equal-split fallback
+       JOIN (
+         SELECT mr_line_id, COUNT(DISTINCT boq_line_id) AS cnt
+         FROM jt_mr_lines_boq_lines
+         GROUP BY mr_line_id
+       ) boq_cnt ON boq_cnt.mr_line_id = jmbl.mr_line_id
        WHERE jmbl.boq_line_id = ?
          AND lpo.progress_id >= 17
-         AND jmbl.allocated_qty IS NOT NULL
-         AND jmbl.allocated_qty > 0
        ORDER BY lpo.created_at ASC`,
       [boq_line_id],
     );
