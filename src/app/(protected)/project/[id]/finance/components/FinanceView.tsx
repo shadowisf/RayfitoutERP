@@ -20,6 +20,8 @@ import DateRangeButton, {
 import AddFinanceEntryButton from "./_AddFinanceEntryButton";
 import Button from "@/app/components/Button";
 import { toast } from "@/app/components/Toast";
+import ThreeDotsMenuButton from "@/app/components/_ThreeButtonsMenuButton";
+import EditFinanceEntryPopup from "./_EditFinanceEntryPopup";
 
 type FinanceEntry = {
   id: number;
@@ -104,24 +106,31 @@ export default function FinanceView({ projectId, projectName }: Props) {
   const filterIcon = "/icons/filter.svg";
   const crossIcon = "/icons/cross-small.svg";
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ project_id: projectId });
-    if (dateRange.start)
-      params.set("start_date", dateRange.start.toISOString().slice(0, 10));
-    if (dateRange.end)
-      params.set("end_date", dateRange.end.toISOString().slice(0, 10));
+  const fetchData = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      const params = new URLSearchParams({ project_id: projectId });
+      if (dateRange.start)
+        params.set("start_date", dateRange.start.toISOString().slice(0, 10));
+      if (dateRange.end)
+        params.set("end_date", dateRange.end.toISOString().slice(0, 10));
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getFinanceData?${params}`,
-    );
-    if (res.ok) setData(await res.json());
-    setLoading(false);
-  }, [projectId, dateRange]);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/projects/getFinanceData?${params}`,
+      );
+      if (res.ok) setData(await res.json());
+      if (!silent) setLoading(false);
+    },
+    [projectId, dateRange],
+  );
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const [editingEntry, setEditingEntry] = useState<FinanceEntry | null>(null);
+
+  const openEdit = (entry: FinanceEntry) => setEditingEntry(entry);
 
   const deleteEntry = async (id: number) => {
     try {
@@ -135,7 +144,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
       );
       if (!res.ok) throw new Error();
       toast("Entry deleted", "success");
-      fetchData();
+      fetchData(true);
     } catch {
       toast("Failed to delete entry", "error");
     }
@@ -257,71 +266,49 @@ export default function FinanceView({ projectId, projectName }: Props) {
     },
   ];
 
-  const ThreeDotsDeleteMenu = ({ id }: { id: number }) => {
-    const [open, setOpen] = useState(false);
-    return (
-      <div style={{ position: "relative" }}>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "4px 8px",
-            borderRadius: "4px",
-            fontSize: "18px",
-            color: "rgba(120,120,120,1)",
-          }}
-        >
-          ⋮
-        </button>
-        {open && (
-          <>
-            <div
-              onClick={() => setOpen(false)}
-              style={{ position: "fixed", inset: 0, zIndex: 10 }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                right: 0,
-                top: "100%",
-                backgroundColor: "white",
-                border: "1px solid rgba(220,220,220,1)",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                zIndex: 20,
-                minWidth: "100px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  deleteEntry(id);
-                }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "10px 16px",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  color: "rgba(220,38,38,1)",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    );
+  const menuItemStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    width: "100%",
+    padding: "10px 16px",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    textAlign: "left",
+    fontSize: "13px",
+    fontWeight: 500,
+    color: "black",
   };
+
+  const ThreeDotsDeleteMenu = ({ entry }: { entry: FinanceEntry }) => (
+    <ThreeDotsMenuButton>
+      <button
+        type="button"
+        onClick={() => openEdit(entry)}
+        style={menuItemStyle}
+      >
+        <img
+          src="/icons/pencil.svg"
+          alt="edit"
+          style={{ width: "14px", opacity: 0.7 }}
+        />
+        Edit
+      </button>
+      <button
+        type="button"
+        onClick={() => deleteEntry(entry.id)}
+        style={menuItemStyle}
+      >
+        <img
+          src="/icons/trash.svg"
+          alt="delete"
+          style={{ width: "14px", opacity: 0.7 }}
+        />
+        Delete
+      </button>
+    </ThreeDotsMenuButton>
+  );
 
   return (
     <div className="dashboard">
@@ -391,7 +378,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "220px 1fr",
+              gridTemplateColumns: "320px 1fr",
               gap: "20px",
               marginBottom: "32px",
               alignItems: "stretch",
@@ -403,51 +390,58 @@ export default function FinanceView({ projectId, projectName }: Props) {
                 backgroundColor: "white",
                 borderRadius: "12px",
                 padding: "20px",
-                border: "1px solid rgba(232,232,232,1)",
+                height: "100%",
+                boxSizing: "border-box",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart
-                  data={chartData}
-                  barCategoryGap="5%"
-                  barGap={12}
-                  margin={{ top: 10, right: 0, left: 0, bottom: 10 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="rgba(240,240,240,1)"
-                  />
-                  <YAxis
-                    tickFormatter={(v) => `AED ${(v / 1000000).toFixed(1)}M`}
-                    tick={{ fontSize: 9 }}
-                    width={55}
-                    tickMargin={6}
-                  />
-                  <Tooltip
-                    formatter={(v: any) => [`AED ${formatMoney(v)}`, ""]}
-                  />
-                  <Bar
-                    dataKey="Revenue"
-                    fill="rgba(33,227,144,1)"
-                    radius={[30, 30, 30, 30]}
-                    barSize={45}
-                  />
-                  <Bar
-                    dataKey="Expenses"
-                    fill="rgba(238,79,79,1)"
-                    radius={[30, 30, 30, 30]}
-                    barSize={45}
-                    minPointSize={60}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    barCategoryGap="5%"
+                    barGap={12}
+                    margin={{ top: 10, right: 0, left: 0, bottom: 10 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="rgba(240,240,240,1)"
+                    />
+                    <YAxis
+                      tickFormatter={(v) => `AED ${(v / 1000000).toFixed(1)}M`}
+                      tick={{ fontSize: 9 }}
+                      width={55}
+                      tickMargin={6}
+                    />
+                    <Tooltip
+                      formatter={(v: any) => [`AED ${formatMoney(v)}`, ""]}
+                    />
+                    <Bar
+                      dataKey="Revenue"
+                      fill="rgba(33,227,144,1)"
+                      radius={[30, 30, 30, 30]}
+                      barSize={45}
+                    />
+                    <Bar
+                      dataKey="Expenses"
+                      fill="rgba(238,79,79,1)"
+                      radius={[30, 30, 30, 30]}
+                      barSize={45}
+                      minPointSize={60}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
               <div
                 style={{
                   display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: "16px",
                   marginTop: "8px",
+                  marginLeft: "75px",
                 }}
               >
                 <div
@@ -511,6 +505,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                     padding: "20px",
                     display: "flex",
                     flexDirection: "column",
+                    minHeight: "500px",
                   }}
                 >
                   <div
@@ -579,7 +574,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          padding: "10px 20px",
+                          padding: "3px 20px",
                           backgroundColor: "white",
                           borderRadius: "50px",
                           color: "rgba(0,163,93,1)",
@@ -621,14 +616,12 @@ export default function FinanceView({ projectId, projectName }: Props) {
                         >
                           <span
                             style={{
-                              fontSize: "13px",
-                              fontWeight: 700,
                               color: "rgba(0,163,93,1)",
                             }}
                           >
                             AED + {formatMoney(e.effective_amount)}
                           </span>
-                          <ThreeDotsDeleteMenu id={e.id} />
+                          <ThreeDotsDeleteMenu entry={e} />
                         </div>
                       </div>
                     ))}
@@ -638,7 +631,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                     <AddFinanceEntryButton
                       projectId={projectId}
                       entryType="revenue"
-                      onSuccess={fetchData}
+                      onSuccess={() => fetchData(true)}
                     />
                   </div>
                 </div>
@@ -651,6 +644,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                     padding: "20px",
                     display: "flex",
                     flexDirection: "column",
+                    minHeight: "500px",
                   }}
                 >
                   <div
@@ -750,7 +744,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          padding: "10px 20px",
+                          padding: "3px 20px",
                           backgroundColor: "white",
                           borderRadius: "50px",
                         }}
@@ -791,14 +785,12 @@ export default function FinanceView({ projectId, projectName }: Props) {
                         >
                           <span
                             style={{
-                              fontSize: "13px",
-                              fontWeight: 700,
                               color: "rgba(220,38,38,1)",
                             }}
                           >
                             AED - {formatMoney(e.effective_amount)}
                           </span>
-                          <ThreeDotsDeleteMenu id={e.id} />
+                          <ThreeDotsDeleteMenu entry={e} />
                         </div>
                       </div>
                     ))}
@@ -808,7 +800,7 @@ export default function FinanceView({ projectId, projectName }: Props) {
                     <AddFinanceEntryButton
                       projectId={projectId}
                       entryType="expense"
-                      onSuccess={fetchData}
+                      onSuccess={() => fetchData(true)}
                     />
                   </div>
                 </div>
@@ -823,7 +815,6 @@ export default function FinanceView({ projectId, projectName }: Props) {
                   padding: "16px 24px",
                   backgroundColor: "white",
                   borderRadius: "10px",
-                  border: "1px solid rgba(232,232,232,1)",
                 }}
               >
                 <span style={{ textTransform: "uppercase", fontSize: "14px" }}>
@@ -1469,6 +1460,14 @@ export default function FinanceView({ projectId, projectName }: Props) {
             </div>
           )}
         </>
+      )}
+
+      {editingEntry && (
+        <EditFinanceEntryPopup
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          onSuccess={() => fetchData(true)}
+        />
       )}
     </div>
   );

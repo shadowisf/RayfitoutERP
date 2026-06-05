@@ -125,10 +125,9 @@ export default function AddFinanceEntryButton({
               if (!val) reset();
             }}
             handleSubmit={handleSubmit}
-            addButtonLabel="ADD"
-            haveLoadingState
+            addButtonLabel="CONFIRM"
           >
-            <div className="input-row half">
+            <div className="input-row full">
               <InputItem
                 label={`${label} TYPE`}
                 type="select"
@@ -145,15 +144,6 @@ export default function AddFinanceEntryButton({
                   </>
                 }
               />
-              <InputItem
-                label="AMOUNT"
-                type="text postfix"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="000"
-                postfixText="AED"
-                required
-              />
             </div>
 
             <div className="input-row full">
@@ -162,6 +152,17 @@ export default function AddFinanceEntryButton({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="input-row full">
+              <InputItem
+                label="AMOUNT"
+                type="text postfix"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                postfixText="AED"
                 required
               />
             </div>
